@@ -11,7 +11,7 @@ const NonFixedHeader: React.FC = () => {
     return (
         <div className={styles.header}>
             <div className={styles.logo} onClick={() => router.push('/')}>
-                <img src="./images/logo/parts_mojo_logo.png" alt="aptcarePetWeb  Logo" />
+                <img src="./images/logo/apts_logo.png" alt="aptcarePetWeb  Logo" />
             </div>
             <div className={styles.rightBox}>
 

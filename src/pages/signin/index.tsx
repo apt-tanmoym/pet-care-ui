@@ -127,7 +127,7 @@ const SignIn: React.FC = () => {
         <div className={styles.leftContent}>
           <div className={styles.logoWrapper}>
             <Image
-              src="/images/logo/parts_mojo_logo.png"
+              src="/images/logo/apts_logo.png"
               alt="aptcarePetWeb  Admin"
               width={300}
               height={100}
@@ -156,7 +156,7 @@ const SignIn: React.FC = () => {
       <Box className={styles.rightSide}>
         <div className={styles.formWrapper}>
           <Typography variant="h5" className={styles.formTitle}>
-            Sign into Admin Portal
+            Sign in
           </Typography>
           <Typography className={styles.formSubtitle}>
             Enter your credentials to access the dashboard

@@ -66,7 +66,7 @@ export default function HeaderWrapper() {
           <Typography variant="h6" className={styles.logo} onClick={() => router.push('/')}>
 
             {/* Replace the src with your actual logo URL */}
-            <img src="./images/logo/parts_mojo_logo.png" alt="aptcarePetWeb  Logo" />
+            <img src="./images/logo/apts_logo.png" alt="aptcarePetWeb  Logo" />
 
           </Typography>
 

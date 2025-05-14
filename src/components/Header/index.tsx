@@ -38,7 +38,7 @@ const Header: React.FC<HeaderProps> = ({ notificationCount }) => {
       <Toolbar className={styles.toolbar}>
         {/* Logo */}
         <Box className={styles.logoBox}>
-          <img src={'/images/logo/parts_mojo_logo.png'} alt={'aptcarePetWeb  Logo'} className={styles.logo} />
+          <img src={'/images/logo/apts_logo.png'} alt={'aptcarePetWeb  Logo'} className={styles.logo} />
         </Box>
 
         {/* Notification and Avatar */}

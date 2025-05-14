@@ -11,7 +11,7 @@ export default function BaseLayout({ children }: Props) {
   return (
     <>
       <Head>
-        <title>aptcarePetWeb  Canada – Your trusted online destination for high-quality car parts at unbeatable prices! 🇨🇦 Fast shipping, top brands & expert support to keep you on the road. Shop smart, drive safe!</title>
+        <title>aptcarePetWeb </title>
         </Head>
       
       {children}
