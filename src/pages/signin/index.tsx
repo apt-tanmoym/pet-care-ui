@@ -138,16 +138,15 @@ const SignIn: React.FC = () => {
             <Image
               src="/images/logo/dashboard.png"
               alt="Admin Dashboard"
-              width={400}
-              height={300}
+              width={500}
+              height={400}
               className={styles.illustration}
             />
           </div>
           <Typography variant="h4" className={styles.welcomeText}>
-            Admin Dashboard
+            Veterinary Clinic
           </Typography>
-          <Typography variant="subtitle1" className={styles.subText}>
-            Manage bookings, track performance, and handle operations efficiently
+          <Typography variant="subtitle1" className={styles.subText}>Trusted Pet Health Center
           </Typography>
         </div>
       </Box>
