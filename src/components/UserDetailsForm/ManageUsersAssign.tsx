@@ -8,6 +8,7 @@ import {
   Button,
   Grid,
   Typography,
+  SelectChangeEvent,
 } from '@mui/material';
 
 const StyledButton = ({ sx, ...props }: any) => (
@@ -41,8 +42,8 @@ const ManageUsersAssign: React.FC<ManageUsersAssignProps> = ({ user, onSubmit, o
   const [role, setRole] = useState(user.role || '');
   const [error, setError] = useState('');
 
-  const handleRoleChange = (e: React.ChangeEvent<{ value: unknown }>) => {
-    setRole(e.target.value as string);
+  const handleRoleChange = (e: SelectChangeEvent) => {
+    setRole(e.target.value);
     setError('');
   };
 

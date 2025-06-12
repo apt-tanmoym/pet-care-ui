@@ -52,7 +52,9 @@ interface CommonTableProps {
   dialogWidth?: any;
   title?: string;
   children?: any;
-  hideDefaultButtons?: boolean; // Added prop to control dialog buttons
+  hideDefaultButtons?: boolean;
+  onFilterChange?: (filterName: string, value: string) => void;
+  onSave?: () => void;
 }
 
 const CommonTable: React.FC<CommonTableProps> = ({
@@ -72,7 +74,9 @@ const CommonTable: React.FC<CommonTableProps> = ({
   handleClose,
   onAddButtonClick,
   children,
-  hideDefaultButtons = false, // Default to false
+  hideDefaultButtons = false,
+  onFilterChange,
+  onSave,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentFilters, setCurrentFilters] = useState<{
@@ -83,6 +87,9 @@ const CommonTable: React.FC<CommonTableProps> = ({
 
   const handleFilterChange = (filterName: string, value: string) => {
     setCurrentFilters((prev) => ({ ...prev, [filterName]: value }));
+    if (onFilterChange) {
+      onFilterChange(filterName, value);
+    }
   };
 
   const filteredRows = rowData.filter((row) => {
@@ -212,7 +219,7 @@ const CommonTable: React.FC<CommonTableProps> = ({
       <CummonDialog
         open={openDialog}
           onClose={handleClose || (() => {})}
-        onSubmit={() => {}}
+        onSubmit={onSave}
         maxWidth={dialogWidth}
         title={title}
         hideDefaultButtons={hideDefaultButtons} 

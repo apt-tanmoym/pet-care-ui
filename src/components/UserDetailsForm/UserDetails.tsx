@@ -10,6 +10,7 @@ import {
   Grid,
   Typography,
   InputAdornment,
+  SelectChangeEvent,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 
@@ -58,7 +59,11 @@ const StyledButton = ({ sx, ...props }: any) => (
   />
 );
 
-const UserDetailsForm = () => {
+interface UserDetailsFormProps {
+  onSubmit: (data: any) => void;
+}
+
+const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onSubmit }) => {
   const [formValues, setFormValues] = useState({
     title: 'Mr.',
     firstName: '',
@@ -172,7 +177,9 @@ const UserDetailsForm = () => {
     setErrors((prev) => ({ ...prev, image: '' }));
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | { value: unknown }>) => {
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent
+  ) => {
     const { name, value } = e.target;
     setFormValues((prev) => ({ ...prev, [name]: value }));
   };

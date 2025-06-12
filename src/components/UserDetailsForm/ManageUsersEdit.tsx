@@ -10,6 +10,7 @@ import {
   Grid,
   Typography,
   InputAdornment,
+  SelectChangeEvent,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 
@@ -191,7 +192,9 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCan
     setErrors((prev) => ({ ...prev, image: '' }));
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | { value: unknown }>) => {
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent
+  ) => {
     const { name, value } = e.target;
     setFormValues((prev) => ({ ...prev, [name]: value }));
   };

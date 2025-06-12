@@ -122,9 +122,9 @@ const ManageUsersPage = () => {
   ];
 
   const filters = [
-    { name: 'status', options: ['Active', 'Inactive'] },
-    { name: 'facility', options: ['Test One', 'Test Two'] },
-    { name: 'role', options: ['Paramedic', 'Admin Staff', 'Administrator'] },
+    { name: 'status', options: ['Active', 'Inactive'], value: '' },
+    { name: 'facility', options: ['Test One', 'Test Two'], value: '' },
+    { name: 'role', options: ['Paramedic', 'Admin Staff', 'Administrator'], value: '' },
   ];
 
   const handleEditClick = (user: any) => {
@@ -205,13 +205,13 @@ const ManageUsersPage = () => {
           colHeaders={colHeaders}
           rowData={rowData}
           rowsPerPageOptions={[5, 10]}
-          filters={filters} // Uncommented this line to ensure filters are applied
+          filters={filters}
           openDialog={openDialog}
           handleClose={handleClose}
           title={getDialogTitle()}
           dialogWidth={dialogMode === 'assign' ? 'sm' : 'md'}
           onAddButtonClick={handleAddClick}
-          hideDefaultButtons={false} // Set to false to allow child components to render their own buttons
+          hideDefaultButtons={false}
         >
           {renderDialogContent()}
         </CommonTable>
