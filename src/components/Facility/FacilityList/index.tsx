@@ -135,6 +135,9 @@ function FacilityList({ facilities }: FacilityTableProps) {
           <Button 
             variant="contained" 
             color="primary"
+            sx={{
+              background: "#174a7c"
+            }}
           >
             Add New Facility
           </Button>

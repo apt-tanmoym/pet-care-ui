@@ -12,6 +12,7 @@ import FormControl from '@mui/material/FormControl';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import SearchIcon from '@mui/icons-material/Search';
+import styles from '@/components/common/styles.module.scss';
 
 interface Props {
   open: boolean;
@@ -100,10 +101,10 @@ const FullDoctorDetailsModal: React.FC<Props> = ({ open, onClose, initialData, o
 
   return (
     <Dialog open={open} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ bgcolor: '#174a7c', color: 'white', fontWeight: 'bold' }}>
+      <DialogTitle className={styles.commonDialogHeader}>
         DOCTOR DETAILS
       </DialogTitle>
-      <DialogContent>
+      <DialogContent dividers>
         <Box sx={{ display: 'flex', gap: 2, mb: 2, mt: 2 }}>
           <FormControl fullWidth required>
             <InputLabel>Medical Council</InputLabel>
@@ -200,10 +201,29 @@ const FullDoctorDetailsModal: React.FC<Props> = ({ open, onClose, initialData, o
         </Box>
       </DialogContent>
       <DialogActions sx={{ justifyContent: 'center', mb: 2 }}>
-        <Button onClick={handleSubmit} variant="contained" sx={{ bgcolor: '#174a7c', mr: 2 }}>
+        <Button 
+          onClick={handleSubmit} 
+          variant="contained" 
+          sx={{ 
+            mr: 2,
+            bgcolor: '#174a7c',
+            '&:hover': {
+              bgcolor: '#1b5e20'
+            }
+          }}
+        >
           Submit
         </Button>
-        <Button onClick={onClose} variant="contained" sx={{ bgcolor: '#174a7c' }}>
+        <Button 
+          onClick={onClose} 
+          variant="contained"
+          sx={{ 
+            bgcolor: '#3b5c7e',
+            '&:hover': {
+              bgcolor: '#2c4a6e'
+            }
+          }}
+        >
           Cancel
         </Button>
       </DialogActions>

@@ -165,7 +165,9 @@ const UsersTable: React.FC = () => {
             <Grid item xs={12} sm={3} display="flex" justifyContent="flex-end">
               <Button
                 variant="contained"
-                sx={{ bgcolor: '#174a7c' }}
+                sx={{
+                  background: "#174a7c"
+                }}
                 onClick={() => { setSelectedUser(blankUser); setEditModalOpen(true); }}
               >
                 Add New User
