@@ -1,52 +1,48 @@
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-} from '@mui/material';
-
+// In @/components/common/CommonDialog.tsx (rename from CummonDialog.tsx)
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import styles from './styles.module.scss';
 
 interface CommonDialogProps {
   open: boolean;
   title: string;
   onClose: () => void;
-  onSubmit?: () => void;
+  onSubmit?: (data?:any) => void;
   children: React.ReactNode;
   maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   submitLabel?: string;
   cancelLabel?: string;
   showActions?: boolean;
-  hideDefaultButtons?: boolean; 
+  hideDefaultButtons?: boolean;
 }
 
-const CummonDialog = ({
+const CummonDialog: React.FC<CommonDialogProps> = ({
   open,
   title,
   onClose,
-  onSubmit,
   children,
   maxWidth = 'sm',
   submitLabel = 'Submit',
   cancelLabel = 'Cancel',
   showActions = true,
-  hideDefaultButtons = false, 
-}: CommonDialogProps) => {
+  hideDefaultButtons = false,
+  onSubmit,
+}) => {
+  console.log('CommonDialog open:', open, 'title:', title); // Debug log
   return (
     <Dialog open={open} onClose={onClose} maxWidth={maxWidth} fullWidth>
       <DialogTitle className={styles.commonDialogHeader}>{title}</DialogTitle>
       <DialogContent dividers>{children}</DialogContent>
-
       {showActions && !hideDefaultButtons && (
         <DialogActions>
-          {onSubmit && (
-            <Button onClick={onSubmit} color="success" variant="contained">
-              {submitLabel}
-            </Button>
-          )}
-          <Button onClick={onClose} color="primary" variant="contained">
+          <Button onClick={onClose} variant="outlined">
             {cancelLabel}
+          </Button>
+          <Button
+            onClick={onSubmit}
+            variant="contained"
+            sx={{ bgcolor: '#174a7c', color: '#fff', fontWeight: 700, '&:hover': { bgcolor: '#103a61' } }}
+          >
+            {submitLabel}
           </Button>
         </DialogActions>
       )}

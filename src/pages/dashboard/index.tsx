@@ -32,6 +32,7 @@ import AddIcon from "@mui/icons-material/Add";
 import styles from "./style.module.scss";
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { useRouter } from "next/router";
+import DashboardPage from "@/components/Dashboard";
 
 const Dashboard: React.FC = () => {
   const router = useRouter();
@@ -56,7 +57,7 @@ const Dashboard: React.FC = () => {
   return (
     <PrivateRoute>
       <AuthenticatedLayout>
-        <Box className={styles.dashboardContainer}>
+        {/* <Box className={styles.dashboardContainer}>
           {loading ? (
             <CircularProgress />
           ) : (
@@ -72,10 +73,11 @@ const Dashboard: React.FC = () => {
               <Typography variant="subtitle1" sx={{ mb: 2 }}>
                 Facility: {userData?.facilities[0]?.facilityName}
               </Typography>
-              {/* Add more dashboard content here */}
+              
             </>
           )}
-        </Box>
+        </Box> */}
+        <DashboardPage/>
       </AuthenticatedLayout>
     </PrivateRoute>
   );

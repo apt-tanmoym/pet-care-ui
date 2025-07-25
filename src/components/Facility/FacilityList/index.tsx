@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 
 import {
   Box,
@@ -24,28 +24,70 @@ import styles from './style.module.scss';
 
 import EditIcon from "@mui/icons-material/Edit";
 
-import EditFacility from "../EditFacility";
+import EditFacility from "../../Mvetconnect/EditFacility";
 import { FaclityServiceResponse } from "@/interfaces/facilityInterface";
 import CummonDialog from "@/components/common/CummonDialog";
-
+import { addNewFacility, getFacilityDetails } from '@/services/faclilityService';
+import Message from '@/components/common/Message';
 
 
 type FacilityTableProps = {
   facilities: FaclityServiceResponse[];
   onEdit?: (facility: FaclityServiceResponse) => void;
+  onAddSuccess?: () => void;
 };
 
-function FacilityList({ facilities }: FacilityTableProps) {
+function FacilityList({ facilities, onAddSuccess }: FacilityTableProps) {
   
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
-  const [openEdit, setOpenEdit] = useState(false);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedFacility, setSelectedFacility] = useState<FaclityServiceResponse | null>(
     null
   );
+
+  const editFacilityRef = useRef<any>(null);
+
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+
+  // Fully type-safe empty facility object
+  const emptyFacility: FaclityServiceResponse = {
+    facilityColor: '',
+    patientsToView: 1,
+    iiternBilling: 1,
+    facilityId: 0,
+    facilityTypeId:1,
+    orgId: 0,
+    loggedInFacilityId: 1,
+    orgUserId: 1,
+    cityPincodeMappingId: 39551,
+    cityId: 2763,
+    facilityName: '',
+    contactPersonName: '',
+    address1: '',
+    address2: '',
+    pin: '',
+    state: '',
+    country: '',
+    firstContactNo: '',
+    firstContactEmail: '',
+    secondContactNo: '',
+    secondContactEmail: '',
+    city: '',
+    userName: '',
+    userPass: '',
+    deviceStat: '',
+    areaName: '',
+    status: '',
+    facilityType: '',
+    callingFrom: '',
+  };
 
   const handleChangePage = (_: unknown, newPage: number) => {
     setPage(newPage);
@@ -82,15 +124,84 @@ function FacilityList({ facilities }: FacilityTableProps) {
   }, [filteredFacilities, page, rowsPerPage]);
 
 
-  const handleEditClick = (facility: FaclityServiceResponse) => {
-    setSelectedFacility(facility);
-    setOpenEdit(true);
+  const handleEditClick = async (facility: FaclityServiceResponse) => {
+    try {
+      const payload = {
+        userName: 'jibons',
+        userPass: 'P@ssw0rd',
+        deviceStat: 'M',
+        callingFrom: 'web',
+        orgId: '20',
+        facilityId: String(facility.facilityId),
+      };
+      const details = await getFacilityDetails(payload);
+      console.log('RAW API details:', details);
+      const apiData = Array.isArray(details) ? details[0] : details;
+      console.log('apiData:', apiData);
+      // Only use getfacilitydetails response for form
+      const mappedFacility = {
+        ...apiData,
+        secondContactNo: apiData.secondContactNo != null ? String(apiData.secondContactNo) : '',
+        secondContactEmail: apiData.secondContactEmail != null ? String(apiData.secondContactEmail) : '',
+        contactPersonName: apiData.contactPersonName != null ? String(apiData.contactPersonName) : '',
+        status: apiData.status ?? (apiData.activeInd === 1 ? '1' : '2'),
+        city: apiData.city != null ? String(apiData.city) : '',
+        areaName: apiData.areaName != null ? String(apiData.areaName) : '',
+        facilityColor: apiData.facilityColor ?? '#1a365d',
+        facilityName: apiData.facilityName ?? '',
+        address1: apiData.address1 ?? '',
+        address2: apiData.address2 ?? '',
+        pin: apiData.pin ?? '',
+        state: apiData.state ?? '',
+        country: apiData.country ?? '',
+        firstContactNo: apiData.firstContactNo ?? '',
+        firstContactEmail: apiData.firstContactEmail ?? '',
+      };
+      console.log('mappedFacility:', mappedFacility);
+      setSelectedFacility(mappedFacility);
+      setModalMode('edit');
+      setOpenDialog(true);
+    } catch (error) {
+      setSnackbarMessage('Failed to fetch facility details.');
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+    }
   };
 
   // Close modal
-  const handleClose = () => {
-    setOpenEdit(false);
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
     setSelectedFacility(null);
+    setModalMode('add');
+  };
+
+  // Add/Edit Facility submit handler
+  const handleFacilitySubmit = async () => {
+    if (editFacilityRef.current && editFacilityRef.current.submitForm) {
+      const result = await editFacilityRef.current.submitForm({
+        onSuccess: () => {
+          setSnackbarMessage('Facility added successfully!');
+          setSnackbarSeverity('success');
+          setOpenSnackbar(true);
+        },
+        onError: () => {
+          setSnackbarMessage('Failed to add facility.');
+          setSnackbarSeverity('error');
+          setOpenSnackbar(true);
+        }
+      });
+      // If add was successful, close dialog and refresh list
+      if (modalMode === 'add' && result && onAddSuccess) {
+        setOpenDialog(false);
+        setSelectedFacility(null);
+        setModalMode('add');
+        onAddSuccess();
+      }
+    }
+  };
+
+  const handleCloseSnackbar = () => {
+    setOpenSnackbar(false);
   };
 
   return (
@@ -131,12 +242,14 @@ function FacilityList({ facilities }: FacilityTableProps) {
           justifyContent="flex-end"
           gap={1}
         >
-         
           <Button 
             variant="contained" 
             color="primary"
-            sx={{
-              background: "#174a7c"
+            sx={{ background: "#174a7c" }}
+            onClick={() => {
+              setModalMode('add');
+              setSelectedFacility(null);
+              setOpenDialog(true);
             }}
           >
             Add New Facility
@@ -186,7 +299,7 @@ function FacilityList({ facilities }: FacilityTableProps) {
               .map((facility, index) => (
                 <TableRow key={index}>
                   <TableCell>{facility.facilityName}</TableCell>
-                  <TableCell>{facility?.color}</TableCell>
+                  <TableCell>{facility?.facilityColor}</TableCell>
                   <TableCell>{facility.address1}</TableCell>
                   <TableCell>{facility.contactPersonName}</TableCell>
                   <TableCell>{facility.pin}</TableCell>
@@ -222,9 +335,21 @@ function FacilityList({ facilities }: FacilityTableProps) {
       </TableContainer>
 
       {/* EditFacility Dialog */}
-      <CummonDialog open={openEdit} onClose={handleClose} onSubmit={()=>{}} maxWidth="md" title="Edit Facility" >
-        {selectedFacility && <EditFacility facility={selectedFacility} />}
+      <CummonDialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+        title={modalMode === 'add' ? 'Add Facility' : 'Edit Facility'}
+        maxWidth="md"
+        onSubmit={handleFacilitySubmit}
+      >
+        <EditFacility ref={editFacilityRef} facility={modalMode === 'edit' && selectedFacility ? selectedFacility : emptyFacility} isEdit={modalMode === 'edit'} />
       </CummonDialog>
+      <Message 
+        openSnackbar={openSnackbar} 
+        handleCloseSnackbar={handleCloseSnackbar} 
+        snackbarSeverity={snackbarSeverity} 
+        snackbarMessage={snackbarMessage} 
+      />
       
     </Box>
   );

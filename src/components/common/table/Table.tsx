@@ -109,120 +109,112 @@ const CommonTable: React.FC<CommonTableProps> = ({
 
   return (
     <>
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          {heading}
-        </Typography>
+      <Typography variant="h6" sx={{ mb: 2 }}>
+        {heading}
+      </Typography>
 
-        <Box display="flex" gap={2} flexWrap="wrap" alignItems="center" mb={2}>
-          {showSearch && (
-            <TextField
-              label="Search by Name"
-              variant="outlined"
-              size="small"
-              onChange={(e) => setSearchTerm(e.target.value)}
-              sx={{ minWidth: 250 }}
-            />
-          )}
-
-          {filters.map((filter) => (
-            <Select
-              key={filter.name}
-              value={currentFilters[filter.name] || ""}
-              onChange={(e) => handleFilterChange(filter.name, e.target.value)}
-              displayEmpty
-              size="small"
-              sx={{ minWidth: 180 }}
-            >
-              <MenuItem value="">All {filter.name}</MenuItem>
-              {filter.options.map((opt) => (
-                <MenuItem key={opt} value={opt}>
-                  {opt}
-                </MenuItem>
-              ))}
-            </Select>
-          ))}
-
-          {showFilterButton && (
-            <Button variant="contained" color="primary" sx={{ ml: "auto" }}>
-              {filterButtonLabel}
-            </Button>
-          )}
-
-          {showAddButton && (
-            <Button
-              variant="contained"
-              color="primary"
-              sx={{ ml: "auto" }}
-              onClick={onAddButtonClick}
-            >
-              {addButtonLabel}
-            </Button>
-          )}
-        </Box>
-
-        <TableContainer component={Paper} className={styles.tableWrapper}>
-          <Table>
-            <TableHead >
-              <TableRow>
-                {colHeaders.map((col) => (
-                  <TableCell
-                    key={col.id}
-                    
-                  >
-                    {col.label}
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {paginatedRows.length > 0 ? (
-                paginatedRows.map((row, idx) => (
-                  <TableRow key={idx}>
-                    {colHeaders.map((col) => (
-                      <TableCell
-                        key={col.id}
-                        
-                      >
-                        {col.id === "image" ? (
-                          <img src={row[col.id]} alt="row-img" width="50" />
-                        ) : (
-                          row[col.id]
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={colHeaders.length} align="center">
-                    No records found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-       
-          <TablePagination
-            rowsPerPageOptions={rowsPerPageOptions}
-            component="div"
-            count={filteredRows.length}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={(e, newPage) => setPage(newPage)}
-            onRowsPerPageChange={(e) => {
-              setRowsPerPage(parseInt(e.target.value, 10));
-              setPage(0);
-            }}
+      <Box display="flex" gap={2} flexWrap="wrap" alignItems="center" mb={2}>
+        {showSearch && (
+          <TextField
+            label="Search by Name"
+            variant="outlined"
+            size="small"
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{ minWidth: 250 }}
           />
-           </TableContainer>
-      
+        )}
+
+        {filters.map((filter) => (
+          <Select
+            key={filter.name}
+            value={currentFilters[filter.name] || ""}
+            onChange={(e) => handleFilterChange(filter.name, e.target.value)}
+            displayEmpty
+            size="small"
+            sx={{ minWidth: 180 }}
+          >
+            <MenuItem value="">All {filter.name}</MenuItem>
+            {filter.options.map((opt) => (
+              <MenuItem key={opt} value={opt}>
+                {opt}
+              </MenuItem>
+            ))}
+          </Select>
+        ))}
+
+        {showFilterButton && (
+          <Button variant="contained" color="primary" sx={{ ml: "auto" }}>
+            {filterButtonLabel}
+          </Button>
+        )}
+
+        {showAddButton && (
+          <Button
+            variant="contained"
+            color="primary"
+            sx={{ ml: "auto" }}
+            onClick={onAddButtonClick}
+          >
+            {addButtonLabel}
+          </Button>
+        )}
+      </Box>
+
+      <TableContainer component={Paper} className={styles.tableWrapper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              {colHeaders.map((col) => (
+                <TableCell key={col.id}>{col.label}</TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {paginatedRows.length > 0 ? (
+              paginatedRows.map((row, idx) => (
+                <TableRow key={idx}>
+                  {colHeaders.map((col) => (
+                    <TableCell key={col.id}>
+                      {col.id === "image" ? (
+                        <img src={row[col.id]} alt="row-img" width="50" />
+                      ) : (
+                        row[col.id]
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={colHeaders.length} align="center">
+                  No records found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+
+        <TablePagination
+          rowsPerPageOptions={rowsPerPageOptions}
+          component="div"
+          count={filteredRows.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={(e, newPage) => setPage(newPage)}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+        />
+      </TableContainer>
+
       <CummonDialog
         open={openDialog}
-          onClose={handleClose || (() => {})}
+        onClose={handleClose || (() => {})}
         onSubmit={onSave}
         maxWidth={dialogWidth}
         title={title}
-        hideDefaultButtons={hideDefaultButtons} 
+        hideDefaultButtons={hideDefaultButtons}
       >
         {children}
       </CummonDialog>

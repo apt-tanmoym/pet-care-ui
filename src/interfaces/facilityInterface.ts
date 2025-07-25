@@ -9,20 +9,20 @@ export interface FaclityServicePayload {
   }
   
   export interface FaclityServiceResponse {
-      color: string;
+      facilityColor: string;
       patientsToView: number;
-      internBilling: number;
-      activeInd: number;
+      iiternBilling: number;
       facilityId: number;
+      facilityTypeId: number,
       orgId: number;
-      cityPincodeMappingId: number;
+      loggedInFacilityId: number;
+      orgUserId: number;
+      cityPincodeMappingId: number | string;
       cityId: number;
-      fees: number;
       facilityName: string;
       contactPersonName: string | null;
       address1: string;
       address2: string;
-      searcharea: string | null;
       pin: string;
       state: string;
       country: string;
@@ -34,12 +34,49 @@ export interface FaclityServicePayload {
       userName: string | null;
       userPass: string | null;
       deviceStat: string | null;
-      mode: string | null;
-      orgName: string | null;
       areaName: string | null;
-      toDayDate: string | null;
-      searchFacility: string | null;
       status: string | null;
       facilityType: string;
       callingFrom: string | null;
     }
+
+export interface GetFacilityDetailsPayload {
+  userName: string;
+  userPass: string;
+  deviceStat: string;
+  callingFrom: string;
+  orgId: string;
+  facilityId: string;
+}
+
+export interface AddNewFacilityPayload {
+  callingFrom: string;
+  userName: string;
+  userPass: string;
+  deviceStat: string;
+  orgId: string;
+  loggedInFacilityId: string;
+  facilityId: string;
+  status: number;
+  facilityName: string;
+  address1: string;
+  address2: string;
+  pin: string;
+  state: string;
+  country: string;
+  city: string;
+  firstContactEmail: string;
+  firstContactNo: string;
+  secondContactEmail: string;
+  secondContactNo: string;
+  orgUserId: string;
+  contactPersonName: string;
+  cityPincodeMappingId: string;
+  areaName: string;
+  cityId: string;
+  facilityTypeId: string;
+  facilityType: string;
+  patientsToView: string;
+  IiternBilling: string;
+  facilityColor: string;
+}

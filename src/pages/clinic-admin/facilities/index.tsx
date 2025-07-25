@@ -37,6 +37,18 @@ export default function FacilityPage() {
     fetchFacilities();
   }, []);
 
+  // Add this function to refresh facilities
+  const refreshFacilities = async () => {
+    try {
+      const response = await getOwnFacilites(facilityPayload);
+      const data: FaclityServiceResponse[] = await response;
+      setFacilites(data);
+    } catch (error: any) {
+      setSnackbarMessage(error?.response?.data?.message || 'Server Error');
+      setOpenSnackbar(true);
+    }
+  };
+
   const handleCloseSnackbar = () => {
     setOpenSnackbar(false);
   };
@@ -48,7 +60,7 @@ export default function FacilityPage() {
   return (
     <PrivateRoute>
     <AuthenticatedLayout>
-    <FacilityList facilities={facilites} onEdit={handleEdit} />
+    <FacilityList facilities={facilites} onEdit={handleEdit} onAddSuccess={refreshFacilities} />
     <Message 
       openSnackbar={openSnackbar} 
       handleCloseSnackbar={handleCloseSnackbar} 

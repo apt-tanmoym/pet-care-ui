@@ -74,7 +74,7 @@ const menuItems: MenuItem[] = [
             { text: 'Manage Facilities', icon: <BusinessIcon />, url: '/clinic-admin/facilities' },
             { text: 'Create Roles & assign facilities', icon: <GroupIcon />, url: '/clinic-admin/create-roles' },
             { text: 'Manage User accounts & permission', icon: <PersonIcon />, url: '/clinic-admin/manage-user' },
-            { text: 'Doctors', icon: <MedicalServicesIcon />, url: '/clinic-admin/doctors' },
+            { text: 'Maintain Doctors', icon: <MedicalServicesIcon />, url: '/policy_config/maintain-doctors' },
             { text: 'Other Users', icon: <PeopleIcon />, url: '/clinic-admin/maintain-other-users' },
             { text: 'Upgrade/Renew Subscriptions', icon: <StoreIcon />, url: '/clinic-admin/renew-subscription' },
         ], 
@@ -85,7 +85,6 @@ const menuItems: MenuItem[] = [
         url: '/policy-config',
         subItems: [
             { text: 'Maintain Corporates', icon: <BusinessCenterIcon />, url: '/policy_config/maintain-corporates' },
-            { text: 'Maintain Doctors', icon: <MedicalServicesIcon />, url: '/policy_config/maintain-doctors' },
             { text: 'Maintain Insurers', icon: <HealthAndSafetyIcon />, url: '/policy_config/insurers' },
             { text: 'Configure Discounts', icon: <DiscountIcon />, url: '/policy_config/discounts' },
             { text: 'Configure Fees & Charges', icon: <AttachMoneyIcon />, url: '/policy_config/configure-fees-and-charges' },
@@ -118,15 +117,15 @@ const menuItems: MenuItem[] = [
         icon: <LocalHospitalIcon />, 
         url: '/vetconnect',
         subItems: [
-            { text: 'Maintain Facilities', icon: <BusinessIcon />, url: '/vetconnect/facilities' },
+            { text: 'Maintain Facilities', icon: <BusinessIcon />, url: '/vetconnect/facility' },
             { text: 'Manage Calendar', icon: <CalendarMonthIcon />, url: '/vetconnect/calendar' },
-            { text: 'Manage Patients', icon: <PeopleIcon />, url: '/vetconnect/patients' },
+            { text: 'Manage Patients', icon: <PeopleIcon />, url: '/vetconnect/manage-patients' },
             { text: 'Manage Appointments', icon: <EventIcon />, url: '/vetconnect/appointments' },
-            { text: 'Consult', icon: <MedicalServicesIcon />, url: '/vetconnect/consult' },
+            { text: 'Consult', icon: <MedicalServicesIcon />, url: '/vetconnect/consultation' },
             { text: 'Manage Home Visit', icon: <HomeIcon />, url: '/vetconnect/home-visit' },
             { text: 'Manage Patients Records', icon: <DescriptionIcon />, url: '/vetconnect/records' },
             { text: 'Generate Reports', icon: <AssessmentIcon />, url: '/vetconnect/reports' },
-            { text: 'Manage Profile', icon: <AccountCircleIcon />, url: '/vetconnect/profile' },
+            { text: 'Manage Profile', icon: <AccountCircleIcon />, url: '/vetconnect/manage-profile' },
         ],
     },
     { 
@@ -309,29 +308,7 @@ const SideMenu: React.FC = () => {
                 </List>
 
                 {/* Bottom section with separator and logout */}
-                <Box sx={{ mt: 'auto' }}>
-                    <Box className={styles.divider} />
-                    <ListItem
-                        component="div"
-                        onClick={handleLogoutClick}
-                        className={`${styles.logoutButton} ${!expanded ? styles.collapsed : ''}`}
-                    >
-                        <Tooltip title={expanded ? '' : 'Logout'} placement="right" arrow>
-                            <ListItemIcon className={styles.menuIcon}>
-                                <LogoutIcon />
-                            </ListItemIcon>
-                        </Tooltip>
-                        <ListItemText
-                            primary="Logout"
-                            className={styles.menuText}
-                            sx={{
-                                opacity: expanded ? 1 : 0,
-                                transition: 'opacity 0.3s',
-                                margin: 0,
-                            }}
-                        />
-                    </ListItem>
-                </Box>
+                
             </Box>
 
             {/* Logout Confirmation Dialog */}
