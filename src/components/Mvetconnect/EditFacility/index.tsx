@@ -9,9 +9,13 @@ import {
   FormControl,
   Button,
   Typography,
-  Paper
+  Paper,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  FormLabel
 } from '@mui/material';
-import { CloudUpload } from '@mui/icons-material';
+import { CloudUpload, Search } from '@mui/icons-material';
 import { HexColorPicker } from 'react-colorful';
 import { FaclityServiceResponse } from '@/interfaces/facilityInterface';
 import { addNewFacility } from '@/services/faclilityService';
@@ -38,9 +42,13 @@ type EditFacilityProps = {
 
 const EditFacility = forwardRef(function EditFacility({ facility, isEdit = true, onSubmit }: EditFacilityProps, ref) {
   console.log('EditFacility props', facility);
+  console.log('internBilling from facility:', facility.internBilling, typeof facility.internBilling);
+  console.log('patientsToView from facility:', facility.patientsToView, typeof facility.patientsToView);
   const [form, setForm] = useState<FaclityServiceResponse>({
     ...facility,
     facilityColor: facility.facilityColor || '#1a365d',
+    internBilling: Number(facility.internBilling) || 0,
+    patientsToView: Number(facility.patientsToView) || 0,
   });
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -87,7 +95,9 @@ const EditFacility = forwardRef(function EditFacility({ facility, isEdit = true,
   }, [selectedCity]);
 
   useEffect(() => {
-    setForm({
+    console.log('useEffect - facility.internBilling:', facility.internBilling, typeof facility.internBilling);
+    console.log('useEffect - facility.patientsToView:', facility.patientsToView, typeof facility.patientsToView);
+    const updatedForm = {
       ...facility,
       secondContactNo: facility.secondContactNo != null ? String(facility.secondContactNo) : '',
       secondContactEmail: facility.secondContactEmail != null ? String(facility.secondContactEmail) : '',
@@ -95,7 +105,12 @@ const EditFacility = forwardRef(function EditFacility({ facility, isEdit = true,
       city: facility.city != null ? String(facility.city) : '',
       areaName: facility.areaName != null ? String(facility.areaName) : '',
       facilityColor: facility.facilityColor || '#1a365d',
-    });
+      internBilling: Number(facility.internBilling) || 0,
+      patientsToView: Number(facility.patientsToView) || 0,
+    };
+    console.log('Updated form internBilling:', updatedForm.internBilling, typeof updatedForm.internBilling);
+    console.log('Updated form patientsToView:', updatedForm.patientsToView, typeof updatedForm.patientsToView);
+    setForm(updatedForm);
     setThemeColor(facility.facilityColor || '#1a365d');
     setHexInput(facility.facilityColor || '#1a365d');
   }, [facility]);
@@ -210,6 +225,8 @@ const EditFacility = forwardRef(function EditFacility({ facility, isEdit = true,
   }));
 
   console.log('EditFacility form', form);
+  console.log('Final form.internBilling:', form.internBilling, typeof form.internBilling);
+  console.log('Final form.patientsToView:', form.patientsToView, typeof form.patientsToView);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -351,7 +368,22 @@ const EditFacility = forwardRef(function EditFacility({ facility, isEdit = true,
                 }
               }}
               renderInput={(params) => (
-                <TextField {...params} label="City" fullWidth error={!!errors.city} helperText={errors.city} />
+                <TextField 
+                  {...params} 
+                  label="City" 
+                  fullWidth 
+                  error={!!errors.city} 
+                  helperText={errors.city}
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {params.InputProps.endAdornment}
+                        <Search sx={{ color: 'action.active', mr: 1, my: 0.5 }} />
+                      </>
+                    ),
+                  }}
+                />
               )}
             />
           </Grid>
@@ -377,7 +409,21 @@ const EditFacility = forwardRef(function EditFacility({ facility, isEdit = true,
                 }
               }}
               renderInput={(params) => (
-                <TextField {...params} label="Area" fullWidth helperText={!selectedCity ? 'Select a city first' : ''} />
+                <TextField 
+                  {...params} 
+                  label="Area" 
+                  fullWidth 
+                  helperText={!selectedCity ? 'Select a city first' : ''}
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {params.InputProps.endAdornment}
+                        <Search sx={{ color: 'action.active', mr: 1, my: 0.5 }} />
+                      </>
+                    ),
+                  }}
+                />
               )}
               disabled={!selectedCity}
             />
@@ -414,6 +460,34 @@ const EditFacility = forwardRef(function EditFacility({ facility, isEdit = true,
               error={!!errors.country}
               helperText={errors.country}
             />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <FormControl component="fieldset">
+              <FormLabel component="legend">Will the fees be displayed to be viewed by patients:</FormLabel>
+              <RadioGroup
+                row
+                name="internBilling"
+                value={String(form.internBilling ?? 0)}
+                onChange={(e) => setForm(prev => ({ ...prev, internBilling: Number(e.target.value) }))}
+              >
+                <FormControlLabel value="1" control={<Radio />} label="No" />
+                <FormControlLabel value="0" control={<Radio />} label="Yes" />
+              </RadioGroup>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <FormControl component="fieldset">
+              <FormLabel component="legend">Would you also like to use the fees to generate and track bills of patients:</FormLabel>
+              <RadioGroup
+                row
+                name="patientsToView"
+                value={String(form.patientsToView ?? 0)}
+                onChange={(e) => setForm(prev => ({ ...prev, patientsToView: Number(e.target.value) }))}
+              >
+                <FormControlLabel value="1" control={<Radio />} label="No" />
+                <FormControlLabel value="0" control={<Radio />} label="Yes" />
+              </RadioGroup>
+            </FormControl>
           </Grid>
           {/* Image Upload and Color Picker in one row (unchanged) */}
           <Grid item xs={12}>

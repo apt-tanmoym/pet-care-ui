@@ -11,7 +11,7 @@ export interface FaclityServicePayload {
   export interface FaclityServiceResponse {
       facilityColor: string;
       patientsToView: number;
-      iiternBilling: number;
+      internBilling: number;
       facilityId: number;
       facilityTypeId: number,
       orgId: number;
@@ -77,6 +77,6 @@ export interface AddNewFacilityPayload {
   facilityTypeId: string;
   facilityType: string;
   patientsToView: string;
-  IiternBilling: string;
+  internBilling: string;
   facilityColor: string;
 }

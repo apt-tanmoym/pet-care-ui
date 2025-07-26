@@ -60,7 +60,7 @@ function FacilityList({ facilities, onAddSuccess }: FacilityTableProps) {
   const emptyFacility: FaclityServiceResponse = {
     facilityColor: '',
     patientsToView: 1,
-    iiternBilling: 1,
+    internBilling: 1,
     facilityId: 0,
     facilityTypeId:1,
     orgId: 0,
