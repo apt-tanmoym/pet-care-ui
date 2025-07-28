@@ -6,6 +6,8 @@ import PrivateRoute from '@/components/PrivateRoute';
 import React, { useState } from 'react';
 import EditIcon from "@mui/icons-material/Edit";
 import SellIcon from '@mui/icons-material/Sell';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import UserDetailsForm from '@/components/UserDetailsForm/UserDetails';
 import ManageUsersEdit from '@/components/UserDetailsForm/ManageUsersEdit';
 import AssignUserPrivilegeModal from '@/components/MaintainOtherUsers/AssignUserPrivilegeModal';
@@ -274,54 +276,100 @@ const ManageUsersPage = () => {
     <PrivateRoute>
       <AuthenticatedLayout>
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
+          <Typography 
+            variant="h5" 
+            sx={{ 
+              mb: 1, 
+              fontWeight: 600, 
+              color: '#174a7c'
+            }}
+          >
             Manage User Accounts & Permission
           </Typography>
         </Box>
         
-        {/* Custom Action Buttons */}
+        {/* Action Buttons */}
         <Grid container spacing={2} alignItems="center" mb={2}>
           <Grid item xs={12} md={9}>
             {/* Search and filters will be handled by CommonTable */}
           </Grid>
           <Grid item xs={12} md={3} display="flex" justifyContent="flex-end" gap={2}>
-            <Button
-              variant="contained"
-              sx={{ bgcolor: '#174a7c' }}
-              onClick={handleAddDoctorClick}
-            >
-              Add New Doctor
-            </Button>
-            <Button
-              variant="contained"
-              sx={{ bgcolor: '#174a7c' }}
-              onClick={handleAddClick}
-            >
-              Add New User
-            </Button>
+              <Button
+                variant="contained"
+                sx={{ 
+                  bgcolor: '#174a7c', 
+                  minWidth: '220px', 
+                  px: 2,
+                  py: 1,
+                  borderRadius: 2,
+                  boxShadow: '0 4px 12px rgba(23, 74, 124, 0.3)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    bgcolor: '#0a3761',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 6px 20px rgba(23, 74, 124, 0.4)',
+                  }
+                }}
+                startIcon={<LocalHospitalIcon />}
+                onClick={handleAddDoctorClick}
+              >
+                Add New Doctor
+              </Button>
+              <Button
+                variant="contained"
+                sx={{ 
+                  bgcolor: '#174a7c', 
+                  minWidth: '220px', 
+                  px: 2,
+                  py: 1,
+                  borderRadius: 2,
+                  boxShadow: '0 4px 12px rgba(23, 74, 124, 0.3)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    bgcolor: '#0a3761',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 6px 20px rgba(23, 74, 124, 0.4)',
+                  }
+                }}
+                startIcon={<PersonAddIcon />}
+                onClick={handleAddClick}
+              >
+                Add New User
+              </Button>
+            </Grid>
           </Grid>
-        </Grid>
 
-        <CommonTable
-          heading=""
-          showSearch={true}
-          showFilterButton={false}
-          showAddButton={false}
-          filterButtonLabel="Filter User"
-          addButtonLabel="Add New User"
-          colHeaders={colHeaders}
-          rowData={rowData}
-          rowsPerPageOptions={[5, 10]}
-          filters={filters}
-          openDialog={openDialog}
-          handleClose={handleClose}
-          title={getDialogTitle()}
-          dialogWidth="md"
-          onAddButtonClick={handleAddClick}
-          hideDefaultButtons={false}
+        {/* Enhanced Table Container */}
+        <Box 
+          sx={{ 
+            bgcolor: 'white',
+            borderRadius: 3,
+            boxShadow: '0 8px 32px rgba(23, 74, 124, 0.1)',
+            border: '1px solid rgba(23, 74, 124, 0.08)',
+            overflow: 'hidden'
+          }}
         >
-          {renderDialogContent()}
-        </CommonTable>
+          <CommonTable
+            heading=""
+            showSearch={true}
+            showFilterButton={false}
+            showAddButton={false}
+            filterButtonLabel="Filter User"
+            addButtonLabel="Add New User"
+            colHeaders={colHeaders}
+            rowData={rowData}
+            rowsPerPageOptions={[5, 10]}
+            filters={filters}
+            openDialog={openDialog}
+            handleClose={handleClose}
+            title={getDialogTitle()}
+            dialogWidth="md"
+            onAddButtonClick={handleAddClick}
+            hideDefaultButtons={false}
+          >
+            {renderDialogContent()}
+          </CommonTable>
+        </Box>
 
         {/* Assign User Privilege Modal */}
         {privilegeModalOpen && privilegeUser && (

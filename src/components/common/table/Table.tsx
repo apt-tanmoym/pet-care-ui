@@ -113,14 +113,46 @@ const CommonTable: React.FC<CommonTableProps> = ({
         {heading}
       </Typography>
 
-      <Box display="flex" gap={2} flexWrap="wrap" alignItems="center" mb={2}>
+      <Box 
+        sx={{ 
+          p: 1, 
+          mb: 3, 
+          bgcolor: 'rgba(23, 74, 124, 0.02)', 
+          
+          border: '1px solid rgba(23, 74, 124, 0.08)',
+          display: 'flex', 
+          gap: 3, 
+          flexWrap: 'wrap', 
+          alignItems: 'center',
+          pl: 4
+        }}
+      >
         {showSearch && (
           <TextField
             label="Search by Name"
             variant="outlined"
             size="small"
             onChange={(e) => setSearchTerm(e.target.value)}
-            sx={{ minWidth: 250 }}
+            sx={{ 
+              minWidth: 280,
+              '& .MuiOutlinedInput-root': {
+                bgcolor: 'white',
+                borderRadius: 2,
+                '& fieldset': {
+                  borderColor: 'rgba(23, 74, 124, 0.2)',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#174a7c',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#174a7c',
+                },
+              },
+              '& .MuiInputLabel-root': {
+                color: '#174a7c',
+                fontWeight: 500,
+              },
+            }}
           />
         )}
 
@@ -131,7 +163,20 @@ const CommonTable: React.FC<CommonTableProps> = ({
             onChange={(e) => handleFilterChange(filter.name, e.target.value)}
             displayEmpty
             size="small"
-            sx={{ minWidth: 180 }}
+            sx={{ 
+              minWidth: 200,
+              bgcolor: 'white',
+              borderRadius: 2,
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(23, 74, 124, 0.2)',
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#174a7c',
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#174a7c',
+              },
+            }}
           >
             <MenuItem value="">All {filter.name}</MenuItem>
             {filter.options.map((opt) => (
