@@ -59,6 +59,7 @@ const StyledButton = ({ sx, ...props }: any) => (
 
 interface ManageUsersEditProps {
   user: {
+    role?: string;
     title: string;
     firstName: string;
     lastName: string;
@@ -79,7 +80,10 @@ interface ManageUsersEditProps {
 }
 
 const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCancel }) => {
+  const roleNamesOptions = ['Admin Staff', 'Administrator', 'Biller', 'Doctor', 'Paramedic'];
+
   const [formValues, setFormValues] = useState({
+    role: user.role || '',
     title: user.title || 'Mr.',
     firstName: user.firstName || '',
     lastName: user.lastName || '',
@@ -99,6 +103,7 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCan
   const [imagePreview, setImagePreview] = useState<string | null>(user.image || null);
 
   const [errors, setErrors] = useState({
+    role: '',
     title: '',
     firstName: '',
     email: '',
@@ -113,6 +118,7 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCan
   });
 
   const validationRules = {
+    role: (value: string) => (value ? '' : 'Role is required'),
     title: (value: string) => (value ? '' : 'Title is required'),
     firstName: (value: string) => (value ? '' : 'First Name is required'),
     email: (value: string) =>
@@ -215,6 +221,42 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCan
     >
       <form>
         <Grid container spacing={3}>
+          {/* Role dropdown */}
+          <Grid item xs={12}>
+            <FormControl fullWidth required error={!!errors.role}>
+              <InputLabel sx={{ color: '#0288d1' }}>Choose Role</InputLabel>
+              <Select
+                name="role"
+                value={formValues.role}
+                onChange={handleChange}
+                displayEmpty
+                renderValue={(selected) => {
+                  return selected;
+                }}
+                sx={{
+                  bgcolor: 'white',
+                  borderRadius: 2,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#0288d1',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#01579b',
+                  },
+                }}
+              >
+                {roleNamesOptions.map((role) => (
+                  <MenuItem key={role} value={role}>
+                    {role}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors.role && (
+                <Typography variant="caption" color="error">
+                  {errors.role}
+                </Typography>
+              )}
+            </FormControl>
+          </Grid>
           {/* Title, First Name, Last Name in a row */}
           <Grid item xs={12} sm={4} md={2}>
             <FormControl fullWidth required error={!!errors.title}>
@@ -420,7 +462,7 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCan
                 />
               ) : (
                 <Typography variant="body2" color="textSecondary">
-                  Image Placeholder
+                  Image Placeholder 
                 </Typography>
               )}
             </Box>

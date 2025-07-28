@@ -64,7 +64,10 @@ interface UserDetailsFormProps {
 }
 
 const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onSubmit }) => {
+  const roleNamesOptions = ['Admin Staff', 'Administrator', 'Biller', 'Doctor', 'Paramedic'];
+
   const [formValues, setFormValues] = useState({
+    role: '',
     title: 'Mr.',
     firstName: '',
     lastName: '',
@@ -84,6 +87,7 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onSubmit }) => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const [errors, setErrors] = useState({
+    role: '',
     title: '',
     firstName: '',
     email: '',
@@ -98,6 +102,7 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onSubmit }) => {
   });
 
   const validationRules = {
+    role: (value: string) => (value ? '' : 'Role is required'),
     title: (value: string) => (value ? '' : 'Title is required'),
     firstName: (value: string) => (value ? '' : 'First Name is required'),
     email: (value: string) =>
@@ -200,6 +205,42 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onSubmit }) => {
     >
       <form>
         <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <FormControl fullWidth required error={!!errors.role}>
+            <InputLabel sx={{ color: '#0288d1' }}>Choose Role</InputLabel>
+              <Select
+                name="role"
+                value={formValues.role}
+                onChange={handleChange}
+                
+                displayEmpty
+                renderValue={(selected) => {
+                  return selected;
+                }}
+                sx={{
+                  bgcolor: 'white',
+                  borderRadius: 2,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#0288d1',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#01579b',
+                  },
+                }}
+              >
+                {roleNamesOptions.map((role) => (
+                  <MenuItem key={role} value={role}>
+                    {role}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors.role && (
+                <Typography variant="caption" color="error">
+                  {errors.role}
+                </Typography>
+              )}
+            </FormControl>
+          </Grid>
           <Grid item xs={12} sm={4} md={2}>
             <FormControl fullWidth required error={!!errors.title}>
               <InputLabel sx={{ color: '#0288d1' }}>Title</InputLabel>
@@ -397,9 +438,14 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onSubmit }) => {
                   }}
                 />
               ) : (
-                <Typography variant="body2" color="textSecondary">
-                  Image Placeholder
-                </Typography>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                    📷 Profile Photo
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary">
+                    Click "Attach Image" to upload
+                  </Typography>
+                </Box>
               )}
             </Box>
             {errors.image && (

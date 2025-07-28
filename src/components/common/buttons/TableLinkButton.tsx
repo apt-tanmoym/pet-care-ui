@@ -9,9 +9,10 @@ interface TableLinkButtonProps {
   icon:any;
   color?: any;
   onClick?:any;
+  customColor?: string;
 }
 
-const TableLinkButton = ({ text,icon,color="secondary",onClick }: TableLinkButtonProps) => {
+const TableLinkButton = ({ text,icon,color="secondary",onClick,customColor }: TableLinkButtonProps) => {
   return (
     <Button
  variant="outlined"
@@ -20,6 +21,15 @@ const TableLinkButton = ({ text,icon,color="secondary",onClick }: TableLinkButto
           color={color}
           size="small"
            startIcon={icon}
+          sx={customColor ? {
+            borderColor: customColor,
+            color: customColor,
+            '&:hover': {
+              borderColor: customColor,
+              backgroundColor: customColor,
+              color: 'white',
+            }
+          } : undefined}
         >
           {text}
          </Button>

@@ -8,12 +8,29 @@ import EditIcon from "@mui/icons-material/Edit";
 import SellIcon from '@mui/icons-material/Sell';
 import UserDetailsForm from '@/components/UserDetailsForm/UserDetails';
 import ManageUsersEdit from '@/components/UserDetailsForm/ManageUsersEdit';
-import ManageUsersAssign from '@/components/UserDetailsForm/ManageUsersAssign';
+import AssignUserPrivilegeModal from '@/components/MaintainOtherUsers/AssignUserPrivilegeModal';
+import DoctorDetailsModal from '@/components/MaintainDoctors/DoctorDetailsModal';
+import DoctorSelfConfirmModal from '@/components/MaintainDoctors/DoctorSelfConfirmModal';
+import { Box, Button, Grid, Typography, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 
 const ManageUsersPage = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'assign' | null>(null);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [privilegeModalOpen, setPrivilegeModalOpen] = useState(false);
+  const [privilegeUser, setPrivilegeUser] = useState<any>(null);
+  
+  // Doctor modal states
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selfConfirmOpen, setSelfConfirmOpen] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingDoctor, setPendingDoctor] = useState<any>(null);
+  const [showFullDoctorForm, setShowFullDoctorForm] = useState(false);
+  const [fullDoctorData, setFullDoctorData] = useState<any>(null);
+  
+  // Doctor edit modal states
+  const [editDoctorModalOpen, setEditDoctorModalOpen] = useState(false);
+  const [editDoctorData, setEditDoctorData] = useState<any>(null);
 
   const colHeaders = [
     { id: 'image', label: 'Image' },
@@ -62,12 +79,15 @@ const ManageUsersPage = () => {
             })}
           />
           <TableLinkButton
-            text="Assign"
+            text="Assign User Privilege"
             icon={<SellIcon />}
             color="primary"
+            customColor="#174a7c"
             onClick={() => handleAssignClick({
-              name: 'Partha Test1',
-              role: 'Paramedic',
+              id: 1,
+              firstName: 'Partha',
+              lastName: 'Test1',
+              image: 'https://via.placeholder.com/50',
             })}
           />
         </>
@@ -108,12 +128,64 @@ const ManageUsersPage = () => {
             })}
           />
           <TableLinkButton
-            text="Assign"
+            text="Assign User Privilege"
             icon={<SellIcon />}
             color="primary"
+            customColor="#174a7c"
             onClick={() => handleAssignClick({
-              name: 'Test User2',
-              role: 'Admin Staff',
+              id: 2,
+              firstName: 'Test',
+              lastName: 'User2',
+              image: 'https://via.placeholder.com/50',
+            })}
+          />
+        </>
+      ),
+    },
+    {
+      image: 'https://via.placeholder.com/50',
+      name: 'Dr. Sarah Johnson',
+      phone: '9876543210',
+      email: 'sarah.johnson@example.com',
+      status: 'Active',
+      facility: 'Test One',
+      role: 'Doctor',
+      editAction: (
+        <>
+          <TableLinkButton
+            text="Edit"
+            icon={<EditIcon />}
+            onClick={() => handleEditClick({
+              title: 'Dr.',
+              firstName: 'Sarah',
+              lastName: 'Johnson',
+              email: 'sarah.johnson@example.com',
+              phone: '9876543210',
+              addressLine1: '789 Medical Center Dr',
+              addressLine2: 'Suite 101',
+              city: 'Bangalore',
+              area: 'Koramangala',
+              country: 'India',
+              state: 'Karnataka',
+              pin: '560034',
+              cellNo: '9876543210',
+              username: 'dr.sarah',
+              image: 'https://via.placeholder.com/50',
+              status: 'Active',
+              facility: 'Test One',
+              role: 'Doctor',
+            })}
+          />
+          <TableLinkButton
+            text="Assign User Privilege"
+            icon={<SellIcon />}
+            color="primary"
+            customColor="#174a7c"
+            onClick={() => handleAssignClick({
+              id: 3,
+              firstName: 'Sarah',
+              lastName: 'Johnson',
+              image: 'https://via.placeholder.com/50',
             })}
           />
         </>
@@ -124,25 +196,35 @@ const ManageUsersPage = () => {
   const filters = [
     { name: 'status', options: ['Active', 'Inactive'], value: '' },
     { name: 'facility', options: ['Test One', 'Test Two'], value: '' },
-    { name: 'role', options: ['Paramedic', 'Admin Staff', 'Administrator'], value: '' },
+    { name: 'role', options: ['Paramedic', 'Admin Staff', 'Administrator', 'Doctor'], value: '' },
   ];
 
   const handleEditClick = (user: any) => {
-    setSelectedUser(user);
-    setDialogMode('edit');
-    setOpenDialog(true);
+    // Check if the user role is Doctor
+    if (user.role === 'Doctor') {
+      setEditDoctorData(user);
+      setEditDoctorModalOpen(true);
+    } else {
+      setSelectedUser(user);
+      setDialogMode('edit');
+      setOpenDialog(true);
+    }
   };
 
   const handleAssignClick = (user: any) => {
-    setSelectedUser(user);
-    setDialogMode('assign');
-    setOpenDialog(true);
+    setPrivilegeUser(user);
+    setPrivilegeModalOpen(true);
   };
 
   const handleAddClick = () => {
     setSelectedUser(null);
     setDialogMode('add');
     setOpenDialog(true);
+  };
+
+  const handleAddDoctorClick = () => {
+    setDetailsOpen(true);
+    setSelfConfirmOpen(true);
   };
 
   const handleClose = () => {
@@ -162,8 +244,8 @@ const ManageUsersPage = () => {
   };
 
   const handleAssignSubmit = (data: any) => {
-    console.log(`Assigning role to ${selectedUser?.name}:`, data);
-    handleClose();
+    console.log(`Assigning privileges to ${privilegeUser?.firstName} ${privilegeUser?.lastName}:`, data);
+    setPrivilegeModalOpen(false);
   };
 
   const getDialogTitle = () => {
@@ -172,8 +254,6 @@ const ManageUsersPage = () => {
         return 'Add New User';
       case 'edit':
         return 'Edit User';
-      case 'assign':
-        return `Assign Role to ${selectedUser?.name}`;
       default:
         return '';
     }
@@ -185,8 +265,6 @@ const ManageUsersPage = () => {
         return <UserDetailsForm onSubmit={handleAddSubmit} />;
       case 'edit':
         return <ManageUsersEdit user={selectedUser} onSubmit={handleEditSubmit} onCancel={handleClose} />;
-      case 'assign':
-        return <ManageUsersAssign user={selectedUser} onSubmit={handleAssignSubmit} onCancel={handleClose} />;
       default:
         return null;
     }
@@ -195,11 +273,40 @@ const ManageUsersPage = () => {
   return (
     <PrivateRoute>
       <AuthenticatedLayout>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Manage User Accounts & Permission
+          </Typography>
+        </Box>
+        
+        {/* Custom Action Buttons */}
+        <Grid container spacing={2} alignItems="center" mb={2}>
+          <Grid item xs={12} md={9}>
+            {/* Search and filters will be handled by CommonTable */}
+          </Grid>
+          <Grid item xs={12} md={3} display="flex" justifyContent="flex-end" gap={2}>
+            <Button
+              variant="contained"
+              sx={{ bgcolor: '#174a7c' }}
+              onClick={handleAddDoctorClick}
+            >
+              Add New Doctor
+            </Button>
+            <Button
+              variant="contained"
+              sx={{ bgcolor: '#174a7c' }}
+              onClick={handleAddClick}
+            >
+              Add New User
+            </Button>
+          </Grid>
+        </Grid>
+
         <CommonTable
-          heading="Manage User Accounts & Permission"
+          heading=""
           showSearch={true}
           showFilterButton={false}
-          showAddButton={true}
+          showAddButton={false}
           filterButtonLabel="Filter User"
           addButtonLabel="Add New User"
           colHeaders={colHeaders}
@@ -209,12 +316,92 @@ const ManageUsersPage = () => {
           openDialog={openDialog}
           handleClose={handleClose}
           title={getDialogTitle()}
-          dialogWidth={dialogMode === 'assign' ? 'sm' : 'md'}
+          dialogWidth="md"
           onAddButtonClick={handleAddClick}
           hideDefaultButtons={false}
         >
           {renderDialogContent()}
         </CommonTable>
+
+        {/* Assign User Privilege Modal */}
+        {privilegeModalOpen && privilegeUser && (
+          <AssignUserPrivilegeModal
+            open={privilegeModalOpen}
+            onClose={() => setPrivilegeModalOpen(false)}
+            user={{
+              id: privilegeUser.id,
+              firstName: privilegeUser.firstName,
+              lastName: privilegeUser.lastName,
+              image: privilegeUser.image,
+            }}
+            onSubmit={handleAssignSubmit}
+          />
+        )}
+
+        {/* Doctor Edit Modal */}
+        {editDoctorModalOpen && (
+          <DoctorDetailsModal
+            open={editDoctorModalOpen}
+            onClose={() => setEditDoctorModalOpen(false)}
+            mode="full"
+            initialData={editDoctorData}
+            onSubmit={(data) => {
+              setEditDoctorModalOpen(false);
+              // TODO: handle update logic
+              console.log('Updated doctor data:', data);
+            }}
+          />
+        )}
+
+        {/* Doctor Modals */}
+        <DoctorDetailsModal
+          open={detailsOpen}
+          onClose={() => setDetailsOpen(false)}
+          onProceed={(doctorData) => {
+            // Simulate not found logic
+            setPendingDoctor(doctorData);
+            setShowConfirmDialog(true);
+            setDetailsOpen(false);
+          }}
+        />
+        <DoctorSelfConfirmModal
+          open={selfConfirmOpen}
+          onYes={() => setSelfConfirmOpen(false)}
+          onNo={() => { setSelfConfirmOpen(false); setDetailsOpen(false); }}
+        />
+        <Dialog open={showConfirmDialog} onClose={() => setShowConfirmDialog(false)}>
+          <DialogTitle sx={{ bgcolor: '#174a7c', color: 'white', fontWeight: 'bold' }}>
+            Doctor Details
+          </DialogTitle>
+          <DialogContent sx={{ minWidth: 400, textAlign: 'center', py: 4 }}>
+            <div>Hi! your entered medical details are not found in our database. Do you want to change or proceed with it ?</div>
+          </DialogContent>
+          <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+            <Button variant="contained" sx={{ bgcolor: '#174a7c', mr: 2 }} onClick={() => setShowConfirmDialog(false)}>
+              Yes, Change
+            </Button>
+            <Button variant="contained" sx={{ bgcolor: '#174a7c' }} onClick={() => {
+              setShowConfirmDialog(false);
+              setFullDoctorData(pendingDoctor);
+              setShowFullDoctorForm(true);
+            }}>
+              Proceed anyway
+            </Button>
+          </DialogActions>
+        </Dialog>
+        {showFullDoctorForm && (
+          <DoctorDetailsModal
+            open={showFullDoctorForm}
+            onClose={() => setShowFullDoctorForm(false)}
+            mode="full"
+            initialData={fullDoctorData}
+            onSubmit={(data) => {
+              setShowFullDoctorForm(false);
+              // TODO: handle save
+              console.log('Full doctor data:', data);
+            }}
+          />
+        )}
       </AuthenticatedLayout>
     </PrivateRoute>
   );
