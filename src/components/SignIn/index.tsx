@@ -379,6 +379,15 @@ const SignIn: React.FC = () => {
                 I Forgot My Password?
               </Button>
             </Box>
+            <Box display="flex" justifyContent="flex-end" width="100%">
+      <Button
+        onClick={() => router.push('/registration')}
+        size="small"
+        color="primary"
+      >
+        If you don't have an account, Sign Up!
+      </Button>
+    </Box>
           </Grid>
           <Grid item xs={12}>
             <Button

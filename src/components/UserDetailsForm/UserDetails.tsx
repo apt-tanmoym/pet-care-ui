@@ -63,7 +63,7 @@ interface UserDetailsFormProps {
   onSubmit: (data: any) => void;
 }
 
-const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onSubmit }) => {
+const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
   const roleNamesOptions = ['Admin Staff', 'Administrator', 'Biller', 'Doctor', 'Paramedic'];
 
   const [formValues, setFormValues] = useState({

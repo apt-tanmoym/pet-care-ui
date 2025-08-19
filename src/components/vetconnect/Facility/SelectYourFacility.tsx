@@ -12,12 +12,17 @@ import {
   SelectChangeEvent
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getOwnFacilites } from '@/services/faclilityService';
+import { FaclityServicePayload, FaclityServiceResponse } from '@/interfaces/facilityInterface';
+import Message from '@/components/common/Message';
+import { getFacilityDetails,editFacilityDetails } from '@/services/faclilityService';
 
 interface SelectYourFacilityProps {
   selectedFacility: string;
   setSelectedFacility: (value: string) => void;
   generateBills: boolean;
+  onLoad:number;
   setGenerateBills: (value: boolean) => void;
 }
 
@@ -26,17 +31,131 @@ const SelectYourFacility = ({
   setSelectedFacility,
   generateBills,
   setGenerateBills,
+  onLoad
 }: SelectYourFacilityProps) => {
   const [fees, setFees] = useState('');
   const [displayFees, setDisplayFees] = useState(false);
-
-  const handleFacilityChange = (event: SelectChangeEvent<string>) => {
-    setSelectedFacility(event.target.value);
-  };
+  const [loading, setLoading] = useState(false);
+  const [facilities, setFacilities] = useState<FaclityServiceResponse[]>([]);
+  const [facilityDetails, setFacilityDetails] = useState<any>(null);
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
 
   const handleFeesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFees(event.target.value);
   };
+
+  const handleCloseSnackbar = () => {
+    setOpenSnackbar(false);
+  };
+
+  const handleFacilityChange = async (event: SelectChangeEvent<string>) => {
+    const selectedId = event.target.value;
+    setSelectedFacility(selectedId);
+  
+    try {
+      const payload = {
+        userName: 'tonmoy',
+        userPass: '4vpzrnly',
+        deviceStat: 'M',
+        callingFrom: 'app',
+        orgId: '39',
+        facilityId: selectedId,
+      };
+  
+      const details = await getFacilityDetails(payload);
+      setFacilityDetails(details);
+      console.log(details?.fees)
+      setFees(details?.fees);
+      setGenerateBills(details?.internBilling == 1 ? true:false);
+      setDisplayFees(details?.patientsToView == 1 ? true:false);
+      // Optional: If you want to update UI state based on details
+      // setFees(details?.fees || '');
+      // setGenerateBills(details?.generateBills || false);
+      // setDisplayFees(details?.displayFees || false);
+  
+    } catch (error) {
+      console.error('Error fetching facility details:', error);
+      setFacilityDetails(null);
+    }
+  };
+
+  useEffect(() => {
+    const fetchFacilities = async () => {
+      setLoading(true);
+      try {
+        const payload: FaclityServicePayload = {
+          userName: 'tonmoy',
+          userPass: '4vpzrnly',
+          deviceStat: 'M',
+          callingFrom: 'app',
+          orgId: '39',
+          searchFacility: '',
+          status: 'All',
+        };
+        const data = await getOwnFacilites(payload);
+        setFacilities(data);
+      } catch (error) {
+        setFacilities([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFacilities();
+  }, [onLoad]);
+
+  const handleUpdateFacilityDetails = async () => {
+    if (!facilityDetails) {
+      console.error('No facility details available.');
+      return;
+    }
+  
+    // Build payload by merging fetched + UI values
+   /*  const payload = {
+      ...facilityDetails,
+      internBilling: generateBills ? '1' : '0',
+      patientsToView: displayFees ? '1' : '0',
+      fees: fees || '0',
+    }; */
+
+    const payload = {
+      callingFrom:"app",
+      userName:"tonmoy",
+      userPass:"4vpzrnly",
+      orgId:"39",
+      deviceStat:"M",
+      facilityType: facilityDetails.facilityType,
+      facilityId: facilityDetails.facilityId,
+      city: facilityDetails.city,
+      state: facilityDetails.state,
+      country: facilityDetails.country,
+      pin: facilityDetails.pin,
+      areaName: facilityDetails.areaName,
+      facilityName: facilityDetails.facilityName,
+      address1: facilityDetails.address1,
+      address2: facilityDetails.address2,
+      fees: fees || '0',
+      patientsToView: displayFees ? '1' : '0',
+      internBilling: generateBills ? '1' : '0',
+      facilityColor: facilityDetails.facilityColor
+    }
+  
+    try {
+      const response = await editFacilityDetails(payload);
+      //console.log('Facility updated successfully:', response);
+      setSnackbarMessage('Facility updated successfully');
+      setSnackbarSeverity('success');
+      setOpenSnackbar(true);
+      // ✅ You can show a success message/snackbar here
+    } catch (error) {
+     // console.error('Failed to update facility:', error);
+      setSnackbarMessage('Failed to update facility');
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+      // ❌ You can show error UI here
+    }
+  }
 
   return (
     <Box
@@ -50,8 +169,20 @@ const SelectYourFacility = ({
           onChange={handleFacilityChange}
           label="Select Facility"
         >
-          <MenuItem value="Tele Medicine">Facility 1</MenuItem>
-          <MenuItem value="Practice">Facility 2</MenuItem>
+         {loading ? (
+    <MenuItem disabled>Loading...</MenuItem>
+  ) : facilities.length === 0 ? (
+    <MenuItem disabled>No facilities found</MenuItem>
+  ) : (
+    facilities.map((facility) => (
+      <MenuItem
+        key={facility.facilityId} // or facility.id or similar, depending on your response
+        value={facility.facilityId} // or facility.facilityName if you prefer
+      >
+        {facility.facilityName}
+      </MenuItem>
+    ))
+  )}
         </Select>
       </FormControl>
 
@@ -92,7 +223,6 @@ const SelectYourFacility = ({
                 variant="outlined"
                 fullWidth
                 type="number"
-                placeholder="400"
                 InputProps={{
                   sx: {
                     borderRadius: 5,
@@ -149,9 +279,7 @@ const SelectYourFacility = ({
             </Button>
             <Button
               variant="contained"
-              onClick={() => {
-                // handle update logic here
-              }}
+              onClick={handleUpdateFacilityDetails}
               sx={{
                 bgcolor: '#0c3c69',
                 color: 'white',
@@ -172,6 +300,12 @@ const SelectYourFacility = ({
           </Box>
         </Box>
       )}
+      <Message 
+        openSnackbar={openSnackbar} 
+        handleCloseSnackbar={handleCloseSnackbar} 
+        snackbarSeverity={snackbarSeverity} 
+        snackbarMessage={snackbarMessage} 
+      />
     </Box>
   );
 };

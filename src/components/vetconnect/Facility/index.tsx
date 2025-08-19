@@ -11,17 +11,25 @@ import { useState } from "react";
 import SelectYourFacility from "./SelectYourFacility";
 import { SelectChangeEvent } from "@mui/material/Select";
 import AddFacility from "./AddFacilityModal";
+import Message from "@/components/common/Message";
 
 const FacilityPage = () => {
   const [newFacilityType, setNewFacilityType] = useState("");
   const [selectedFacility, setSelectedFacility] = useState("");
   const [openModal, setOpenModal] = useState(false);
   const [generateBills, setGenerateBills] = useState(false);
-
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+  const [refreshKey, setRefreshKey] = useState(0);
   const handleAddFacility = () => {
     if (newFacilityType) {
       setOpenModal(true);
     }
+  };
+
+  const handleCloseSnackbar = () => {
+    setOpenSnackbar(false);
   };
 
   const handleFacilityTypeChange = (event: SelectChangeEvent<string>) => {
@@ -29,17 +37,21 @@ const FacilityPage = () => {
   };
 
   const handleFormSubmit = (data: {
-    firstName: string;
-    addressLine1: string;
-    addressLine2: string;
+    facilityName: string;
+    address1: string;
+    address2: string;
     city: string;
-    area: string;
+    searcharea: string;
     pin: string;
     fees: string;
     facilityType: string;
   }) => {
     console.log("New Facility Added:", data);
+    setSnackbarMessage('New Facility Added Successfully');
+    setSnackbarSeverity('success');
+    setOpenSnackbar(true);
     setOpenModal(false);
+    setRefreshKey(prev => prev + 1);
   };
 
   return (
@@ -85,7 +97,7 @@ const FacilityPage = () => {
             label="Add Facilities"
           >
             <MenuItem value="Tele Medicine">Tele Medicine</MenuItem>
-            <MenuItem value="Practice">Practice</MenuItem>
+            <MenuItem value="practice">Practice</MenuItem>
           </Select>
         </FormControl>
 
@@ -112,6 +124,7 @@ const FacilityPage = () => {
           setSelectedFacility={setSelectedFacility}
           generateBills={generateBills}
           setGenerateBills={setGenerateBills}
+          onLoad={refreshKey}
         />
       </Box>
 
@@ -121,6 +134,12 @@ const FacilityPage = () => {
         handleClose={() => setOpenModal(false)}
         facilityType={newFacilityType}
         onSubmit={handleFormSubmit}
+      />
+      <Message 
+        openSnackbar={openSnackbar} 
+        handleCloseSnackbar={handleCloseSnackbar} 
+        snackbarSeverity={snackbarSeverity} 
+        snackbarMessage={snackbarMessage} 
       />
     </Box>
   );

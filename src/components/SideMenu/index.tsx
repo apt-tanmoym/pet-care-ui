@@ -46,7 +46,9 @@ import {
     LocalPharmacy as LocalPharmacyIcon,
     Store as StoreIcon,
     AccountCircle as AccountCircleIcon,
-    ExitToApp as LogoutIcon
+    ExitToApp as LogoutIcon,
+    MeetingRoomSharp,
+    OpenInBrowserRounded
 } from '@mui/icons-material';
 import styles from './style.module.scss'; // Import the styles
 
@@ -66,6 +68,8 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
     { text: 'Dashboard', icon: <DashboardIcon />, url: '/dashboard' },
+    { text: 'Owner Dashboard', icon: <OpenInBrowserRounded />, url:'/owner_dashboard' },
+    { text: 'Appointment Dashboard', icon: <MeetingRoomSharp />, url: '/appointment_dashboard' },
     { 
         text: 'Clinic Administration', 
         icon: <AssignmentIcon />, 
@@ -74,8 +78,8 @@ const menuItems: MenuItem[] = [
             { text: 'Manage Facilities', icon: <BusinessIcon />, url: '/clinic-admin/facilities' },
             { text: 'Create Roles & assign facilities', icon: <GroupIcon />, url: '/clinic-admin/create-roles' },
             { text: 'Manage User accounts & permission', icon: <PersonIcon />, url: '/clinic-admin/manage-user' },
-            { text: 'Maintain Doctors', icon: <MedicalServicesIcon />, url: '/policy_config/maintain-doctors' },
-            { text: 'Other Users', icon: <PeopleIcon />, url: '/clinic-admin/maintain-other-users' },
+            /* { text: 'Maintain Doctors', icon: <MedicalServicesIcon />, url: '/policy_config/maintain-doctors' },
+            { text: 'Other Users', icon: <PeopleIcon />, url: '/clinic-admin/maintain-other-users' }, */
             { text: 'Upgrade/Renew Subscriptions', icon: <StoreIcon />, url: '/clinic-admin/renew-subscription' },
         ], 
     },

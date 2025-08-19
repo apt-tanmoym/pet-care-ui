@@ -5,7 +5,7 @@ export interface FaclityServicePayload {
     callingFrom:string;
     searchFacility: string;
     status: string;
-    orgId:string;
+    orgId?:string;
   }
   
   export interface FaclityServiceResponse {

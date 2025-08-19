@@ -116,6 +116,12 @@ interface Facility {
 export const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
   try {
     const { data } = await http.post<LoginResponse>('/validateUser', credentials);
+    
+    // Save orgId to localStorage on successful login
+    if (data && data.orgId) {
+      localStorage.setItem('orgId', data.orgId.toString());
+    }
+    
     return data;
   } catch (error) {
     throw error;

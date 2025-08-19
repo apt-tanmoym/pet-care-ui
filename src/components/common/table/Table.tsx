@@ -54,7 +54,7 @@ interface CommonTableProps {
   children?: any;
   hideDefaultButtons?: boolean;
   onFilterChange?: (filterName: string, value: string) => void;
-  onSave?: () => void;
+  onSave?: ()=> void;
 }
 
 const CommonTable: React.FC<CommonTableProps> = ({
@@ -91,14 +91,38 @@ const CommonTable: React.FC<CommonTableProps> = ({
       onFilterChange(filterName, value);
     }
   };
-
+  console.log({rowData})
   const filteredRows = rowData.filter((row) => {
     const searchMatch = Object.values(row).some((val) =>
       String(val).toLowerCase().includes(searchTerm.toLowerCase())
     );
-    const filterMatch = Object.entries(currentFilters).every(
-      ([key, val]) => val === "" || val === "All" || row[key] === val
-    );
+    
+    const filterMatch = filters.every(filter => {
+      const val = filter.value;
+      if (!val || val.startsWith('All')) return true; // no filtering
+
+      if (filter.name === 'facilities') {
+        return row.facilities.includes(val);
+      }else if(filter.name === 'roles'){
+        console.log({val})
+        console.log(`${row.roleName}`)
+        const combined = `${row.roleName}`;
+        console.log(combined === val)
+        return combined === val;
+      } else {
+        // Use direct field matching
+        console.log("role2")
+        console.log(val)
+        console.log(row)
+        const rowVal = (row as any)[filter.name];
+        console.log(rowVal)
+        console.log("rowval")
+        console.log(rowVal === val)
+        console.log("rowval1")
+        return rowVal === val;
+      }
+    });
+
     return searchMatch && filterMatch;
   });
 

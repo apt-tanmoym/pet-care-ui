@@ -1,151 +1,161 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Grid,
-  Typography,
-} from '@mui/material';
 
-const StyledTextField = ({ sx, ...props }: any) => (
-  <TextField
-    {...props}
-    variant="outlined"
-    fullWidth
-    sx={{
-      bgcolor: 'white',
-      borderRadius: 2,
-      '& .MuiOutlinedInput-root': {
-        '& fieldset': {
-          borderColor: '#0288d1',
-        },
-        '&:hover fieldset': {
-          borderColor: '#01579b',
-        },
-        '&.Mui-focused fieldset': {
-          borderColor: '#01579b',
-          boxShadow: '0 0 8px rgba(2, 136, 209, 0.3)',
-        },
-      },
-      ...sx,
-    }}
-  />
-);
+import { useEffect, useState } from 'react';
+import { Button, TextField, Select, MenuItem, FormControl, InputLabel, DialogContent, DialogActions } from '@mui/material';
+import { CreateRoleEditProps } from '@/interfaces/roleComponentInterface';
+import { checkDuplicateRoleName, fetchRoleDetails, saveRole } from '@/services/roleService';
+import Message from '../common/Message';
 
-interface CreateRoleEditProps {
-  role: {
-    roleGroupName: string;
-    roleName: string;
-    status: string;
-  };
-  onSubmit: (data: any) => void;
-}
-
-const CreateRoleEdit: React.FC<CreateRoleEditProps> = ({ role, onSubmit }) => {
-  const [formValues, setFormValues] = useState({
-    roleGroupName: role?.roleGroupName || '',
-    roleName: role?.roleName || '',
-    status: role?.status || 'Active',
-  });
-
-  const [errors, setErrors] = useState({
-    roleGroupName: '',
-    roleName: '',
-    status: '',
-  });
+const CreateRoleEdit: React.FC<CreateRoleEditProps> = ({ role, roleGroupOptions, onCancel, onAddSuccess }) => {
+  const [roleName, setRoleName] = useState('');
+  const [roleGroupName, setRoleGroupName] = useState('');
+  const [roleId, setRoleId] = useState('');
+  const [status, setStatus] = useState('');
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+ 
 
   useEffect(() => {
-    if (role) {
-      setFormValues({
-        roleGroupName: role.roleGroupName,
-        roleName: role.roleName,
-        status: role.status,
-      });
+    const getRoleDetails = async () => {
+      try {
+        const payload =  {
+          "callingFrom": "web",
+          "userName": "jibons",
+          "userPass": "P@ssw0rd",
+          "orgId": "20",
+          "roleId": role.orgRoleId
+      }
+        const data:any = await fetchRoleDetails(payload); // or another `roleId` prop
+        setRoleName(data.roleName);
+        setRoleGroupName(data.globalRoleGroupId);
+        setStatus(data.activeInd);
+        setRoleId(data.orgRoleId);
+      } catch (error) {
+        console.error('Error fetching role details:', error);
+        // Handle error (e.g., show notification or fallback)
+      }
+    };
+  
+    getRoleDetails();
+  }, [role.orgRoleId]);
+  
+  const handleSubmit = async() => {
+    if (!roleName || !roleGroupName) {
+      return; // Add validation feedback if needed
     }
-  }, [role]);
-
-  const validationRules = {
-    roleGroupName: (value: string) => (value ? '' : 'Role Group Name is required'),
-    roleName: (value: string) => (value ? '' : 'Role Name is required'),
-    status: (value: string) => (value ? '' : 'Status is required'),
+   try{
+    const payload =  {
+      "callingFrom": "web",
+      "userName": "jibons",
+      "userPass": "P@ssw0rd",
+      "orgId": "20",
+      "loggedInFacilityId": "1",
+      "roleId": roleId,
+      "roleGrpId": roleGroupName.toString(),
+      "roleName": roleName,
+      "activeInd": status
+  }
+    await saveRole(payload)
+    onAddSuccess('edit')
+}catch(e){
+  onAddSuccess('error')
+}
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { target: { name: string; value: unknown } }
-  ) => {
-    const { name, value } = e.target;
-    setFormValues((prev) => ({ ...prev, [name]: value }));
+  const handleCloseSnackbar = () => {
+    setOpenSnackbar(false);
+  };
+
+  const handleRoleNameBlur = async () => {
+    if (!roleName.trim()) return;
+  
+    try {
+      const payload = {
+        callingFrom: "web",
+       "userName": "jibons",
+        "userPass": "P@ssw0rd",
+        "orgId": "20",
+        "loggedInFacilityId": "1",
+        "roleId": role.orgRoleId,
+        "roleName": roleName,// example — use actual orgId if available dynamically
+      };
+
+      // Replace this with your actual API function
+      const response:any = await checkDuplicateRoleName(payload);
+  
+      if (response === 'Role Not Exists') {
+        setOpenSnackbar(true)
+        setSnackbarSeverity("success")
+        setSnackbarMessage("Role name avialavble.")
+      }else{
+        setOpenSnackbar(true)
+        setSnackbarSeverity("error")
+        setSnackbarMessage("Role name already taken.")
+      }
+    } catch (error) {
+      setOpenSnackbar(true)
+      setSnackbarSeverity("error")
+      setSnackbarMessage("Error checking role name.")
+    }
   };
 
   return (
-    <Box
-      sx={{
-        p: { xs: 2, sm: 4 },
-        maxWidth: 600,
-        mx: 'auto',
-        bgcolor: 'linear-gradient(135deg, #e0f7fa 0%, #ffffff 100%)',
-        borderRadius: 3,
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-        border: '1px solid rgba(255, 255, 255, 0.3)',
-      }}
-    >
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <StyledTextField
-            label="Role Group Name"
-            name="roleGroupName"
-            value={formValues.roleGroupName}
-            onChange={handleChange}
-            required
-            error={!!errors.roleGroupName}
-            helperText={errors.roleGroupName}
-          />
-        </Grid>
-        <Grid item xs={12}>
-          <StyledTextField
-            label="Role Name"
-            name="roleName"
-            value={formValues.roleName}
-            onChange={handleChange}
-            required
-            error={!!errors.roleName}
-            helperText={errors.roleName}
-          />
-        </Grid>
-        <Grid item xs={12}>
-          <FormControl fullWidth required error={!!errors.status}>
-            <InputLabel sx={{ color: '#0288d1' }}>Status</InputLabel>
-            <Select
-              name="status"
-              value={formValues.status}
-              onChange={handleChange}
-              label="Status"
-              sx={{
-                bgcolor: 'white',
-                borderRadius: 2,
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#0288d1',
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#01579b',
-                },
-              }}
-            >
-              <MenuItem value="Active">Active</MenuItem>
-              <MenuItem value="Inactive">Inactive</MenuItem>
-            </Select>
-            {errors.status && (
-              <Typography variant="caption" color="error">
-                {errors.status}
-              </Typography>
-            )}
-          </FormControl>
-        </Grid>
-      </Grid>
-    </Box>
+    <>
+      <DialogContent>
+      <FormControl fullWidth margin="dense">
+          <InputLabel>Role Group</InputLabel>
+          <Select
+            value={roleGroupName}
+            onChange={(e) => setRoleGroupName(e.target.value as string)}
+            label="Role Group"
+          >
+            {roleGroupOptions.map((option) => (
+              <MenuItem key={option.roleGroupId} value={option.roleGroupId}>
+                {option.roleGroupName}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <TextField
+          fullWidth
+          margin="dense"
+          label="Role Name"
+          value={roleName}
+          onChange={(e) => setRoleName(e.target.value)}
+          onBlur={handleRoleNameBlur}
+        />
+        <FormControl fullWidth margin="dense">
+          <InputLabel>Status</InputLabel>
+          <Select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as string)}
+            label="Status"
+          >
+            <MenuItem value="1">Active</MenuItem>
+            <MenuItem value="0">Inactive</MenuItem>
+          </Select>
+        </FormControl>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onCancel} variant="outlined">
+            Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          type='submit'
+          variant="contained"
+          sx={{ bgcolor: '#174a7c', color: '#fff', fontWeight: 700, '&:hover': { bgcolor: '#103a61' } }}
+        >
+          Submit
+        </Button>
+      </DialogActions>
+      <Message
+          openSnackbar={openSnackbar}
+          handleCloseSnackbar={handleCloseSnackbar}
+          snackbarSeverity={snackbarSeverity}
+          snackbarMessage={snackbarMessage}
+        />
+    </>
   );
 };
 

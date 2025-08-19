@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState } from "react";
@@ -11,10 +12,9 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Chip,
-  Grid,
   Box,
   Paper,
+  Grid,
 } from "@mui/material";
 import {
   LineChart,
@@ -24,13 +24,11 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
+  BarChart,
+  Bar,
 } from "recharts";
 import {
   Users,
@@ -41,8 +39,10 @@ import {
   TrendingUp,
   TrendingDown,
   Activity,
+  DollarSign,
 } from "lucide-react";
 
+// Interfaces
 interface UserGrowthData {
   month: string;
   users: number;
@@ -51,17 +51,25 @@ interface UserGrowthData {
   revenue: number;
 }
 
-interface DemographicData {
-  ageGroup: string;
-  count: number;
-  percentage: number;
-  color: string;
-}
-
 interface ActivityData {
   day: string;
   visits: number;
   bookings: number;
+}
+
+interface ExpenditureData {
+  clinic: string;
+  expenditure: number;
+  profit: number;
+  percentage: number;
+  color: string;
+}
+
+interface ProfitBreakdownData {
+  clinic: string;
+  profit: number;
+  percentage: number;
+  color: string;
 }
 
 interface Stat {
@@ -73,57 +81,14 @@ interface Stat {
   description: string;
 }
 
+// Data
 const userGrowthData: UserGrowthData[] = [
-  {
-    month: "Jan",
-    users: 1200,
-    newUsers: 150,
-    appointments: 890,
-    revenue: 45000,
-  },
-  {
-    month: "Feb",
-    users: 1350,
-    newUsers: 180,
-    appointments: 1020,
-    revenue: 52000,
-  },
-  {
-    month: "Mar",
-    users: 1530,
-    newUsers: 220,
-    appointments: 1180,
-    revenue: 58000,
-  },
-  {
-    month: "Apr",
-    users: 1750,
-    newUsers: 280,
-    appointments: 1350,
-    revenue: 67000,
-  },
-  {
-    month: "May",
-    users: 2030,
-    newUsers: 320,
-    appointments: 1520,
-    revenue: 76000,
-  },
-  {
-    month: "Jun",
-    users: 2350,
-    newUsers: 380,
-    appointments: 1780,
-    revenue: 89000,
-  },
-];
-
-const demographicData: DemographicData[] = [
-  { ageGroup: "18-25", count: 320, percentage: 15, color: "#3b82f6" },
-  { ageGroup: "26-35", count: 680, percentage: 32, color: "#10b981" },
-  { ageGroup: "36-45", count: 590, percentage: 28, color: "#f59e0b" },
-  { ageGroup: "46-55", count: 380, percentage: 18, color: "#ef4444" },
-  { ageGroup: "55+", count: 150, percentage: 7, color: "#8b5cf6" },
+  { month: "Jan", users: 1200, newUsers: 150, appointments: 890, revenue: 45000 },
+  { month: "Feb", users: 1350, newUsers: 180, appointments: 1020, revenue: 52000 },
+  { month: "Mar", users: 1530, newUsers: 220, appointments: 1180, revenue: 58000 },
+  { month: "Apr", users: 1750, newUsers: 280, appointments: 1350, revenue: 67000 },
+  { month: "May", users: 2030, newUsers: 320, appointments: 1520, revenue: 76000 },
+  { month: "Jun", users: 2350, newUsers: 380, appointments: 1780, revenue: 89000 },
 ];
 
 const weeklyActivity: ActivityData[] = [
@@ -135,6 +100,42 @@ const weeklyActivity: ActivityData[] = [
   { day: "Sat", visits: 398, bookings: 58 },
   { day: "Sun", visits: 234, bookings: 28 },
 ];
+
+const expenditureData: Record<string, ExpenditureData[]> = {
+  "Clinic A": [
+    { clinic: "Branch 1", expenditure: 15000, profit: 25000, percentage: 25, color: "#3b82f6" },
+    { clinic: "Branch 2", expenditure: 12000, profit: 18000, percentage: 20, color: "#10b981" },
+    { clinic: "Branch 3", expenditure: 18000, profit: 22000, percentage: 30, color: "#f59e0b" },
+    { clinic: "Branch 4", expenditure: 10000, profit: 15000, percentage: 25, color: "#ef4444" },
+  ],
+  "Clinic B": [
+    { clinic: "Branch 1", expenditure: 13000, profit: 20000, percentage: 28, color: "#3b82f6" },
+    { clinic: "Branch 2", expenditure: 11000, profit: 17000, percentage: 22, color: "#10b981" },
+    { clinic: "Branch 3", expenditure: 16000, profit: 21000, percentage: 27, color: "#f59e0b" },
+    { clinic: "Branch 4", expenditure: 9000, profit: 14000, percentage: 23, color: "#ef4444" },
+  ],
+  "Clinic C": [
+    { clinic: "Branch 1", expenditure: 14000, profit: 23000, percentage: 26, color: "#3b82f6" },
+    { clinic: "Branch 2", expenditure: 11500, profit: 17500, percentage: 21, color: "#10b981" },
+    { clinic: "Branch 3", expenditure: 17000, profit: 21500, percentage: 29, color: "#f59e0b" },
+    { clinic: "Branch 4", expenditure: 9500, profit: 14500, percentage: 24, color: "#ef4444" },
+  ],
+  "Clinic D": [
+    { clinic: "Branch 1", expenditure: 16000, profit: 24000, percentage: 27, color: "#3b82f6" },
+    { clinic: "Branch 2", expenditure: 12500, profit: 18500, percentage: 23, color: "#10b981" },
+    { clinic: "Branch 3", expenditure: 19000, profit: 22500, percentage: 31, color: "#f59e0b" },
+    { clinic: "Branch 4", expenditure: 10500, profit: 15500, percentage: 26, color: "#ef4444" },
+  ],
+};
+
+// Updated profit breakdown data based on the image
+const profitBreakdownData: ProfitBreakdownData[] = [
+  { clinic: "Clinic A", profit: 80000, percentage: 25.4, color: "#3b82f6" }, // Blue
+  { clinic: "Clinic B", profit: 72000, percentage: 22.9, color: "#10b981" }, // Green
+  { clinic: "Clinic C", profit: 76500, percentage: 24.3, color: "#f59e0b" }, // Orange
+  { clinic: "Clinic D", profit: 80500, percentage: 25.6, color: "#ef4444" }, // Red
+];
+// Note: Percentages are calculated based on total profit ($309,000), rounded to 1 decimal place.
 
 const stats: Stat[] = [
   {
@@ -171,9 +172,12 @@ const stats: Stat[] = [
   },
 ];
 
+const clinics = ["Clinic A", "Clinic B", "Clinic C", "Clinic D"];
+
 export function UserAnalytics() {
   const [selectedPeriod, setSelectedPeriod] = useState("6months");
   const [activeChart, setActiveChart] = useState("growth");
+  const [selectedClinic, setSelectedClinic] = useState("Clinic A");
 
   const chartData = useMemo(() => userGrowthData, []);
 
@@ -194,6 +198,114 @@ export function UserAnalytics() {
     }
     return null;
   };
+
+  // Reusable Distribution Component
+  const DistributionChart = ({
+    data,
+    title,
+    dataKey,
+    nameKey,
+    isProfitBreakdown = false,
+  }: {
+    data: any[];
+    title: string;
+    dataKey: string;
+    nameKey: string;
+    isProfitBreakdown?: boolean;
+  }) => (
+    <Grid container spacing={3}>
+      <Grid item xs={12} lg={6}>
+        <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 2 }}>
+          {title}
+        </Typography>
+        <Box sx={{ height: 264, width: "100%" }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                outerRadius={80}
+                dataKey="percentage"
+                label={({ [nameKey]: name, percentage }) => `${name}: ${percentage}%`}
+              >
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <Paper sx={{ p: 2, border: 1, borderColor: "grey.300" }}>
+                        <Typography variant="subtitle2" fontWeight="bold">
+                          {payload[0].payload[nameKey]}
+                        </Typography>
+                        <Typography variant="body2">
+                          Profit: ${payload[0].payload.profit.toLocaleString()}
+                        </Typography>
+                        {payload[0].payload.expenditure && (
+                          <Typography variant="body2">
+                            Expenditure: ${payload[0].payload.expenditure.toLocaleString()}
+                          </Typography>
+                        )}
+                        <Typography variant="body2">
+                          Percentage: {payload[0].payload.percentage}%
+                        </Typography>
+                      </Paper>
+                    );
+                  }
+                  return null;
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </Box>
+      </Grid>
+      <Grid item xs={12} lg={6}>
+        <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 2 }}>
+          {title}
+        </Typography>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          {data.map((item, index) => (
+            <Paper
+              key={index}
+              sx={{
+                p: 2,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <Box
+                  sx={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: "50%",
+                    bgcolor: item.color,
+                  }}
+                />
+                <Typography variant="body1" fontWeight="medium">
+                  {item[nameKey]}
+                </Typography>
+              </Box>
+              <Box sx={{ textAlign: "right" }}>
+                <Typography variant="body2" color="text.secondary">
+                  Profit: ${item.profit.toLocaleString()}
+                </Typography>
+                {item.expenditure && (
+                  <Typography variant="body2" color="text.secondary">
+                    Expenditure: ${item.expenditure.toLocaleString()}
+                  </Typography>
+                )}
+              </Box>
+            </Paper>
+          ))}
+        </Box>
+      </Grid>
+    </Grid>
+  );
 
   return (
     <Card sx={{ height: "100%" }}>
@@ -294,7 +406,7 @@ export function UserAnalytics() {
             startIcon={<Users size={16} />}
             onClick={() => setActiveChart("demographics")}
           >
-            Demographics
+            Profit Breakdown
           </Button>
           <Button
             variant={activeChart === "activity" ? "contained" : "outlined"}
@@ -303,6 +415,14 @@ export function UserAnalytics() {
             onClick={() => setActiveChart("activity")}
           >
             Activity
+          </Button>
+          <Button
+            variant={activeChart === "expenditure" ? "contained" : "outlined"}
+            size="small"
+            startIcon={<DollarSign size={16} />}
+            onClick={() => setActiveChart("expenditure")}
+          >
+            Expenditure
           </Button>
         </Box>
 
@@ -348,47 +468,36 @@ export function UserAnalytics() {
         )}
 
         {activeChart === "demographics" && (
-          <Grid container spacing={3}>
-            <Grid item xs={12} lg={6}>
-              <Typography
-                variant="subtitle1"
-                fontWeight="medium"
-                sx={{ mb: 2 }}
-              >
-                User Demographics
-              </Typography>
-              <Box sx={{ height: 264, width: "100%" }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={demographicData}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      dataKey="count"
-                      label={({ ageGroup, percentage }) =>
-                        `${ageGroup}: ${percentage}%`
-                      }
-                    >
-                      {demographicData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </Box>
-            </Grid>
-            <Grid item xs={12} lg={6}>
-              <Typography
-                variant="subtitle1"
-                fontWeight="medium"
-                sx={{ mb: 2 }}
-              >
-                Age Distribution
+          <Box>
+            <Box sx={{ mb: 3 }}>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Clinic</InputLabel>
+                <Select
+                  value={selectedClinic}
+                  label="Clinic"
+                  onChange={(e) => setSelectedClinic(e.target.value)}
+                >
+                  {clinics.map((clinic) => (
+                    <MenuItem key={clinic} value={clinic}>
+                      {clinic}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+            <DistributionChart
+              data={profitBreakdownData}
+              title="Profit Breakdown"
+              dataKey="profit"
+              nameKey="clinic"
+              isProfitBreakdown={true}
+            />
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 2 }}>
+                {selectedClinic} Branch Breakdown
               </Typography>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-                {demographicData.map((demo, index) => (
+                {expenditureData[selectedClinic].map((item, index) => (
                   <Paper
                     key={index}
                     sx={{
@@ -398,34 +507,32 @@ export function UserAnalytics() {
                       alignItems: "center",
                     }}
                   >
-                    <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
-                    >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                       <Box
                         sx={{
                           width: 16,
                           height: 16,
                           borderRadius: "50%",
-                          bgcolor: demo.color,
+                          bgcolor: item.color,
                         }}
                       />
                       <Typography variant="body1" fontWeight="medium">
-                        {demo.ageGroup}
+                        {item.clinic}
                       </Typography>
                     </Box>
                     <Box sx={{ textAlign: "right" }}>
-                      <Typography variant="body1" fontWeight="bold">
-                        {demo.count}
+                      <Typography variant="body2" color="text.secondary">
+                        Profit: ${item.profit.toLocaleString()}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {demo.percentage}%
+                        Expenditure: ${item.expenditure.toLocaleString()}
                       </Typography>
                     </Box>
                   </Paper>
                 ))}
               </Box>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         )}
 
         {activeChart === "activity" && (
@@ -486,6 +593,33 @@ export function UserAnalytics() {
                 <Typography variant="body2">Bookings</Typography>
               </Box>
             </Box>
+          </Box>
+        )}
+
+        {activeChart === "expenditure" && (
+          <Box>
+            <Box sx={{ mb: 3 }}>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Clinic</InputLabel>
+                <Select
+                  value={selectedClinic}
+                  label="Clinic"
+                  onChange={(e) => setSelectedClinic(e.target.value)}
+                >
+                  {clinics.map((clinic) => (
+                    <MenuItem key={clinic} value={clinic}>
+                      {clinic}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+            <DistributionChart
+              data={expenditureData[selectedClinic]}
+              title={`${selectedClinic} Expenditure & Profit`}
+              dataKey="expenditure"
+              nameKey="clinic"
+            />
           </Box>
         )}
       </CardContent>

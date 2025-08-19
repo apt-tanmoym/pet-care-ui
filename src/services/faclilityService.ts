@@ -19,7 +19,34 @@ export const getFacilityDetails = async (payload: GetFacilityDetailsPayload): Pr
   }
 };
 
-export const addNewFacility = async (payload: FaclityServiceResponse): Promise<any> => {
+export const checkDuplicateFacility = async (payload: any): Promise<any> => {
+  try {
+    const { data } = await http.post('/checkduplicatefacility', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const checkDuplicateFacilityTeleMedicine = async (payload: any): Promise<any> => {
+  try {
+    const { data } = await http.post("/checktelemedicinefacpresence", payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getLastSavedBillingConfiguration = async (payload: any): Promise<any> => {
+  try {
+    const { data } = await http.post("/getlastsavedbillingconfiguration", payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const addNewFacility = async (payload: any): Promise<any> => {
   try {
     const { data } = await http.post('/addnewfacility', payload);
     return data;
@@ -37,9 +64,18 @@ export const getCityList = async (searchText: string): Promise<any[]> => {
   }
 };
 
+export const editFacilityDetails = async (payload: any): Promise<any[]> => {
+  try {
+    const { data } = await http.post('/editfacilitydetails', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const getAreaListSearchText = async (cityId: string, searchText: string): Promise<any[]> => {
   try {
-    const { data } = await http.post('/getarealistsearchtext', { cityId, searchText });
+    const { data } = await http.post('/getarealistsearchtext', { cityId, searchText,searchWith:"area" });
     return data;
   } catch (error) {
     throw error;

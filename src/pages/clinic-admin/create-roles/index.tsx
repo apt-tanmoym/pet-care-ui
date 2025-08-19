@@ -1,3 +1,4 @@
+
 'use client';
 
 import AuthenticatedLayout from "@/components/AuthenticatedLayout";
@@ -6,10 +7,14 @@ import CommonTable from "@/components/common/table/Table";
 import PrivateRoute from "@/components/PrivateRoute";
 import EditIcon from "@mui/icons-material/Edit";
 import SellIcon from '@mui/icons-material/Sell';
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import CreateRoleAdd from "@/components/CreateRoles/CreateRollAdd";
 import CreateRoleEdit from "@/components/CreateRoles/CreateRoleEdit";
 import CreateRoleAssign from "@/components/CreateRoles/CreateRollAssign";
+import { getOrgRoles, getAllRoleGroupOfOrg } from "@/services/roleService";
+import Message from "@/components/common/Message";
+import { GetOrgRolesPayload, GetAllRoleGroupOfOrgPayload } from "@/interfaces/roleInterface";
+
 
 interface RoleData {
   roleGroupName: string;
@@ -27,114 +32,121 @@ export default function DemoPage() {
     { id: 'editAction', label: 'Action' },
   ];
 
-  const initialRowData: RoleData[] = [
-    {
-      roleGroupName: 'Admin Staff',
-      roleName: 'Admin Staff',
-      status: 'Active',
-      facilities: ['Facility A', 'Facility B'],
-      editAction: <></>,
-    },
-    {
-      roleGroupName: 'Administrator',
-      roleName: 'Administrator',
-      status: 'Active',
-      facilities: ['Facility A', 'Facility C'],
-      editAction: <></>,
-    },
-    {
-      roleGroupName: 'Biller',
-      roleName: 'Biller',
-      status: 'Active',
-      facilities: ['Facility B'],
-      editAction: <></>,
-    },
-    {
-      roleGroupName: 'Doctor',
-      roleName: 'Doctor',
-      status: 'Active',
-      facilities: ['Facility C'],
-      editAction: <></>,
-    },
-    {
-      roleGroupName: 'Paramedic',
-      roleName: 'Paramedic',
-      status: 'Active',
-      facilities: ['Facility A', 'Facility B', 'Facility C'],
-      editAction: <></>,
-    },
-  ];
-
   const facilitiesList = ['Facility A', 'Facility B', 'Facility C'];
-  const roleNamesOptions = ['Admin Staff', 'Administrator', 'Biller', 'Doctor', 'Paramedic'];
+  const [roleNamesOptions, setRoleNamesOptions] = useState<string[]>([]);
+  const [roleGroupOptions, setRoleGroupOptions] = useState<string[]>([]);
+  const [rowData, setRowData] = useState<RoleData[]>([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<any | null>(null);
+  const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'assign' | null>(null);
+  const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
 
   const [filters, setFilters] = useState([
-    { name: 'facility', options: [...facilitiesList], value: 'All Facilities' },
-    { name: 'role', options: [...roleNamesOptions], value: 'All Roles' },
+   // { name: 'facilitys', options: [...facilitiesList ], value: 'All Facilities' },
+    { name: 'roles', options: roleNamesOptions, value: 'All Roles' },
     { name: 'status', options: ['Active', 'Inactive'], value: 'All Status' },
   ]);
 
-  const [rowData, setRowData] = useState<RoleData[]>(initialRowData.map(row => ({
-    ...row,
-    editAction: (
-      <>
-        <TableLinkButton
-          text="Edit"
-          icon={<EditIcon />}
-          onClick={() => handleEditClick(row)}
-        />
-        <TableLinkButton
-          text="Assign"
-          icon={<SellIcon />}
-          color="primary"
-          onClick={() => handleAssignClick(row)}
-        />
-      </>
-    ),
-  })));
-  const [openDialog, setOpenDialog] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<RoleData | null>(null);
-  const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'assign' | null>(null);
-  const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]); 
+  const rolePayload: GetOrgRolesPayload = {
+    callingFrom: "web",
+    userName: "jibons",
+    userPass: "P@ssw0rd",
+    orgId: "20",
+    facilityId:"0",
+    loggedInFacilityId: "1",
+    status: "",
+    roleGrpId: "",
+    searchRole: "",
+  };
+
+  const roleGroupPayload: GetAllRoleGroupOfOrgPayload = {
+    callingFrom: "web",
+    userName: "jibons",
+    userPass: "P@ssw0rd",
+    orgId: "20",
+  };
+
+  const fetchRolesAndGroups = async () => {
+    try {
+      // Fetch roles
+      const roleResponse = await getOrgRoles(rolePayload);
+      const mappedData: any[] = roleResponse.map(role => ({
+        roleGroupName: role.orgRoleGroup,
+        roleName: role.roleName,
+        status: role.activeInd === 1 ? 'Active' : 'Inactive',
+        orgRoleId: role.orgRoleId,
+        facilities: [],
+        editAction: (
+          <>
+            <TableLinkButton
+              text="Edit"
+              icon={<EditIcon />}
+              onClick={() => handleEditClick({
+                roleGroupName: role.orgRoleGroup,
+                roleName: role.roleName,
+                status: role.activeInd === 1 ? 'Active' : 'Inactive',
+                orgRoleId: role.orgRoleId,
+                facilities: [],
+                editAction: <></>,
+              })}
+            />
+            <TableLinkButton
+              text="Assign"
+              icon={<SellIcon />}
+              color="primary"
+              onClick={() => handleAssignClick({
+                roleGroupName: role.orgRoleGroup,
+                roleName: role.roleName,
+                status: role.activeInd === 1 ? 'Active' : 'Inactive',
+                orgRoleId: role.orgRoleId,
+                facilities: [],
+                editAction: <></>,
+              })}
+            />
+          </>
+        ),
+      }));
+      const newRoleOptions = roleResponse.map(role => `${role.orgRoleGroup} - ${role.roleName}`);
+     // setRoleNamesOptions(newRoleOptions);
+      
+      setRowData(mappedData);
+
+      // Fetch role groups
+      const roleGroupResponse = await getAllRoleGroupOfOrg(roleGroupPayload);
+      console.log({roleGroupResponse})
+      const roleGroupNames = roleGroupResponse.map(group => group.roleGroupName);
+
+    setRoleGroupOptions(roleGroupResponse); // Store full object
+    setFilters(prevFilters =>
+      prevFilters.map(filter =>
+        filter.name === 'roles'
+          ? { ...filter, options: [...roleGroupNames] }
+          : filter
+      )
+    );
+    } catch (error: any) {
+      setSnackbarMessage(error?.response?.data?.message || 'Failed to fetch data');
+      setOpenSnackbar(true);
+    }
+  };
+
+  useEffect(() => {
+   
+    fetchRolesAndGroups();
+  }, []);
+
+ 
 
   const handleFilterChange = (filterName: string, value: string) => {
     const updatedFilters = filters.map(filter =>
       filter.name === filterName ? { ...filter, value } : filter
     );
     setFilters(updatedFilters);
-
-    const filteredData = initialRowData.map(row => ({
-      ...row,
-      editAction: (
-        <>
-          <TableLinkButton
-            text="Edit"
-            icon={<EditIcon />}
-            onClick={() => handleEditClick(row)}
-          />
-          <TableLinkButton
-            text="Assign"
-            icon={<SellIcon />}
-            color="primary"
-            onClick={() => handleAssignClick(row)}
-          />
-        </>
-      ),
-    })).filter(row => {
-      const facilityMatch =
-        updatedFilters[0].value === 'All Facilities' ||
-        row.facilities.includes(updatedFilters[0].value);
-      const roleMatch =
-        updatedFilters[1].value === 'All Roles' ||
-        `${row.roleGroupName} - ${row.roleName}` === updatedFilters[1].value;
-      const statusMatch =
-        updatedFilters[2].value === 'All Statuses' ||
-        row.status === updatedFilters[2].value;
-      return facilityMatch && roleMatch && statusMatch;
-    });
-
-    setRowData(filteredData);
   };
+
 
   const handleAddClick = () => {
     setDialogMode('add');
@@ -142,15 +154,15 @@ export default function DemoPage() {
     setOpenDialog(true);
   };
 
-  const handleEditClick = (role: RoleData) => {
+  const handleEditClick = (role: any) => {
     setSelectedRole(role);
     setDialogMode('edit');
     setOpenDialog(true);
   };
 
-  const handleAssignClick = (role: RoleData) => {
+  const handleAssignClick = (role: any) => {
     setSelectedRole(role);
-    setSelectedFacilities(role.facilities); 
+    setSelectedFacilities(role.facilities);
     setDialogMode('assign');
     setOpenDialog(true);
   };
@@ -162,60 +174,30 @@ export default function DemoPage() {
     setSelectedFacilities([]);
   };
 
-  const handleSubmit = (data: { roleName: string; roleGroupName: string; status?: string; facilities?: string[] }) => {
-    console.log(`${dialogMode} role data:`, data);
-    if (dialogMode === 'add') {
-      const newRoleOption = `${data.roleGroupName} - ${data.roleName}`;
-      const newRole: RoleData = {
-        roleGroupName: data.roleGroupName,
-        roleName: data.roleName,
-        status: data.status || 'Active',
-        facilities: [],
-        editAction: (
-          <>
-            <TableLinkButton
-              text="Edit"
-              icon={<EditIcon />}
-              onClick={() => handleEditClick({
-                roleGroupName: data.roleGroupName,
-                roleName: data.roleName,
-                status: data.status || 'Active',
-                facilities: [],
-                editAction: <></>,
-              })}
-            />
-            <TableLinkButton
-              text="Assign"
-              icon={<SellIcon />}
-              color="primary"
-              onClick={() => handleAssignClick({
-                roleGroupName: data.roleGroupName,
-                roleName: data.roleName,
-                status: data.status || 'Active',
-                facilities: [],
-                editAction: <></>,
-              })}
-            />
-          </>
-        ),
-      };
-      setRowData([...rowData, newRole]);
-      if (!roleNamesOptions.includes(newRoleOption)) {
-        setFilters(filters.map(filter =>
-          filter.name === 'role'
-            ? { ...filter, options: ['All Roles', ...roleNamesOptions, newRoleOption] }
-            : filter
-        ));
+  const refreshFacilities = async (action:string) => {
+    console.log("on refresh")
+    if (action === 'error') {
+      setSnackbarMessage('Server Error');
+      setOpenSnackbar(true);
+    }else{
+      console.log("on refresh")
+      handleClose();
+      await fetchRolesAndGroups();
+      if(action === 'add'){
+      setSnackbarMessage('Role Saved Successfully');
+      }else if(action === 'edit'){
+      setSnackbarMessage('Role Updated Successfully');
+      }else {
+        setSnackbarMessage('Role Mapped Successfully');
       }
-    } else if (dialogMode === 'assign' && selectedRole) {
-      const updatedRowData = rowData.map(row =>
-        row.roleName === selectedRole.roleName && row.roleGroupName === selectedRole.roleGroupName
-          ? { ...row, facilities: selectedFacilities }
-          : row
-      );
-      setRowData(updatedRowData);
+      setSnackbarSeverity('success');
+      setOpenSnackbar(true);
+     
     }
-    handleClose();
+  };
+
+  const handleCloseSnackbar = () => {
+    setOpenSnackbar(false);
   };
 
   const getDialogTitle = () => {
@@ -234,16 +216,16 @@ export default function DemoPage() {
   const getDialogContent = () => {
     switch (dialogMode) {
       case 'add':
-        return <CreateRoleAdd onSubmit={handleSubmit} />;
+        return <CreateRoleAdd  roleGroupOptions={roleGroupOptions} onAddSuccess={refreshFacilities} onCancel={handleClose} />;
       case 'edit':
-        return selectedRole ? <CreateRoleEdit role={selectedRole} onSubmit={handleSubmit} /> : null;
+        return selectedRole ? <CreateRoleEdit role={selectedRole} onAddSuccess={refreshFacilities} roleGroupOptions={roleGroupOptions} onCancel={handleClose} /> : null;
       case 'assign':
         return selectedRole ? (
           <CreateRoleAssign
             role={selectedRole}
-            onSubmit={handleSubmit}
+            onSubmit={refreshFacilities}
             onCancel={handleClose}
-            onFacilitiesChange={setSelectedFacilities} // Pass the handler to update facilities
+            onFacilitiesChange={setSelectedFacilities}
           />
         ) : null;
       default:
@@ -270,13 +252,15 @@ export default function DemoPage() {
           title={getDialogTitle()}
           children={getDialogContent()}
           rowsPerPageOptions={[5, 10]}
-          hideDefaultButtons={false} 
+          hideDefaultButtons={true}
           onAddButtonClick={handleAddClick}
-          onSave={dialogMode === 'assign' ? () => handleSubmit({
-            roleName: selectedRole?.roleName || '',
-            roleGroupName: selectedRole?.roleGroupName || '',
-            facilities: selectedFacilities,
-          }) : undefined} 
+          //onSave={checkDialog(dialogMode)}
+        />
+        <Message
+          openSnackbar={openSnackbar}
+          handleCloseSnackbar={handleCloseSnackbar}
+          snackbarSeverity={snackbarSeverity}
+          snackbarMessage={snackbarMessage}
         />
       </AuthenticatedLayout>
     </PrivateRoute>

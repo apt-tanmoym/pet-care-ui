@@ -39,6 +39,7 @@ const CummonDialog: React.FC<CommonDialogProps> = ({
           </Button>
           <Button
             onClick={onSubmit}
+            type='submit'
             variant="contained"
             sx={{ bgcolor: '#174a7c', color: '#fff', fontWeight: 700, '&:hover': { bgcolor: '#103a61' } }}
           >

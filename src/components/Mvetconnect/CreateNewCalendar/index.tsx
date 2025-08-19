@@ -47,46 +47,64 @@ const CreateNewCalendar: React.FC<CreateNewCalendarProps> = ({ open, onCancel, o
         <DialogTitle sx={{ color: '#174a7c', fontWeight: 700, textAlign: 'center' }}>Create New Calendar</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', gap: 2, mb: 2, justifyContent: 'center' }}>
-            <DatePicker
-              label="Start Date"
-              value={startDate}
-              onChange={setStartDate}
-              slotProps={{ textField: { fullWidth: true } }}
-              maxDate={endDate || undefined}
-              shouldDisableDate={date => isDateInRanges(date, usedRanges)}
-              slots={{
-                day: (props) => {
-                  const isDisabled = isDateInRanges(props.day, usedRanges);
-                  return (
-                    <PickersDay
-                      {...props}
-                      sx={isDisabled ? { border: '2px solid red', borderRadius: '50%' } : {}}
-                      disabled={isDisabled}
-                    />
-                  );
-                }
-              }}
-            />
-            <DatePicker
-              label="End Date"
-              value={endDate}
-              onChange={setEndDate}
-              slotProps={{ textField: { fullWidth: true } }}
-              minDate={startDate || undefined}
-              shouldDisableDate={date => isDateInRanges(date, usedRanges)}
-              slots={{
-                day: (props) => {
-                  const isDisabled = isDateInRanges(props.day, usedRanges);
-                  return (
-                    <PickersDay
-                      {...props}
-                      sx={isDisabled ? { border: '2px solid red', borderRadius: '50%' } : {}}
-                      disabled={isDisabled}
-                    />
-                  );
-                }
-              }}
-            />
+                         <DatePicker
+               label="Start Date"
+               value={startDate}
+               onChange={setStartDate}
+               slotProps={{ textField: { fullWidth: true } }}
+               maxDate={endDate || undefined}
+               format="DD/MM/YYYY"
+               shouldDisableDate={date => {
+                 // Disable dates that are after end date or in used ranges
+                 if (endDate && date.isAfter(endDate, 'day')) {
+                   return true;
+                 }
+                 return isDateInRanges(date, usedRanges);
+               }}
+                              slots={{
+                 day: (props) => {
+                   const isAfterEnd = endDate && props.day.isAfter(endDate, 'day');
+                   const isInUsedRanges = isDateInRanges(props.day, usedRanges);
+                   const isDisabled = isAfterEnd || isInUsedRanges;
+                   
+                   return (
+                     <PickersDay
+                       {...props}
+                       disabled={isDisabled}
+                     />
+                   );
+                 }
+               }}
+             />
+                         <DatePicker
+               label="End Date"
+               value={endDate}
+               onChange={setEndDate}
+               slotProps={{ textField: { fullWidth: true } }}
+               minDate={startDate || undefined}
+               format="DD/MM/YYYY"
+               shouldDisableDate={date => {
+                 // Disable dates that are before start date or in used ranges
+                 if (startDate && date.isBefore(startDate, 'day')) {
+                   return true;
+                 }
+                 return isDateInRanges(date, usedRanges);
+               }}
+                              slots={{
+                 day: (props) => {
+                   const isBeforeStart = startDate && props.day.isBefore(startDate, 'day');
+                   const isInUsedRanges = isDateInRanges(props.day, usedRanges);
+                   const isDisabled = isBeforeStart || isInUsedRanges;
+                   
+                   return (
+                     <PickersDay
+                       {...props}
+                       disabled={isDisabled}
+                     />
+                   );
+                 }
+               }}
+             />
           </Box>
           {/* Calendar UI can be added here if you want a visual calendar, or just use the pickers above */}
         </DialogContent>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   FormControl,
@@ -10,29 +10,31 @@ import {
   Typography,
   Button,
   OutlinedInput,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
+import { fetchFacilites, getfacilityidsforrolemapping, saverolefacilitymapping } from '@/services/roleService';
 
 interface CreateRoleAssignProps {
-  role: {
-    roleGroupName: string;
-    roleName: string;
-  };
-  onSubmit: (data: { roleName: string; roleGroupName: string; facilities: string[] }) => void;
+  role: { roleName: string; roleGroupName: string; status: string; orgRoleId: string };
+  onSubmit: (arg:string) => void | Promise<void>;
   onCancel: () => void;
   onFacilitiesChange: (facilities: string[]) => void;
 }
 
 const CreateRoleAssign: React.FC<CreateRoleAssignProps> = ({ role, onSubmit, onCancel, onFacilitiesChange }) => {
   const [formValues, setFormValues] = useState<{ facilities: string[] }>({
-    facilities: ['Test1'],
+    facilities: [],
   });
+ 
+  const [facilities, setFacilities] = useState<any[]>([]);
 
   const [errors, setErrors] = useState<{ facilities: string }>({
     facilities: '',
   });
 
-  const facilities: string[] = ['Test1', 'Test2', 'Test3'];
-
+  //const facilities: string[] = ['Administrator', 'Doctor', 'Admin Staff'];
+  
   const validationRules = {
     facilities: (value: string[]) =>
       value.length > 0 ? '' : 'At least one facility is required',
@@ -46,47 +48,84 @@ const CreateRoleAssign: React.FC<CreateRoleAssignProps> = ({ role, onSubmit, onC
     return !Object.values(newErrors).some((error) => error !== '');
   };
 
+  useEffect(() => {
+    const loadFacilities = async () => {
+      try {
+        const payload = {
+          "callingFrom": "web",
+          "userPass": "P@ssw0rd",
+          loggedInFacilityId: "1",
+          "userName": "jibons",
+          orgId: '20', // You can also get this dynamically from context or props
+          roleId: role.orgRoleId,
+        };
+
+        const response = await fetchFacilites(payload);
+       
+        // Assume response is an array of facility objects, map to their names
+        const formatted = response.map((f: any) => ({
+          id: f.facilityId,
+          name: f.facilityName,
+        }));// Adjust field as per your API
+       
+        setFacilities(formatted);
+        
+
+         // Call API to get assigned facility IDs
+      const assignedIdsResponse = await getfacilityidsforrolemapping(payload);
+        console.log(assignedIdsResponse)
+      // Assume response is an array of IDs like [1, 2, 3]
+      if(assignedIdsResponse.length >0) {
+      const assignedIds = assignedIdsResponse?.map((f: any) => f.facilityId);
+      setFormValues({ facilities: assignedIds });
+      }
+      } catch (error) {
+        console.error('Failed to fetch facilities:', error);
+        // Optionally show an error snackbar here
+      }
+    };
+  
+    loadFacilities();
+  }, [role.orgRoleId]);
+
   const handleChange = (event: any) => {
     const value = event.target.value as string[];
     setFormValues({ facilities: value });
 
     const errorMsg = validationRules.facilities(value);
     setErrors({ facilities: errorMsg });
-
     onFacilitiesChange(value);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  
+
+  const handleSubmit = async(e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      onSubmit({
-        roleName: role.roleName,
-        roleGroupName: role.roleGroupName,
-        facilities: formValues.facilities,
-      });
+     try{
+      const payload =  {
+        "callingFrom": "web",
+        "userName": "jibons",
+        "userPass": "P@ssw0rd",
+        "orgId": "20",
+        "loggedInFacilityId": "1",
+        "roleId": role.orgRoleId,
+        facilityIds:formValues.facilities.toString()
+    }
+    await saverolefacilitymapping(payload)
+    onSubmit('assign')
+  }catch(e){
+    onSubmit('error')
+    console.log("e")
+  }
     }
   };
 
-  const StyledButton = ({ sx, ...props }: any) => (
-    <Button
-      {...props}
-      sx={{
-        borderRadius: 2,
-        px: { xs: 2, sm: 3 },
-        py: 1,
-        fontSize: { xs: '0.75rem', sm: '0.875rem' },
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-        '&:hover': {
-          boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)',
-          transform: 'translateY(-2px)',
-        },
-        ...sx,
-      }}
-    />
-  );
-
   return (
-    <Box
+    
+    <>
+    <DialogContent>
+      <Box
       sx={{
         p: { xs: 2, sm: 4 },
         maxWidth: 600,
@@ -102,51 +141,82 @@ const CreateRoleAssign: React.FC<CreateRoleAssignProps> = ({ role, onSubmit, onC
         </Typography>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <FormControl fullWidth required error={!!errors.facilities}>
-              <InputLabel sx={{ color: '#0288d1' }}>Facilities</InputLabel>
-              <Select
-                multiple
-                value={formValues.facilities}
-                onChange={handleChange}
-                input={<OutlinedInput label="Facilities" />}
-                renderValue={(selected) => (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {selected.map((value) => (
-                      <Chip key={value} label={value} sx={{ bgcolor: '#0288d1', color: 'white' }} />
-                    ))}
-                  </Box>
-                )}
-                sx={{
-                  bgcolor: 'white',
-                  borderRadius: 2,
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#0288d1',
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#01579b',
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#01579b',
-                    boxShadow: '0 0 8px rgba(2, 136, 209, 0.3)',
-                  },
-                }}
-              >
-                {facilities.map((facility) => (
-                  <MenuItem key={facility} value={facility}>
-                    {facility}
-                  </MenuItem>
-                ))}
-              </Select>
-              {errors.facilities && (
-                <Typography variant="caption" color="error" sx={{ mt: 1 }}>
-                  {errors.facilities}
-                </Typography>
-              )}
-            </FormControl>
+          <FormControl fullWidth required error={!!errors.facilities}>
+  <InputLabel sx={{ color: '#0288d1' }}>Choose One Facilities</InputLabel>
+  <Select
+  multiple
+  displayEmpty
+  value={formValues.facilities}
+  onChange={handleChange}
+  input={<OutlinedInput label="Facilities" />}
+  renderValue={(selected) => {
+    const selectedFacilities = selected
+    .map((id) => facilities.find((f) => f.id === id))
+    .filter((f): f is { id: number; name: string } => !!f);
+    
+    // Type narrowing
+
+    return (
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+        {selectedFacilities.map((facility) => (
+          <Chip
+            key={facility.id}
+            label={`${facility.name}`}
+            sx={{ bgcolor: '#0288d1', color: 'white' }}
+          />
+        ))}
+      </Box>
+    );
+  }}
+  sx={{
+    bgcolor: 'white',
+    borderRadius: 2,
+    '& .MuiOutlinedInput-notchedOutline': {
+      borderColor: '#0288d1',
+    },
+    '&:hover .MuiOutlinedInput-notchedOutline': {
+      borderColor: '#01579b',
+    },
+    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+      borderColor: '#01579b',
+      boxShadow: '0 0 8px rgba(2, 136, 209, 0.3)',
+    },
+  }}
+>
+  {facilities.map((facility) => (
+    <MenuItem key={facility.id} value={facility.id}>
+      {facility.name}
+    </MenuItem>
+  ))}
+</Select>
+
+  {errors.facilities && (
+    <Typography variant="caption" color="error" sx={{ mt: 1 }}>
+      {errors.facilities}
+    </Typography>
+  )}
+</FormControl>
           </Grid>
         </Grid>
       </form>
-    </Box>
+      </Box>
+    </DialogContent>
+    <DialogActions>
+        <Button onClick={onCancel} variant="outlined">
+            Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          type='submit'
+          variant="contained"
+          sx={{ bgcolor: '#174a7c', color: '#fff', fontWeight: 700, '&:hover': { bgcolor: '#103a61' } }}
+        >
+          Submit
+        </Button>
+      </DialogActions>
+   
+      </>
+
   );
 };
 

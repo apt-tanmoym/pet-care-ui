@@ -1,3 +1,4 @@
+
 import React, { useState, ChangeEvent } from 'react';
 import {
   Box,
@@ -13,6 +14,8 @@ import {
   SelectChangeEvent,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import { ManageUsersEditProps } from '@/interfaces/manageUsersEdit';
+import { User } from '@/interfaces/user';
 
 const StyledTextField = ({ sx, ...props }: any) => (
   <TextField
@@ -57,69 +60,57 @@ const StyledButton = ({ sx, ...props }: any) => (
   />
 );
 
-interface ManageUsersEditProps {
-  user: {
-    role?: string;
-    title: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    addressLine1: string;
-    addressLine2: string;
-    city: string;
-    area: string;
-    country: string;
-    state: string;
-    pin: string;
-    cellNo: string;
-    username: string;
-    image?: string;
-  };
-  onSubmit: (data: any) => void;
-  onCancel: () => void;
-}
-
-const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCancel }) => {
-  const roleNamesOptions = ['Admin Staff', 'Administrator', 'Biller', 'Doctor', 'Paramedic'];
-
-  const [formValues, setFormValues] = useState({
-    role: user.role || '',
-    title: user.title || 'Mr.',
+const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCancel, roleGroupList }) => {
+  const [formValues, setFormValues] = useState<User>({
+    orgUserId: user.orgUserId || 0,
+    userName: user.userName || '',
+    roleName: user.roleName || '',
+    userNameWithTitle: user.userNameWithTitle || '',
+    email: user.email || '',
+    userTitle: user.userTitle || 'Mr.',
     firstName: user.firstName || '',
     lastName: user.lastName || '',
-    email: user.email || '',
+    cellNumber: user.cellNumber || '',
+    imageFilePath: user.imageFilePath || '',
     addressLine1: user.addressLine1 || '',
     addressLine2: user.addressLine2 || '',
-    city: user.city || '',
-    area: user.area || '',
-    country: user.country || '',
-    state: user.state || '',
     pin: user.pin || '',
-    cellNo: user.cellNo || '',
-    username: user.username || '',
+    city: user.city || '',
+    state: user.state || '',
+    country: user.country || '',
+    areaName: user.areaName || '',
+    profileDetails: user.profileDetails || '',
+    activeInd: user.activeInd || 1,
+    isDoctor: user.isDoctor || 0,
+    userUid: user.userUid || 0,
+    specialty: user.specialty || '',
+    orgUserQlfn: user.orgUserQlfn || '',
+    councilId: user.councilId || '',
+    yearOfReg: user.yearOfReg || 0,
   });
 
   const [image, setImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(user.image || null);
+  const [imagePreview, setImagePreview] = useState<string | null>(user.imageFilePath || null);
 
-  const [errors, setErrors] = useState({
-    role: '',
-    title: '',
+  const [errors, setErrors] = useState<Partial<User & { image: string }>>({
+    roleName: '',
+    userTitle: '',
     firstName: '',
     email: '',
     addressLine1: '',
     city: '',
-    area: '',
+    areaName: '',
     country: '',
     state: '',
     pin: '',
-    cellNo: '',
+    cellNumber: '',
     image: '',
+    userName: '',
   });
 
-  const validationRules = {
-    role: (value: string) => (value ? '' : 'Role is required'),
-    title: (value: string) => (value ? '' : 'Title is required'),
+  const validationRules: { [key in keyof (User & { image: string })]?: (value: any, preview?: string | null) => string } = {
+    roleName: (value: string) => (value ? '' : 'Role is required'),
+    userTitle: (value: string) => (value ? '' : 'Title is required'),
     firstName: (value: string) => (value ? '' : 'First Name is required'),
     email: (value: string) =>
       value
@@ -129,7 +120,7 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCan
         : 'Email is required',
     addressLine1: (value: string) => (value ? '' : 'Address Line 1 is required'),
     city: (value: string) => (value ? '' : 'City is required'),
-    area: (value: string) => (value ? '' : 'Area is required'),
+    areaName: (value: string) => (value ? '' : 'Area is required'),
     country: (value: string) => (value ? '' : 'Country is required'),
     state: (value: string) => (value ? '' : 'State is required'),
     pin: (value: string) =>
@@ -138,28 +129,29 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCan
           ? ''
           : 'PIN must be 6 digits'
         : 'PIN is required',
-    cellNo: (value: string) =>
+    cellNumber: (value: string) =>
       value
         ? value.length === 10 && /^\d+$/.test(value)
           ? ''
           : 'Cell No. must be 10 digits'
         : 'Cell No. is required',
-    image: (file: File | null, preview: string | null) => (file || preview ? '' : 'Image is required'),
+    userName: (value: string) => (value ? '' : 'Username is required'),
+    image: (file: File | null, preview: string | any) => (file || preview ? '' : 'Image is required'),
   };
 
-  // const validateForm = () => {
-  //   const newErrors = Object.keys(validationRules).reduce((acc, key) => {
-  //     if (key === 'image') {
-  //       acc[key] = validationRules[key](image, imagePreview);
-  //     } else {
-  //       acc[key] = validationRules[key](formValues[key as keyof typeof formValues]);
-  //     }
-  //     return acc;
-  //   }, {} as typeof errors);
+  const validateForm = () => {
+    const newErrors = Object.keys(validationRules).reduce((acc, key) => {
+      if (key === 'image') {
+        acc[key] = validationRules[key]!(image, imagePreview);
+      } else {
+        (acc as any)[key] = (validationRules as any)[key]!(formValues[key as keyof typeof formValues]);
+      }
+      return acc;
+    }, {} as typeof errors);
 
-  //   setErrors(newErrors);
-  //   return !Object.values(newErrors).some((error) => error !== '');
-  // };
+    setErrors(newErrors);
+    return !Object.values(newErrors).some((error) => error !== '');
+  };
 
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -203,36 +195,30 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCan
   ) => {
     const { name, value } = e.target;
     setFormValues((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: validationRules[name as keyof typeof validationRules]?.(value) || '' }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validateForm()) {
+      onSubmit({ ...formValues, image });
+    }
   };
 
   return (
-    <Box
-      sx={{
-        p: { xs: 2, sm: 4 },
-        maxWidth: 900,
-        mx: 'auto',
-        bgcolor: 'linear-gradient(135deg, #e0f7fa 0%, #ffffff 100%)',
-        borderRadius: 3,
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-        border: '1px solid rgba(255, 255, 255, 0.3)',
-        mt: 2,
-        mb: 4,
-      }}
-    >
-      <form>
+
+      <form onSubmit={handleSubmit}>
         <Grid container spacing={3}>
           {/* Role dropdown */}
           <Grid item xs={12}>
-            <FormControl fullWidth required error={!!errors.role}>
+            <FormControl fullWidth required error={!!errors.roleName}>
               <InputLabel sx={{ color: '#0288d1' }}>Choose Role</InputLabel>
               <Select
-                name="role"
-                value={formValues.role}
+                name="roleName"
+                value={formValues.roleName}
                 onChange={handleChange}
                 displayEmpty
-                renderValue={(selected) => {
-                  return selected;
-                }}
+                renderValue={(selected) => selected}
                 sx={{
                   bgcolor: 'white',
                   borderRadius: 2,
@@ -244,26 +230,26 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCan
                   },
                 }}
               >
-                {roleNamesOptions.map((role) => (
-                  <MenuItem key={role} value={role}>
-                    {role}
+                {roleGroupList.map((role) => (
+                  <MenuItem key={role.roleGroupId} value={role.roleGroupName}>
+                    {role.roleGroupName}
                   </MenuItem>
                 ))}
               </Select>
-              {errors.role && (
+              {errors.roleName && (
                 <Typography variant="caption" color="error">
-                  {errors.role}
+                  {errors.roleName}
                 </Typography>
               )}
             </FormControl>
           </Grid>
           {/* Title, First Name, Last Name in a row */}
           <Grid item xs={12} sm={4} md={2}>
-            <FormControl fullWidth required error={!!errors.title}>
+            <FormControl fullWidth required error={!!errors.userTitle}>
               <InputLabel sx={{ color: '#0288d1' }}>Title</InputLabel>
               <Select
-                name="title"
-                value={formValues.title}
+                name="userTitle"
+                value={formValues.userTitle}
                 onChange={handleChange}
                 label="Title"
                 sx={{
@@ -281,9 +267,9 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCan
                 <MenuItem value="Ms.">Ms.</MenuItem>
                 <MenuItem value="Mrs.">Mrs.</MenuItem>
               </Select>
-              {errors.title && (
+              {errors.userTitle && (
                 <Typography variant="caption" color="error">
-                  {errors.title}
+                  {errors.userTitle}
                 </Typography>
               )}
             </FormControl>
@@ -311,9 +297,12 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCan
           <Grid item xs={12} sm={6}>
             <StyledTextField
               label="Username"
-              name="username"
-              value={formValues.username}
+              name="userName"
+              value={formValues.userName}
               onChange={handleChange}
+              required
+              error={!!errors.userName}
+              helperText={errors.userName}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -370,12 +359,12 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCan
           <Grid item xs={12} sm={6}>
             <StyledTextField
               label="Area"
-              name="area"
-              value={formValues.area}
+              name="areaName"
+              value={formValues.areaName}
               onChange={handleChange}
               required
-              error={!!errors.area}
-              helperText={errors.area}
+              error={!!errors.areaName}
+              helperText={errors.areaName}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -423,13 +412,13 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCan
           <Grid item xs={12} sm={6}>
             <StyledTextField
               label="Cell No."
-              name="cellNo"
-              value={formValues.cellNo}
+              name="cellNumber"
+              value={formValues.cellNumber}
               onChange={handleChange}
               type="tel"
               required
-              error={!!errors.cellNo}
-              helperText={errors.cellNo}
+              error={!!errors.cellNumber}
+              helperText={errors.cellNumber}
             />
           </Grid>
           {/* Image Upload Section */}
@@ -510,9 +499,39 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({ user, onSubmit, onCan
               )}
             </Box>
           </Grid>
+          {/* Submit and Cancel Buttons */}
+          
         </Grid>
+        <Grid item xs={12}>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+              <StyledButton
+                variant="outlined"
+                onClick={onCancel}
+                sx={{
+                  borderColor: '#d32f2f',
+                  color: '#d32f2f',
+                  '&:hover': {
+                    borderColor: '#b71c1c',
+                    color: '#b71c1c',
+                  },
+                }}
+              >
+                Cancel
+              </StyledButton>
+              <StyledButton
+                variant="contained"
+                type="submit"
+                sx={{
+                  bgcolor: '#0288d1',
+                  '&:hover': { bgcolor: '#01579b' },
+                }}
+              >
+                Save
+              </StyledButton>
+            </Box>
+          </Grid>
       </form>
-    </Box>
+   
   );
 };
 
