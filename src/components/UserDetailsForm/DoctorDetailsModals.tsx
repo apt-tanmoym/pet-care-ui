@@ -19,10 +19,41 @@ import Tooltip from '@mui/material/Tooltip';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import CloseIcon from '@mui/icons-material/Close';
 import styles from './styles.module.scss';
+import Autocomplete from '@mui/material/Autocomplete';
+import debounce from 'lodash.debounce';
+import { getCityList, getAreaListSearchText } from '@/services/faclilityService';
+import { addUser, editUser, getSpecalityList } from '@/services/userService';
+import { InputAdornment } from '@mui/material';
 
 const specialties = ['Select', 'General Medicine', 'Pediatrics', 'Surgery', 'Clinical Pathology'];
 
 type Mode = 'short' | 'full';
+
+const StyledTextField = ({ sx, ...props }: any) => (
+  <TextField
+    {...props}
+    variant="outlined"
+    fullWidth
+    sx={{
+      width: '254px',
+      bgcolor: 'white',
+      borderRadius: 2,
+      '& .MuiOutlinedInput-root': {
+        '& fieldset': {
+          borderColor: '#0288d1',
+        },
+        '&:hover fieldset': {
+          borderColor: '#01579b',
+        },
+        '&.Mui-focused fieldset': {
+          borderColor: '#01579b',
+          boxShadow: '0 0 8px rgba(2, 136, 209, 0.3)',
+        },
+      },
+      ...sx,
+    }}
+  />
+);
 
 interface Council {
   councilId: string;
@@ -34,13 +65,15 @@ interface Props {
   onClose: () => void;
   mode?: Mode;
   initialData?: any;
+  type?: string;
   councilList: Council[];
   onProceed?: (data: { councilId: string; yearOfReg: string; regNo: string }) => void;
-  onSubmit?: (data: any) => void;
+  onSubmit: (data: any & { image?: File | null } | null | string) => void;
 }
 
-const DoctorDetailsModal: React.FC<Props> = ({ open, onClose, mode = 'short', initialData, councilList, onProceed, onSubmit }) => {
+const DoctorDetailsModal: React.FC<Props> = ({ open, onClose, mode = 'short', initialData, councilList, onProceed, onSubmit, type="add" }) => {
   // Shared fields
+  
   const [councilId, setCouncilId] = useState('');
   const [yearOfReg, setYearOfReg] = useState('');
   const [regNo, setRegNo] = useState('');
@@ -49,12 +82,12 @@ const DoctorDetailsModal: React.FC<Props> = ({ open, onClose, mode = 'short', in
   const [yearError, setYearError] = useState('');
   const [regNoError, setRegNoError] = useState('');
 
-  // Full form fields
+  // Full mode fields
   const [userTitle, setUserTitle] = useState('Dr.');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [specialty, setSpecialty] = useState('Select');
+  const [specialty, setSpecialty] = useState<any>('');
   const [orgUserQlfn, setOrgUserQlfn] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
@@ -66,28 +99,77 @@ const DoctorDetailsModal: React.FC<Props> = ({ open, onClose, mode = 'short', in
   const [cellNumber, setCellNumber] = useState('');
   const [userName, setUserName] = useState('');
   const [profileDetails, setProfileDetails] = useState('');
-  const [imageFilePath, setImageFilePath] = useState<string | undefined>(undefined);
+  const [areaMappingId, setAreaMappingId] = useState('');
+  const [imageFilePath, setImageFilePath] = useState<any>(undefined);
   const [activeInd, setActiveInd] = useState('Active');
 
+  // Autocomplete states
+  const [specalityList, setSpecalityList] = useState<any[]>([]);
+  const [cityOptions, setCityOptions] = useState<any[]>([]);
+  const [areaOptions, setAreaOptions] = useState<any[]>([]);
+  const [cityLoading, setCityLoading] = useState(false);
+  const [areaLoading, setAreaLoading] = useState(false);
+  const [selectedCity, setSelectedCity] = useState<any>(null);
+  const [apiError, setApiError] = useState<string>('');
+
+  // Debounced city search
+  const fetchCities = debounce(async (searchText: string) => {
+    setCityLoading(true);
+    try {
+      const data = await getCityList(searchText);
+      setCityOptions(data || []);
+      setApiError('');
+    } catch (error) {
+      setApiError('Failed to load city suggestions');
+      setCityOptions([]);
+    } finally {
+      setCityLoading(false);
+    }
+  }, 400);
+
+  // Debounced area search
+  const fetchAreas = debounce(async (cityId: string, searchText: string) => {
+    setAreaLoading(true);
+    try {
+      const data = await getAreaListSearchText(cityId, searchText);
+      setAreaOptions(data || []);
+      setApiError('');
+    } catch (error) {
+      setApiError('Failed to load area suggestions');
+      setAreaOptions([]);
+    } finally {
+      setAreaLoading(false);
+    }
+  }, 400);
+
+  
+  const fetchSpecalityList = async()=>{
+    const specalityList:any = await getSpecalityList();
+    setSpecalityList(specalityList)
+  }
   useEffect(() => {
+    fetchSpecalityList()
     if (initialData) {
       // Shared fields for both modes
       setCouncilId(initialData.councilId || '');
       setYearOfReg(initialData.yearOfReg?.toString() || ''); // Convert number to string
-      setRegNo(initialData.orgUserQlfn || '');
+      setRegNo(initialData.regNo || '');
 
       // Full mode fields
       if (mode === 'full') {
+       
         setUserTitle(initialData.userTitle || 'Dr.');
         setFirstName(initialData.firstName || '');
         setLastName(initialData.lastName || '');
         setEmail(initialData.email || '');
-        setSpecialty(initialData.specialty || 'Select'); // Ensure specialty is set
+        setRegNo(initialData.registrationNumber || '');
+        setSpecialty(initialData.glbSpltyId || ''); // Ensure specialty is set
         setOrgUserQlfn(initialData.orgUserQlfn || '');
         setAddressLine1(initialData.addressLine1 || '');
         setAddressLine2(initialData.addressLine2 || '');
         setCity(initialData.city || '');
-        setAreaName(initialData.areaName || ''); // Ensure areaName is set
+        setAreaName(initialData.areaName || ''); 
+        
         setCountry(initialData.country || '');
         setState(initialData.state || '');
         setPin(initialData.pin || '');
@@ -96,30 +178,51 @@ const DoctorDetailsModal: React.FC<Props> = ({ open, onClose, mode = 'short', in
         setProfileDetails(initialData.profileDetails || '');
         setImageFilePath(initialData.imageFilePath || undefined);
         setActiveInd(initialData.activeInd === 1 ? 'Active' : 'Inactive');
+        setAreaMappingId(initialData.cityMappingId || '')
+        // Initialize selectedCity
+        if (initialData.city) {
+          setSelectedCity({
+            cityName: initialData.city,
+            stateName: initialData.state || '',
+            country: initialData.country || '',
+            cityId: initialData.cityId || 0,
+          });
+          fetchCities(initialData.city);
+          const areas: any =  fetchAreas(String(initialData.cityId),'');
+          setAreaOptions(areas);
+        }
       }
     }
   }, [initialData, mode]);
 
-  const handleProceed = () => {
+  // Update state and country when selectedCity changes
+  useEffect(() => {
+    if (selectedCity) {
+      setCity(selectedCity.cityName);
+      setState(selectedCity.stateName || '');
+      setCountry(selectedCity.country || '');
+     // setAreaName('');
+     // setAreaOptions([]);
+    }
+  }, [selectedCity]);
+
+  const handleProceed = async () => {
     let valid = true;
     if (!councilId) {
-      setCouncilError('Medical Council is required');
+      setCouncilError("Medical Council is required");
       valid = false;
-    } else {
-      setCouncilError('');
-    }
+    } else setCouncilError("");
+  
     if (!yearOfReg) {
-      setYearError('Year of Registration is required');
+      setYearError("Year of Registration is required");
       valid = false;
-    } else {
-      setYearError('');
-    }
+    } else setYearError("");
+  
     if (!regNo) {
-      setRegNoError('Reg. No. is required');
+      setRegNoError("Reg. No. is required");
       valid = false;
-    } else {
-      setRegNoError('');
-    }
+    } else setRegNoError("");
+  
     if (!valid) {
       setError(true);
       return;
@@ -127,33 +230,90 @@ const DoctorDetailsModal: React.FC<Props> = ({ open, onClose, mode = 'short', in
     setError(false);
     if (mode === 'short' && onProceed) {
       onProceed({ councilId, yearOfReg, regNo });
-    } else if (mode === 'full' && onSubmit) {
-      onSubmit({
-        councilId,
-        yearOfReg,
-        regNo,
-        userTitle,
-        firstName,
-        lastName,
-        email,
-        specialty,
-        orgUserQlfn,
-        addressLine1,
-        addressLine2,
-        city,
-        areaName,
-        country,
-        state,
-        pin,
-        cellNumber,
-        userName,
-        profileDetails,
-        imageFilePath,
-        activeInd: activeInd === 'Active' ? 1 : 0,
-      });
     }
-    onClose();
+  if(mode === 'full'){
+    try {
+      const formData = new FormData();
+     
+      // Common fields
+      if(councilId){
+        formData.append("councilId", councilId);
+      }
+      if(yearOfReg){
+        formData.append("yearReg", yearOfReg);
+      }
+      if(regNo){
+        formData.append("registrationNumber", regNo);
+      }
+      formData.append("userName", "devthomas");
+      formData.append("userPwd", "P@ssw0rd"); // 🔹 you can replace with actual login pwd
+      formData.append("orgId", "45");
+      formData.append("loggedinFacilityId", "1");
+      if(type == 'add'){
+        formData.append("userLogin", userName || "");
+      }else{
+        formData.append("orgUserId", initialData?.orgUserId || "0");
+      }
+      formData.append("userTitle", userTitle);
+      formData.append("firstName", firstName);
+      formData.append("lastName", lastName);
+      formData.append("addressFirst", addressLine1);
+      formData.append("addressSecond", addressLine2 || "");
+      formData.append("city", city);
+      formData.append("areaName", areaName);
+      formData.append("pin", pin);
+      formData.append("state", state);
+      formData.append("country", country);
+      if(type != 'add') {
+      formData.append("activeInd", activeInd === "Active" ? "1" : "0");
+      }
+      formData.append("email", email);
+      formData.append("cellNumber", cellNumber);
+  
+      // Doctor-specific
+      formData.append("isdoctor", "1");
+      if(type == 'add'){
+        formData.append("specialtyId", specialty || ""); 
+      }else{
+      formData.append("specialtyId", specialty || ""); 
+      }
+      formData.append("qualification", orgUserQlfn || "");
+  
+      // City mapping
+      if(type == 'add'){
+      formData.append("cityMasterId", selectedCity?.cityId?.toString() || "");
+      }else{
+        formData.append("cityId", selectedCity?.cityId?.toString() || "");
+      }
+      formData.append("cityPincodeMappingId", areaMappingId?.toString() || "");
+  
+      // File upload
+      if (imageFilePath && imageFilePath instanceof File) {
+        formData.append("userImage", imageFilePath);
+      }
+      let action = ''
+      if(type == 'add'){
+        action = 'add'
+        const result = await addUser(formData);
+        console.log("✅ Doctor added:", result);
+      }else{
+      const result = await editUser(formData);
+      console.log("✅ Doctor updated:", result);
+      }
+      //console.log("✅ Doctor updated:", result);
+      if (onSubmit) {
+        onSubmit(action+'success');
+      }
+      onClose();
+    } catch (err:any) {
+      console.error("❌ Error updating doctor:", err);
+      setApiError("Failed to update doctor details");
+      onSubmit(err.response.data.message); 
+    }
+  }
+ 
   };
+  
 
   const handleCancel = () => {
     setError(false);
@@ -212,24 +372,24 @@ const DoctorDetailsModal: React.FC<Props> = ({ open, onClose, mode = 'short', in
             <Box sx={{ flex: 2 }}>
               <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
                 <TextField
-                  label="Name"
+                  label="Title"
                   value={userTitle}
                   onChange={(e) => setUserTitle(e.target.value)}
                   sx={{ width: 80 }}
                   required
                 />
                 <TextField
-                  label="First"
+                  label="First Name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   required
-                  sx={{ flex: 1 }}
+                  sx={{ flex: 2 }}
                 />
                 <TextField
-                  label="Last"
+                   label="Last Name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  sx={{ flex: 1 }}
+                  sx={{ flex: 2 }}
                 />
                 <TextField
                   label="Email"
@@ -247,8 +407,8 @@ const DoctorDetailsModal: React.FC<Props> = ({ open, onClose, mode = 'short', in
                     label="Speciality"
                     onChange={(e) => setSpecialty(e.target.value)}
                   >
-                    {specialties.map((s) => (
-                      <MenuItem key={s} value={s}>{s}</MenuItem>
+                    {specalityList.map((s) => (
+                      <MenuItem key={s.specialtyId} value={s.specialtyId}>{s.specialtyName}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
@@ -276,34 +436,111 @@ const DoctorDetailsModal: React.FC<Props> = ({ open, onClose, mode = 'short', in
                 sx={{ mb: 2 }}
               />
               <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                <TextField
-                  label="City"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  required
-                  sx={{ flex: 1 }}
-                  InputProps={{
-                    endAdornment: (
-                      <IconButton size="small">
-                        <SearchIcon />
-                      </IconButton>
-                    ),
+                <Autocomplete
+                  freeSolo
+                  loading={cityLoading}
+                  options={cityOptions}
+                  getOptionLabel={(option) =>
+                    typeof option === 'string'
+                      ? option
+                      : `${option.cityName}${option.stateName ? ', ' + option.stateName : ''}`
+                  }
+                  value={city || ''}
+                  onInputChange={(_, value) => {
+                    fetchCities(value);
                   }}
-                />
-                <TextField
-                  label="Area"
-                  value={areaName}
-                  onChange={(e) => setAreaName(e.target.value)}
-                  required
-                  sx={{ flex: 1 }}
-                  InputProps={{
-                    endAdornment: (
-                      <IconButton size="small">
-                        <SearchIcon />
-                      </IconButton>
-                    ),
+                  onChange={(_, value) => {
+                    if (value && typeof value !== 'string') {
+                      setSelectedCity({ ...value, cityId: value.cityId });
+                      setCity(value.cityName);
+                      setState(value.stateName || '');
+                      setCountry(value.country || '');
+                      setAreaName('');
+                      setAreaOptions([]);
+                    } else {
+                      setSelectedCity(null);
+                      setCity(value || '');
+                      setState('');
+                      setCountry('');
+                      setAreaName('');
+                      setAreaOptions([]);
+                    }
+                    setApiError('');
                   }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="City"
+                      required
+                      error={!!apiError}
+                      helperText={apiError}
+                      InputProps={{
+                        ...params.InputProps,
+                        endAdornment: (
+                          <>
+                            {params.InputProps.endAdornment}
+                            <IconButton size="small">
+                              <SearchIcon />
+                            </IconButton>
+                          </>
+                        ),
+                      }}
+                    />
+                  )}
+                  sx={{ flex: 1 }}
                 />
+                <Autocomplete
+                  freeSolo
+                  loading={areaLoading}
+                  options={areaOptions || []}
+                  getOptionLabel={(option) =>
+                  typeof option === 'string'
+                    ? option
+                  : `${option.areaName}`
+                }
+              value={areaName || ''}
+              onInputChange={(_, value) => {
+                if (selectedCity && selectedCity.cityId) {
+                  fetchAreas(String(selectedCity.cityId), value || '');
+                }
+              }}
+              onFocus={() => {
+                if (selectedCity && selectedCity.cityId && !areaOptions.length) {
+                  fetchAreas(String(selectedCity.cityId), '');
+                }
+              }}
+            onChange={(_, value) => {
+              if (typeof value === 'string') {
+                setAreaName(value);
+              } else if (value && value.areaName) {
+                setAreaName(value.areaName);
+                setAreaMappingId(value.cityPincodeMappingId)
+                setPin(value?.pincode || '');
+              }
+              setApiError('');
+            }}
+            renderInput={(params) => (
+              <StyledTextField
+                {...params}
+                label="Area"
+                required
+                //helperText={!selectedCity ? 'Select a city first' : errors.areaName || apiError}
+                //error={!!errors.areaName || !!apiError}
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {params.InputProps.endAdornment}
+                      <InputAdornment position="end">
+                        <SearchIcon sx={{ color: '#0288d1' }} />
+                      </InputAdornment>
+                    </>
+                  ),
+                }}
+              />
+            )}
+            disabled={!selectedCity}
+          />
               </Box>
               <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
                 <TextField
@@ -341,6 +578,7 @@ const DoctorDetailsModal: React.FC<Props> = ({ open, onClose, mode = 'short', in
                 <TextField
                   label="User Name"
                   value={userName}
+                  disabled={type === 'edit' ? true : false}
                   onChange={(e) => setUserName(e.target.value)}
                   required
                   sx={{ flex: 1 }}
@@ -366,7 +604,7 @@ const DoctorDetailsModal: React.FC<Props> = ({ open, onClose, mode = 'short', in
                 }}
               >
                 <Avatar
-                  src={imageFilePath}
+                  src={imageFilePath instanceof File ? URL.createObjectURL(imageFilePath) : imageFilePath}
                   alt="Doctor"
                   sx={{ width: 134, height: 134, bgcolor: '#e0e0e0', fontSize: 40, borderRadius: 2 }}
                 >
@@ -399,12 +637,12 @@ const DoctorDetailsModal: React.FC<Props> = ({ open, onClose, mode = 'short', in
                       type="file"
                       accept="image/*"
                       hidden
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setImageFilePath(URL.createObjectURL(e.target.files[0]));
-                        }
-                      }}
-                    />
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setImageFilePath(e.target.files[0]); // store File
+                      }
+                    }}
+                  />
                   </IconButton>
                 </Tooltip>
               </Box>
@@ -413,6 +651,7 @@ const DoctorDetailsModal: React.FC<Props> = ({ open, onClose, mode = 'short', in
                 <Select
                   value={activeInd}
                   label="Status"
+                  disabled={type === 'edit' ? false : true}
                   onChange={(e) => setActiveInd(e.target.value)}
                 >
                   <MenuItem value="Active">Active</MenuItem>

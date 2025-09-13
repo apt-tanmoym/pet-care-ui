@@ -41,3 +41,26 @@ export const checkDuplicateOrg = async (payload: CheckDuplicateOrgPayload): Prom
   const response = await http.post('/checkduplicateorg', payload);
   return response.data;
 };
+
+export const getPricingDetails = async (): Promise<any> => {
+  const response = await http.post('/clinicsubscriptionpricingdetails', {
+    "facilityTypeId": "1"
+});
+  return response.data;
+};
+
+export const getNoOfDoctors = async (): Promise<any> => {
+  const response = await http.post('/getFacilityTypes', {});
+  return response.data;
+};
+
+export const savePlans = async (payload:any): Promise<any> => {
+  const response = await http.post('/saveclinicprobsubscriptiondata', payload);
+  return response.data;
+};
+
+export const postProvisionalSubscription =  async (payload:any): Promise<any> => {
+  const response = await http.post('/postProvisionalSubscription', payload);
+  return response.data;
+};
+

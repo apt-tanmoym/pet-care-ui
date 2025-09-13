@@ -16,6 +16,9 @@ import {
   IconButton,
   Divider,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
 } from "@mui/material";
 import { Search, Clear } from "@mui/icons-material";
 import { useForm, Controller, SubmitHandler } from "react-hook-form";
@@ -24,10 +27,8 @@ import * as yup from "yup";
 import { useRouter } from "next/navigation";
 import Message from "@/components/common/Message";
 import {
-  CheckOrgCinLlpinPayload,
   GetCityListResponse,
   GetAreaListSearchTextResponse,
-  CheckDuplicateOrgUsernamePayload,
   AddNewOrganizationPayload,
   CheckDuplicateOrgPayload,
 } from "@/interfaces/registrationInterface";
@@ -38,7 +39,9 @@ import {
   checkDuplicateOrgUsername,
   addNewOrganization,
   checkDuplicateOrg,
+  getNoOfDoctors,
 } from "@/services/registrationService";
+import SubscriptionTable from "./SubscriptionTable";
 
 export interface RegistrationFormData {
   organizationName: string;
@@ -87,13 +90,13 @@ const validationSchema: yup.ObjectSchema<RegistrationFormData> = yup.object().sh
   preferredUsername: yup.string().required("Preferred username is required"),
 });
 
-const doctorOptions = [
+/* const doctorOptions = [
   { label: "1-5 Doctors", value: "1" },
   { label: "6-10 Doctors", value: "2" },
   { label: "11-20 Doctors", value: "3" },
   { label: "21-50 Doctors", value: "4" },
   { label: "50+ Doctors", value: "5" },
-];
+]; */
 
 interface SearchFieldProps {
   field: any;
@@ -138,6 +141,7 @@ const RegistrationForm: React.FC = () => {
   });
 
   const [cities, setCities] = useState<GetCityListResponse[]>([]);
+  const [doctorOptions, setDoctors] = useState<any[]>([]);
   const [areas, setAreas] = useState<GetAreaListSearchTextResponse[]>([]);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -146,19 +150,41 @@ const RegistrationForm: React.FC = () => {
   );
   const [isLoadingCities, setIsLoadingCities] = useState(false);
   const [isLoadingAreas, setIsLoadingAreas] = useState(false);
-
+  const [duration, setDuration] = useState()
+  const [openDialog, setIsOpenDialog] = useState(false);
+  let noOfDaysExtended 
+  let provRegOrgId
   const selectedCity = watch("city");
   const selectedArea = watch("area");
   const cinNumber = watch("cinNumber");
   const llpinNumber = watch("llpinNumber");
   const preferredUsername = watch("preferredUsername");
+  
+   const fetchDoctors = async () => {
+      try {
+        const response = await getNoOfDoctors();
+        if (Array.isArray(response)) {
+          setDoctors(response);
+        } else {
+          setDoctors([]);
+        }
+      } catch (error: any) {
+        setDoctors([]);
+        setSnackbarMessage(
+          error?.response?.data?.message || "Failed to fetch doctors"
+        );
+        setSnackbarSeverity("error");
+        setOpenSnackbar(true);
+      } finally {
+        setIsLoadingCities(false);
+      }
+    };
 
   useEffect(() => {
     const fetchCities = async () => {
       setIsLoadingCities(true);
       try {
         const response = await getCityList({ searchText: "" });
-        console.log("getCityList response:", response);
         if (Array.isArray(response)) {
           setCities(response);
         } else {
@@ -180,6 +206,7 @@ const RegistrationForm: React.FC = () => {
       }
     };
     fetchCities();
+    fetchDoctors();
   }, []);
 
   useEffect(() => {
@@ -196,16 +223,13 @@ const RegistrationForm: React.FC = () => {
               searchWith: "area",
               searchText: "",
             });
-            console.log("getAreaListSearchText response:", response);
+            
             if (Array.isArray(response)) {
               setAreas(response);
               setValue("area", "");
               setValue("pincode", "");
               setValue("state", selectedCityObj.stateName);
-              console.log(
-                "Areas fetched, area and pincode reset, state set to:",
-                selectedCityObj.stateName
-              );
+              
             } else {
               setAreas([]);
               setSnackbarMessage("Invalid area data received");
@@ -229,7 +253,6 @@ const RegistrationForm: React.FC = () => {
         setValue("area", "");
         setValue("pincode", "");
         setValue("state", "");
-        console.log("No city selected, resetting area, pincode, and state");
       }
     };
     fetchAreas();
@@ -242,36 +265,43 @@ const RegistrationForm: React.FC = () => {
       );
       if (selectedAreaObj && selectedAreaObj.pincode) {
         setValue("pincode", selectedAreaObj.pincode);
-        console.log("Pincode auto-filled:", selectedAreaObj.pincode);
       } else {
         setValue("pincode", "");
-        console.log("No valid pincode found for area:", selectedArea);
       }
     } else {
       setValue("pincode", "");
-      console.log("Area not selected, pincode reset");
     }
   }, [selectedArea, areas, setValue]);
 
+  const changeDoctor = (value:any) =>{
+    
+     const obj:any = doctorOptions.filter((x=>x.facilityTypeId == value))
+    setDuration(obj)
+   
+    noOfDaysExtended = obj
+   
+   
+    
+  }
+
   const handleCinLlpinBlur = async () => {
-    console.log("handleCinLlpinBlur triggered", { cinNumber, llpinNumber });
     if (cinNumber && llpinNumber) {
       try {
         const response = await checkOrgCinLlpin({
           cinNo: cinNumber,
           llpinNo: llpinNumber,
         });
-        console.log("checkOrgCinLlpin response:", response);
+        
         if (response.datafound !== "true") {
           setSnackbarMessage("Invalid CIN or LLPIN number");
           setSnackbarSeverity("error");
           setOpenSnackbar(true);
-          console.log("Invalid CIN/LLPIN detected");
+          
         } else if (response.is_expire === "1") {
           setSnackbarMessage(`Subscription expired on ${response.expire_date}`);
           setSnackbarSeverity("error");
           setOpenSnackbar(true);
-          console.log("Subscription expired, button remains enabled");
+          
         }
       } catch (error: any) {
         console.error("checkOrgCinLlpin error:", error);
@@ -280,24 +310,24 @@ const RegistrationForm: React.FC = () => {
         );
         setSnackbarSeverity("error");
         setOpenSnackbar(true);
-        console.log("CIN/LLPIN validation failed due to API error");
+        
       }
     }
   };
 
   const handleUsernameBlur = async () => {
-    console.log("handleUsernameBlur triggered", { preferredUsername });
+
     if (preferredUsername) {
       try {
         const response = await checkDuplicateOrgUsername({
           userName: preferredUsername,
         });
-        console.log("checkDuplicateOrgUsername response:", response);
+        
         if (response.status === "found") {
           setSnackbarMessage(response.message || "Username already taken");
           setSnackbarSeverity("error");
           setOpenSnackbar(true);
-          console.log("Duplicate username detected");
+          
         }
       } catch (error: any) {
         console.error("checkDuplicateOrgUsername error:", error);
@@ -306,13 +336,13 @@ const RegistrationForm: React.FC = () => {
         );
         setSnackbarSeverity("error");
         setOpenSnackbar(true);
-        console.log("Username validation failed due to API error");
       }
     }
   };
 
-  const onSubmit: SubmitHandler<RegistrationFormData> = async (data) => {
-    console.log("onSubmit triggered", { isSubmitting });
+  const onSubmit: SubmitHandler<any> = async (data:any) => {
+   
+    //noOfDaysExtended = data.numberOfDoctors.trialPeriod
     try {
       const duplicatePayload: CheckDuplicateOrgPayload = {
         orgName: data.organizationName,
@@ -322,14 +352,15 @@ const RegistrationForm: React.FC = () => {
         city: data.city,
       };
       const duplicateResponse = await checkDuplicateOrg(duplicatePayload);
-      console.log("checkDuplicateOrg response:", duplicateResponse);
+      setIsOpenDialog(true)
+      
       if (duplicateResponse.datafound === "true") {
         setSnackbarMessage(
           `Clinic already registered with contact: ${duplicateResponse.contactname_found}. Contact support at ${duplicateResponse.contactus_email}.`
         );
         setSnackbarSeverity("error");
         setOpenSnackbar(true);
-        console.log("Duplicate organization detected, showing message");
+       
         return;
       } else if (duplicateResponse.is_expire === 1) {
         setSnackbarMessage(
@@ -337,9 +368,7 @@ const RegistrationForm: React.FC = () => {
         );
         setSnackbarSeverity("error");
         setOpenSnackbar(true);
-        console.log(
-          "Expired subscription detected in checkDuplicateOrg, showing message"
-        );
+        
         return;
       }
 
@@ -351,7 +380,7 @@ const RegistrationForm: React.FC = () => {
         setSnackbarMessage("Please select a valid city and area");
         setSnackbarSeverity("error");
         setOpenSnackbar(true);
-        console.log("Submission blocked due to invalid city or area");
+       
         return;
       }
 
@@ -369,9 +398,9 @@ const RegistrationForm: React.FC = () => {
         state: data.state,
         country: selectedCityObj.country,
         areaValueId: selectedAreaObj.cityPincodeMappingId.toString(),
-        primaryFacilityTypeId:
-          doctorOptions.find((opt) => opt.label === data.numberOfDoctors)
-            ?.value || "1",
+        primaryFacilityTypeId: data.numberOfDoctors,
+         /*  doctorOptions.find((opt) => opt.label === data.numberOfDoctors)
+            ?.value || "1", */
         firstName: data.firstName,
         lastName: data.lastName,
         mobile: data.mobileNumber,
@@ -381,7 +410,8 @@ const RegistrationForm: React.FC = () => {
       };
 
       const response = await addNewOrganization(payload);
-      console.log("addNewOrganization response:", response);
+      
+      provRegOrgId = response.provOrgId;
       if (response.datasaved === "true") {
         setSnackbarMessage(
           `Organization registered successfully! Provisional Org ID: ${response.provOrgId}`
@@ -390,34 +420,39 @@ const RegistrationForm: React.FC = () => {
         setOpenSnackbar(true);
         localStorage.setItem("provOrgId", response.provOrgId.toString());
         reset();
-        router.push(`/roles?orgId=${response.provOrgId}`);
+        //router.push(`/roles?orgId=${response.provOrgId}`);
       } else {
         setSnackbarMessage("Failed to register organization");
         setSnackbarSeverity("error");
         setOpenSnackbar(true);
-        console.log('Registration failed: datasaved !== "true"');
+        
       }
     } catch (error: any) {
-      console.error("addNewOrganization error:", error);
+     
       setSnackbarMessage(
         error?.response?.data?.message || "Failed to register organization"
       );
       setSnackbarSeverity("error");
       setOpenSnackbar(true);
-      console.log("Registration failed due to API error");
+
     }
   };
 
   const handleReset = () => {
     reset();
-    console.log("Form reset");
+
   };
 
   const handleCancel = () => {
     reset();
-    console.log("Form cancelled");
+    
   };
 
+  const handleCloseDialog = () => {
+    setIsOpenDialog(false)
+  }
+
+ 
   const handleCloseSnackbar = () => setOpenSnackbar(false);
 
   const RequiredLabel = ({ children }: { children: React.ReactNode }) => (
@@ -436,7 +471,7 @@ const RegistrationForm: React.FC = () => {
     disabled,
     onChange,
   }) => {
-    console.log(`${label} options:`, options);
+   
     return (
       <FormControl
         fullWidth
@@ -831,13 +866,10 @@ const RegistrationForm: React.FC = () => {
                         );
                         if (selectedAreaObj && selectedAreaObj.pincode) {
                           setValue("pincode", selectedAreaObj.pincode);
-                          console.log(
-                            "Area selected, pincode set to:",
-                            selectedAreaObj.pincode
-                          );
+
                         } else {
                           setValue("pincode", "");
-                          console.log("Area selected, no valid pincode found");
+                
                         }
                       }}
                     />
@@ -950,13 +982,17 @@ const RegistrationForm: React.FC = () => {
                       <InputLabel>
                         <RequiredLabel>No. of Doctors</RequiredLabel>
                       </InputLabel>
-                      <Select {...field} label="No. of Doctors">
+                      <Select {...field} onChange={(event) => {
+        field.onChange(event); // ✅ This updates the form value
+        changeDoctor(event.target.value); // ✅ This calls your custom handler
+      }} label="No. of Doctors">
                         <MenuItem value="">
                           <em>Select facility size</em>
                         </MenuItem>
-                        {doctorOptions.map((option) => (
-                          <MenuItem key={option.value} value={option.label}>
-                            {option.label}
+                        {doctorOptions.map((option:any) => (
+
+                          <MenuItem  key={option.facilityTypeId} value={option.facilityTypeId}>
+                            {option.facilityType}
                           </MenuItem>
                         ))}
                       </Select>
@@ -1257,6 +1293,22 @@ const RegistrationForm: React.FC = () => {
           snackbarSeverity={snackbarSeverity}
           snackbarMessage={snackbarMessage}
         />
+
+      <Dialog
+                open={openDialog}
+                onClose={handleCloseDialog}
+                maxWidth="md"
+                fullWidth
+              >
+                <DialogTitle>
+                  <Box bgcolor="#0a3c6b" color="white" p={1} textAlign="center">
+                    <Typography variant="h6">Subscribe and register</Typography>
+                  </Box>
+                </DialogTitle>
+                <DialogContent>
+                  <SubscriptionTable open={openDialog} noOfDaysExtended={duration} provRegOrgId={provRegOrgId}/>
+                </DialogContent>
+              </Dialog>
       </Paper>
     </Box>
   );

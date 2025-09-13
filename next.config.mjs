@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 const appEnv = process.env.APP_ENV || "DEV";
 dotenv.config({ path: `.env.${appEnv}` });
 const product = process.env.PRODUCT || "aptcarePetWeb ";
-const next_static_build = process.env.NEXT_STATIC_BUILD || false;
+const next_static_build = process.env.NEXT_STATIC_BUILD === "true";
 
 const config = {
   swcMinify: true,
@@ -39,8 +39,13 @@ const config = {
     loader: "default",
     domains: [],
   },
-  distDir: next_static_build ? "dist" : undefined,
-  output: next_static_build ? "export" : undefined,
+  // Only apply static export settings if explicitly enabled
+  ...(next_static_build && {
+    distDir: "dist",
+    output: "export",
+    trailingSlash: true,
+    skipTrailingSlashRedirect: true,
+  }),
   generateBuildId: async () => {
     return process.env.BUILD_ID || `${new Date().getTime()}`;
   },

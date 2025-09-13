@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -27,7 +27,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import dayjs, { Dayjs } from 'dayjs';
 import { FaclityServiceResponse } from '@/interfaces/facilityInterface';
-import { temporaryAdjustCalendar } from '@/services/manageCalendar';
+import { temporaryAdjustCalendar, getSlotDates } from '@/services/manageCalendar';
 
 interface TempAdjustmentProps {
   open: boolean;
@@ -58,8 +58,55 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
   const [slotDuration, setSlotDuration] = useState('10');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' | 'info' });
+  const [slotDates, setSlotDates] = useState<{ available: string[]; notavailable: string[]; fullavailable: string[] }>({
+    available: [],
+    notavailable: [],
+    fullavailable: []
+  });
+  const [isLoadingSlotDates, setIsLoadingSlotDates] = useState(false);
 
   const slotDurations = ['10', '15', '20', '30', '45', '60'];
+
+  useEffect(() => {
+    if (open && facility?.facilityId) {
+      fetchSlotDates();
+    }
+  }, [open, facility?.facilityId]);
+
+  const fetchSlotDates = async () => {
+    if (!facility?.facilityId) return;
+    
+    setIsLoadingSlotDates(true);
+    try {
+      const response = await getSlotDates({
+        userName: 'tonmoy',
+        userPass: '4vpzrnly',
+        deviceStat: 'M',
+        facilityId: facility.facilityId
+      });
+
+      if (response.status === 'ok') {
+        const available = response.available ? response.available.split(',').map(date => date.trim()) : [];
+        const notavailable = response.notavailable ? response.notavailable.split(',').map(date => date.trim()) : [];
+        const fullavailable = response.fullavailable ? response.fullavailable.split(',').map(date => date.trim()) : [];
+        
+        setSlotDates({
+          available,
+          notavailable,
+          fullavailable
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching slot dates:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to fetch available dates',
+        severity: 'error'
+      });
+    } finally {
+      setIsLoadingSlotDates(false);
+    }
+  };
 
   const handleAddSlot = () => {
     if (timeSlots.length < 2) {
@@ -114,6 +161,21 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
 
   const isSelected = (date: Dayjs) => {
     return selectedDate && date.isSame(selectedDate, 'day');
+  };
+
+  const isDateAvailable = (date: Dayjs) => {
+    const dateStr = date.format('DD/MM/YYYY');
+    return slotDates.available.includes(dateStr);
+  };
+
+  const isDateFullAvailable = (date: Dayjs) => {
+    const dateStr = date.format('DD/MM/YYYY');
+    return slotDates.fullavailable.includes(dateStr);
+  };
+
+  const isDateNotAvailable = (date: Dayjs) => {
+    const dateStr = date.format('DD/MM/YYYY');
+    return slotDates.notavailable.includes(dateStr);
   };
 
   const handleSubmit = async () => {
@@ -208,6 +270,7 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
     setSelectedDate(null);
     setTimeSlots([{ fromHour: '01', fromMin: '00', toHour: '05', toMin: '00', notAvailable: false }]);
     setSlotDuration('10');
+    setSlotDates({ available: [], notavailable: [], fullavailable: [] });
     onClose();
   };
 
@@ -289,6 +352,14 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
               Select Date
             </Typography>
             
+            {isLoadingSlotDates && (
+              <Box sx={{ mb: 2, p: 2, bgcolor: '#e3f2fd', borderRadius: '8px', border: '1px solid #2196f3' }}>
+                <Typography variant="body2" sx={{ color: '#1976d2', textAlign: 'center' }}>
+                  Loading available dates...
+                </Typography>
+              </Box>
+            )}
+            
             {/* Calendar Header */}
             <Box sx={{ 
               display: 'flex', 
@@ -349,6 +420,7 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
                         mx: 0.5,
                         my: 0.5,
                         transition: 'all 0.2s ease',
+                        position: 'relative',
                         ...(isCurrentMonth(date) && {
                           color: '#333',
                           '&:hover': {
@@ -365,6 +437,33 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
                           fontWeight: 600,
                           transform: 'scale(1.1)',
                           boxShadow: '0 2px 8px rgba(33, 150, 243, 0.3)'
+                        }),
+                        ...(isDateAvailable(date) && !isSelected(date) && {
+                          bgcolor: '#4caf50',
+                          color: 'white',
+                          fontWeight: 500,
+                          '&:hover': {
+                            bgcolor: '#45a049',
+                            transform: 'scale(1.1)'
+                          }
+                        }),
+                        ...(isDateFullAvailable(date) && !isSelected(date) && {
+                          bgcolor: '#ff9800',
+                          color: 'white',
+                          fontWeight: 500,
+                          '&:hover': {
+                            bgcolor: '#f57c00',
+                            transform: 'scale(1.1)'
+                          }
+                        }),
+                        ...(isDateNotAvailable(date) && !isSelected(date) && {
+                          bgcolor: '#f44336',
+                          color: 'white',
+                          fontWeight: 500,
+                          '&:hover': {
+                            bgcolor: '#d32f2f',
+                            transform: 'scale(1.1)'
+                          }
                         })
                       }}
                     >
@@ -377,6 +476,38 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
               </Grid>
             </Paper>
 
+            {/* Calendar Legend */}
+            <Box sx={{ mt: 2, p: 2, bgcolor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#34495e', mb: 1 }}>
+                Calendar Legend
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: '#4caf50' }} />
+                  <Typography variant="body2" sx={{ fontSize: '0.75rem', color: '#666' }}>
+                    Available
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: '#ff9800' }} />
+                  <Typography variant="body2" sx={{ fontSize: '0.75rem', color: '#666' }}>
+                    Full Available
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: '#f44336' }} />
+                  <Typography variant="body2" sx={{ fontSize: '0.75rem', color: '#666' }}>
+                    Not Available
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: '#2196f3' }} />
+                  <Typography variant="body2" sx={{ fontSize: '0.75rem', color: '#666' }}>
+                    Selected
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
             
           </Box>
 

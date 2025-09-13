@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent } from 'react';
+import React, { useState, ChangeEvent, useEffect } from 'react';
 import {
   Box,
   TextField,
@@ -11,8 +11,13 @@ import {
   Typography,
   InputAdornment,
   SelectChangeEvent,
+  debounce,
+  Autocomplete,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import { addUser } from '@/services/userService';
+import { getAreaListSearchText, getCityList } from '@/services/faclilityService';
+import { Controller, useForm } from 'react-hook-form';
 
 // Reusable StyledTextField component
 const StyledTextField = ({ sx, ...props }: any) => (
@@ -59,12 +64,78 @@ const StyledButton = ({ sx, ...props }: any) => (
   />
 );
 
-interface UserDetailsFormProps {
-  onSubmit: (data: any) => void;
+interface FormValues {
+  username: string;
+  title: string;
+  firstName: string;
+  lastName: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  searcharea: string;
+  pin: string;
+  state: string;
+  country: string;
+  email: string;
+  cellNo: string;
+  userLogin: string;
+  userImage: FileList;
 }
 
-const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
+const UserDetailsForm: React.FC<any> = ({ onSubmit, onCancel,open }) => {
   const roleNamesOptions = ['Admin Staff', 'Administrator', 'Biller', 'Doctor', 'Paramedic'];
+  const [cityOptions, setCityOptions] = useState<any[]>([]);
+  const [areaOptions, setAreaOptions] = useState<any[]>([]);
+  const [cityLoading, setCityLoading] = useState(false);
+  const [areaLoading, setAreaLoading] = useState(false);
+  const [selectedCity, setSelectedCity] = useState<any>(null);
+  const [selectedArea, setSelectedArea] = useState<any>(null);
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    setValue
+  } = useForm<FormValues>({
+    mode: 'onChange',
+  });
+
+  
+  const fetchCities = debounce(async (searchText: string) => {
+    setCityLoading(true);
+    try {
+      const data = await getCityList(searchText);
+      setCityOptions(data || []);
+    } catch(e){
+     console.log(e)
+    }
+    finally {
+      setCityLoading(false);
+    }
+  }, 400);
+
+
+
+  const fetchAreas = debounce(async (cityId: string, searchText: string) => {
+    setAreaLoading(true);
+    try {
+      const data = await getAreaListSearchText(cityId, searchText);
+      setAreaOptions(data || []);
+    } catch(e){
+     console.log(e)
+    }finally {
+      setAreaLoading(false);
+    }
+  }, 400);
+
+  useEffect(() => {
+    if (open) {
+        reset(); // clear form
+        setSelectedCity(null);
+        setAreaOptions([]);
+    }
+  }, [open]);
 
   const [formValues, setFormValues] = useState({
     role: '',
@@ -75,7 +146,7 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
     addressLine1: '',
     addressLine2: '',
     city: '',
-    area: '',
+    searcharea: '',
     country: '',
     state: '',
     pin: '',
@@ -86,19 +157,19 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  const [errors, setErrors] = useState({
+  const [errors1, setErrors] = useState({
     role: '',
     title: '',
     firstName: '',
     email: '',
     addressLine1: '',
     city: '',
-    area: '',
+    searcharea: '',
     country: '',
     state: '',
     pin: '',
     cellNo: '',
-    image: '',
+    //image: '',
   });
 
   const validationRules = {
@@ -113,7 +184,7 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
         : 'Email is required',
     addressLine1: (value: string) => (value ? '' : 'Address Line 1 is required'),
     city: (value: string) => (value ? '' : 'City is required'),
-    area: (value: string) => (value ? '' : 'Area is required'),
+    searcharea: (value: string) => (value ? '' : 'Area is required'),
     country: (value: string) => (value ? '' : 'Country is required'),
     state: (value: string) => (value ? '' : 'State is required'),
     pin: (value: string) =>
@@ -128,7 +199,7 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
           ? ''
           : 'Cell No. must be 10 digits'
         : 'Cell No. is required',
-    image: (file: File | null) => (file ? '' : 'Image is required'),
+    //image: (file: File | null, imagePreview: string | null) => (file ? '' : 'Image is required'),
   };
 
   // const validateForm = () => {
@@ -144,6 +215,21 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
   //   setErrors(newErrors);
   //   return !Object.values(newErrors).some((error) => error !== '');
   // };
+
+  
+  const validateForm = () => {
+    const newErrors = Object.keys(validationRules).reduce((acc, key) => {
+      /* if (key === 'image') {
+        acc[key] = validationRules[key]!(image, imagePreview);
+      } else { */
+        (acc as any)[key] = (validationRules as any)[key]!(formValues[key as keyof typeof formValues]);
+     // }
+      return acc;
+    }, {} as typeof errors1);
+
+    setErrors(newErrors);
+    return !Object.values(newErrors).some((error) => error !== '');
+  };
 
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -189,6 +275,51 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
     setFormValues((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleFormSubmit = async (e: any) => {
+   // e.preventDefault();
+    console.log(selectedArea)
+   // if (!validateForm()) return;
+    try {
+      const formData = new FormData();
+     
+      // common fields (map from your form)
+      formData.append("userName", "devthomas");
+      formData.append("userPwd", "P@ssw0rd"); // replace with real value if available
+      formData.append("orgId", "45");
+      formData.append("loggedinFacilityId", "1");
+      formData.append("userLogin", formValues.username); // update if editing existing user
+      formData.append("userTitle", formValues.title);
+      formData.append("firstName", formValues.firstName);
+      formData.append("lastName", formValues.lastName);
+      formData.append("addressFirst", formValues.addressLine1);
+      formData.append("addressSecond", formValues.addressLine2 || "");
+      formData.append("city", formValues.city);
+      formData.append("areaName", selectedArea.areaName);
+      formData.append("pin", formValues.pin);
+      formData.append("state", formValues.state);
+      formData.append("country", formValues.country);
+      formData.append("activeInd", "1");
+      formData.append("email", formValues.email);
+      formData.append("cellNumber", formValues.cellNo);
+      formData.append("isdoctor", "0");
+      formData.append("cityMasterId", selectedArea.cityId);
+      formData.append("cityPincodeMappingId", selectedArea?.cityPincodeMappingId);
+      if (image) {
+        formData.append("userImage", image);
+      }
+      const obj = Object.fromEntries(formData.entries());
+      console.log("Form Data Object:", obj);
+      const result = await addUser(formData);
+      // call API
+     // console.log("✅ Success:", result);
+      onSubmit('success');
+    } catch (err:any) {
+      onSubmit(err.response.data.message); 
+      console.error("❌ Error:", err);
+    }
+  };
+  
+
   return (
     <Box
       sx={{
@@ -203,10 +334,10 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
         mb: 4,
       }}
     >
-      <form>
+      <form onSubmit={handleSubmit(handleFormSubmit)}>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <FormControl fullWidth required error={!!errors.role}>
+            <FormControl fullWidth required error={!!errors1.role}>
             <InputLabel sx={{ color: '#0288d1' }}>Choose Role</InputLabel>
               <Select
                 name="role"
@@ -234,15 +365,15 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
                   </MenuItem>
                 ))}
               </Select>
-              {errors.role && (
+              {errors1.role && (
                 <Typography variant="caption" color="error">
-                  {errors.role}
+                  {errors1.role}
                 </Typography>
               )}
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={4} md={2}>
-            <FormControl fullWidth required error={!!errors.title}>
+            <FormControl fullWidth required error={!!errors1.title}>
               <InputLabel sx={{ color: '#0288d1' }}>Title</InputLabel>
               <Select
                 name="title"
@@ -264,9 +395,9 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
                 <MenuItem value="Ms.">Ms.</MenuItem>
                 <MenuItem value="Mrs.">Mrs.</MenuItem>
               </Select>
-              {errors.title && (
+              {errors1.title && (
                 <Typography variant="caption" color="error">
-                  {errors.title}
+                  {errors1.title}
                 </Typography>
               )}
             </FormControl>
@@ -278,8 +409,8 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
               value={formValues.firstName}
               onChange={handleChange}
               required
-              error={!!errors.firstName}
-              helperText={errors.firstName}
+              error={!!errors1.firstName}
+              helperText={errors1.firstName}
             />
           </Grid>
           <Grid item xs={12} sm={4} md={5}>
@@ -306,8 +437,8 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
               onChange={handleChange}
               type="email"
               required
-              error={!!errors.email}
-              helperText={errors.email}
+              error={!!errors1.email}
+              helperText={errors1.email}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -317,8 +448,8 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
               value={formValues.addressLine1}
               onChange={handleChange}
               required
-              error={!!errors.addressLine1}
-              helperText={errors.addressLine1}
+              error={!!errors1.addressLine1}
+              helperText={errors1.addressLine1}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -330,40 +461,90 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
             />
           </Grid>
           <Grid item xs={12} sm={6}>
-            <StyledTextField
-              label="City"
-              name="city"
-              value={formValues.city}
-              onChange={handleChange}
-              required
-              error={!!errors.city}
-              helperText={errors.city}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <SearchIcon sx={{ color: '#0288d1' }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
+          <Controller
+            name="city"
+            control={control}
+            rules={{ required: 'City is required' }}
+            render={({ field }) => (
+              <Autocomplete
+                loading={cityLoading}
+                options={cityOptions}
+                getOptionLabel={(option) =>
+                  typeof option === 'string'
+                    ? option
+                    : `${option.cityName}${option.stateName ? ', ' + option.stateName : ''}`
+                }
+                value={selectedCity}
+                onChange={(_, value) => {
+                  setSelectedCity(value || null);
+                  field.onChange(value?.cityName || '');
+                  setAreaOptions([]);
+                  setFormValues((prev) => ({
+                    ...prev,
+                    city: value.cityName,
+                    cityId: value.cityId,
+                    state: value.stateName || '',
+                    country: value.country || '',
+                    areaName: '',
+                    cityPincodeMappingId: 0,
+                  }));
+                }}
+                onInputChange={(_, value) => {
+                  fetchCities(value);
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="City *"
+                    error={!!errors.city}
+                    helperText={errors.city?.message}
+                  />
+                )}
+              />
+            )}
+          />
           </Grid>
           <Grid item xs={12} sm={6}>
-            <StyledTextField
-              label="Area"
-              name="area"
-              value={formValues.area}
-              onChange={handleChange}
-              required
-              error={!!errors.area}
-              helperText={errors.area}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <SearchIcon sx={{ color: '#0288d1' }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
+          <Controller
+            name="searcharea"
+            control={control}
+            rules={{ required: 'Area is required' }}
+            render={({ field }) => (
+              <Autocomplete
+                loading={areaLoading}
+                options={areaOptions}
+                getOptionLabel={(option) =>
+                  typeof option === 'string' ? option : option.areaName
+                }
+                onChange={(_, value) => {
+                  setSelectedArea(value || null);
+                  field.onChange(value?.areaName || '');
+                  setValue('pin', value?.pincode || '');
+                  setFormValues((prev) => ({
+                    ...prev,
+                    pin: value?.pincode || ''
+                  }))
+                }}
+                onInputChange={(_, value) => {
+                  if (selectedCity?.cityId) {
+                    fetchAreas(String(selectedCity.cityId), value);
+                  }
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Area *"
+                    error={!!errors.searcharea}
+                    helperText={
+                      errors.searcharea?.message ||
+                      (!selectedCity ? 'Select a city first' : '')
+                    }
+                  />
+                )}
+                disabled={!selectedCity}
+              />
+             )}
+          />
           </Grid>
           <Grid item xs={12} sm={6}>
             <StyledTextField
@@ -372,8 +553,8 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
               value={formValues.country}
               onChange={handleChange}
               required
-              error={!!errors.country}
-              helperText={errors.country}
+              error={!!errors1.country}
+              helperText={errors1.country}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -383,20 +564,22 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
               value={formValues.state}
               onChange={handleChange}
               required
-              error={!!errors.state}
-              helperText={errors.state}
+              error={!!errors1.state}
+              helperText={errors1.state}
             />
+
           </Grid>
           <Grid item xs={12} sm={6}>
-            <StyledTextField
-              label="PIN"
+          <StyledTextField
+              label="Pin"
               name="pin"
               value={formValues.pin}
               onChange={handleChange}
               required
-              error={!!errors.pin}
-              helperText={errors.pin}
+              error={!!errors1.pin}
+              helperText={errors1.pin}
             />
+          
           </Grid>
           <Grid item xs={12} sm={6}>
             <StyledTextField
@@ -406,8 +589,8 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
               onChange={handleChange}
               type="tel"
               required
-              error={!!errors.cellNo}
-              helperText={errors.cellNo}
+              error={!!errors1.cellNo}
+              helperText={errors1.cellNo}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -419,7 +602,7 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderRadius: 2,
-                border: errors.image ? '2px dashed #d32f2f' : '2px dashed #0288d1',
+                border:  '2px dashed #0288d1',
                 '&:hover': {
                   borderColor: '#01579b',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
@@ -448,11 +631,11 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
                 </Box>
               )}
             </Box>
-            {errors.image && (
+           {/*  {errors1.image && (
               <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
-                {errors.image}
+                {errors1.image}
               </Typography>
-            )}
+            )} */}
             <Box sx={{ display: 'flex', gap: 1, mt: 1, justifyContent: 'center' }}>
               <StyledButton
                 variant="contained"
@@ -492,6 +675,34 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit }) => {
               )}
             </Box>
           </Grid>
+          <Grid item xs={12}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+            <StyledButton
+              variant="outlined"
+              onClick={onCancel}
+              sx={{
+                borderColor: '#d32f2f',
+                color: '#d32f2f',
+                '&:hover': {
+                  borderColor: '#b71c1c',
+                  color: '#b71c1c',
+                },
+              }}
+            >
+              Cancel
+            </StyledButton>
+            <StyledButton
+              variant="contained"
+              type="submit"
+              sx={{
+                bgcolor: '#0288d1',
+                '&:hover': { bgcolor: '#01579b' },
+              }}
+            >
+              Save
+            </StyledButton>
+          </Box>
+        </Grid>
         </Grid>
       </form>
     </Box>

@@ -53,6 +53,7 @@ interface User {
   councilId?: string;
   yearOfReg?: number;
   roleName?: string;
+  imageFileName?: string;
 }
 
 // Interface for council response
@@ -117,6 +118,44 @@ export const getCouncilList = async (): Promise<Council[]> => {
     return response.data;
   } catch (error) {
     console.error('Error fetching council list:', error);
+    return [];
+  }
+};
+
+export const editUser = async (payload: any): Promise<any> => {
+  try {
+    const { data } = await http.post('/edituserdetails', payload, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return data;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export const addUser = async (payload: any): Promise<any> => {
+  try {
+    const { data } = await http.post('/adduserdetails', payload, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return data;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export const getSpecalityList = async (): Promise<any[]> => {
+  
+
+  try {
+    const {data} = await http.post('/getspecialtylist', {});
+    return data;
+  } catch (error) {
+    console.error('Error fetching specality list:', error);
     return [];
   }
 };

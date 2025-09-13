@@ -17,6 +17,7 @@ import { Box, Button, Grid, Typography, Dialog, DialogTitle, DialogContent, Dial
 import styles from './style.module.scss';
 import { getOrgUsers, getUserDetails, getCouncilList, getAllRoleGroupOfOrg } from '@/services/userService';
 import { User } from '@/interfaces/user';
+import Message from '@/components/common/Message';
 
 const ManageUsersPage = () => {
   const [openDialog, setOpenDialog] = useState(false);
@@ -24,6 +25,9 @@ const ManageUsersPage = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [privilegeModalOpen, setPrivilegeModalOpen] = useState(false);
   const [privilegeUser, setPrivilegeUser] = useState<{ id: number; firstName: string; lastName: string; image: string } | null>(null);
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
   
   // Doctor modal states
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -107,7 +111,7 @@ const ManageUsersPage = () => {
   // Map API data to table row format
   const rowData = useMemo(() => {
     return users.map((user) => ({
-      image: user.imageFilePath || 'https://via.placeholder.com/50',
+      image: 'https://www.aptcarepet.com/cimages/' + user.imageFileName || 'https://via.placeholder.com/50',
       name: user.userNameWithTitle || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
       phone: user.cellNumber || '',
       email: user.email || '',
@@ -145,6 +149,7 @@ const ManageUsersPage = () => {
     const userDetails:any = await fetchUserDetails(orgUserId);
     //const userDetails:any = {}
     if (userDetails) {
+      console.log({userDetails})
       const user: User = {
         orgUserId: userDetails.orgUserId,
         userNameWithTitle: userDetails.userNameWithTitle || '',
@@ -152,7 +157,7 @@ const ManageUsersPage = () => {
         lastName: userDetails.lastName || '',
         email: userDetails.email || '',
         cellNumber: userDetails.cellNumber || '',
-        imageFilePath: userDetails.imageFilePath || 'https://via.placeholder.com/50',
+        imageFilePath:  'https://www.aptcarepet.com/cimages/' + userDetails.imageFileName || 'https://via.placeholder.com/50',
         activeInd: userDetails.activeInd,
         isDoctor: userDetails.isDoctor,
         userTitle: userDetails.userTitle || 'Mr.',
@@ -165,12 +170,16 @@ const ManageUsersPage = () => {
         pin: userDetails.pin || '',
         userName: userDetails.userName || '',
         userUid: userDetails.userUid,
+        cityId: userDetails.cityId,
         specialty: userDetails.specialty || '',
+        glbSpltyId: userDetails.glbSpltyId || '',
         orgUserQlfn: userDetails.orgUserQlfn || '',
         councilId: userDetails.councilId || '',
         yearOfReg: userDetails.yearOfReg || 0,
+        registrationNumber: userDetails.registrationNumber || '',
         roleName: userDetails.isDoctor ? 'Doctor' : (userDetails.roleName || ''),
         profileDetails: userDetails.profileDetails || '',
+        cityMappingId: userDetails.cityPincodeMappingId || ''
       };
 
       if (userDetails.isDoctor) {
@@ -207,13 +216,42 @@ const ManageUsersPage = () => {
   };
 
   const handleAddSubmit = (data: any) => {
-    console.log('Adding new user:', data);
+    if(data === 'success'){
+      setOpenSnackbar(true);
+      setSnackbarMessage("User added successfully");
+      setSnackbarSeverity('success')
+    fetchUsers(-1)
+    }else{
+      setOpenSnackbar(true);
+      setSnackbarMessage(data);
+      setSnackbarSeverity('error')
+    }
     handleClose();
   };
 
   const handleEditSubmit = (data: any) => {
     console.log('Updating user:', data);
+    if(data === 'success'){
+      setOpenSnackbar(true);
+      setSnackbarMessage("User edited successfully");
+      setSnackbarSeverity('success')
+    fetchUsers(-1)
+    }else if( data == 'addsuccess'){
+      setOpenSnackbar(true);
+      setSnackbarMessage("User added successfully");
+      setSnackbarSeverity('success')
+      fetchUsers(-1)
+    }
+    else{
+      setOpenSnackbar(true);
+      setSnackbarMessage(data);
+      setSnackbarSeverity('error')
+    }
     handleClose();
+  };
+
+  const handleCloseSnackbar = () => {
+    setOpenSnackbar(false);
   };
 
   const handleAssignSubmit = (data: any) => {
@@ -235,7 +273,7 @@ const ManageUsersPage = () => {
   const renderDialogContent = () => {
     switch (dialogMode) {
       case 'add':
-        return <UserDetailsForm onSubmit={handleAddSubmit} roleGroupList={roleGroupList} />;
+        return <UserDetailsForm open={openDialog} onSubmit={handleAddSubmit} onCancel={handleClose} roleGroupList={roleGroupList} />;
       case 'edit':
         return selectedUser ? (
           <ManageUsersEdit
@@ -460,12 +498,10 @@ const ManageUsersPage = () => {
             open={editDoctorModalOpen}
             onClose={() => setEditDoctorModalOpen(false)}
             mode="full"
+            type="edit"
             initialData={editDoctorData}
             councilList={councilList}
-            onSubmit={(data) => {
-              setEditDoctorModalOpen(false);
-              console.log('Updated doctor data:', data);
-            }}
+            onSubmit={handleEditSubmit}
           />
         )}
 
@@ -474,6 +510,7 @@ const ManageUsersPage = () => {
           open={detailsOpen}
           onClose={() => setDetailsOpen(false)}
           councilList={councilList}
+          onSubmit={handleEditSubmit}
           onProceed={(doctorData) => {
             setPendingDoctor({
               orgUserId: 0,
@@ -481,7 +518,7 @@ const ManageUsersPage = () => {
               isDoctor: 1,
               councilId: doctorData.councilId,
               yearOfReg: parseInt(doctorData.yearOfReg, 10) || 0,
-              orgUserQlfn: doctorData.regNo,
+              regNo: doctorData.regNo,
               userName: '', // Placeholder, filled in full form
             });
             setShowConfirmDialog(true);
@@ -520,10 +557,7 @@ const ManageUsersPage = () => {
             mode="full"
             initialData={fullDoctorData}
             councilList={councilList}
-            onSubmit={(data) => {
-              setShowFullDoctorForm(false);
-              console.log('Full doctor data:', data);
-            }}
+            onSubmit={handleEditSubmit}
           />
         )}
 
@@ -539,6 +573,12 @@ const ManageUsersPage = () => {
             {renderDialogContent()}
           </DialogContent>
         </Dialog>
+        <Message 
+    openSnackbar={openSnackbar} 
+    handleCloseSnackbar={handleCloseSnackbar} 
+    snackbarSeverity={snackbarSeverity} 
+    snackbarMessage={snackbarMessage} 
+  />
       </AuthenticatedLayout>
     </PrivateRoute>
   );

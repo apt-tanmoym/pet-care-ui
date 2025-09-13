@@ -111,9 +111,9 @@ const menuItems: MenuItem[] = [
         icon: <EventNoteIcon />, 
         url: '/front-desk',
         subItems: [
-            { text: 'Manage calendar Of Doctors', icon: <CalendarMonthIcon />, url: '/front-desk/calendar' },
-            { text: 'Manage Patients', icon: <PeopleIcon />, url: '/front-desk/patients' },
-            { text: 'Manage Appointments', icon: <EventIcon />, url: '/front-desk/appointments' },
+            { text: 'Manage calendar Of Doctors', icon: <CalendarMonthIcon />, url: '/vetconnect/calendar' },
+            { text: 'Manage Patients', icon: <PeopleIcon />, url: '/vetconnect/manage-patients' },
+            { text: 'Manage Appointments', icon: <EventIcon />, url: '/vetconnect/appointments' },
         ],
     },
     { 

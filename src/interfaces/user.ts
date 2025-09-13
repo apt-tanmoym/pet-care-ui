@@ -24,4 +24,10 @@ export interface User {
     yearOfReg?: number;
     roleName?: string;
     profileDetails?: string;
+    cityId?: string;
+    cityMappingId?: string;
+    regNo?: string;
+    glbSpltyId?: string;
+    registrationNumber?: string;
+    imageFileName?: string;
   }

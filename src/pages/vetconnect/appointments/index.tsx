@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import PrivateRoute from "@/components/PrivateRoute";
 import AuthenticatedLayout from "@/components/AuthenticatedLayout";
 import { FaclityServiceResponse } from '@/interfaces/facilityInterface';
+import { getSlotDates, viewPatientsInSlot } from '@/services/manageCalendar';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -34,9 +35,104 @@ const Appointments: React.FC = () => {
   const [openCalendarDialog, setOpenCalendarDialog] = useState(false);
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [openPatientSearchDialog, setOpenPatientSearchDialog] = useState(false);
+  const [slotDates, setSlotDates] = useState<{ available: string[]; notavailable: string[]; fullavailable: string[] }>({
+    available: [],
+    notavailable: [],
+    fullavailable: []
+  });
+  const [isLoadingSlotDates, setIsLoadingSlotDates] = useState(false);
+  const [patientSlots, setPatientSlots] = useState<any[]>([]);
+  const [isLoadingPatientSlots, setIsLoadingPatientSlots] = useState(false);
+
+  // Function to fetch patient slots for a specific date
+  const fetchPatientSlots = async (facilityId: number, date: Date) => {
+    if (!selectedFacility?.orgId) return;
+    
+    setIsLoadingPatientSlots(true);
+    try {
+      const response = await viewPatientsInSlot({
+        callingFrom: 'web',
+        userName: 'tonmoy',
+        userPass: '4vpzrnly',
+        loggedInFacilityId: 2,
+        orgId: parseInt(localStorage.getItem('orgId') || '39'),
+        facilityId: facilityId,
+        slotIndex: 1, // Default slot index, can be made dynamic
+        startDate: dayjs(date).format('DD/MM/YYYY')
+      });
+      
+      setPatientSlots(response);
+    } catch (error) {
+      console.error('Error fetching patient slots:', error);
+      setPatientSlots([]);
+    } finally {
+      setIsLoadingPatientSlots(false);
+    }
+  };
+
+  // Function to fetch slot dates from API
+  const fetchSlotDates = async (facilityId: number) => {
+    setIsLoadingSlotDates(true);
+    try {
+      const response = await getSlotDates({
+        userName: 'tonmoy',
+        userPass: '4vpzrnly',
+        deviceStat: 'M',
+        facilityId: facilityId
+      });
+
+      if (response.status === 'ok') {
+        const available = response.available ? response.available.split(',').map(date => date.trim()) : [];
+        const notavailable = response.notavailable ? response.notavailable.split(',').map(date => date.trim()) : [];
+        const fullavailable = response.fullavailable ? response.fullavailable.split(',').map(date => date.trim()) : [];
+        
+        setSlotDates({
+          available,
+          notavailable,
+          fullavailable
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching slot dates:', error);
+    } finally {
+      setIsLoadingSlotDates(false);
+    }
+  };
+
+  // useEffect to fetch slot dates when facility is selected
+  useEffect(() => {
+    if (selectedFacility?.facilityId) {
+      fetchSlotDates(selectedFacility.facilityId);
+    } else {
+      // Reset slot dates when no facility is selected
+      setSlotDates({ available: [], notavailable: [], fullavailable: [] });
+      setPatientSlots([]);
+    }
+  }, [selectedFacility?.facilityId]);
+
+  // Helper functions to check date availability status
+  const isDateFullAvailable = (date: Dayjs) => {
+    const dateStr = date.format('DD/MM/YYYY');
+    return slotDates.fullavailable.includes(dateStr);
+  };
+
+  const isDateAvailable = (date: Dayjs) => {
+    const dateStr = date.format('DD/MM/YYYY');
+    return slotDates.available.includes(dateStr);
+  };
+
+  const isDateNotAvailable = (date: Dayjs) => {
+    const dateStr = date.format('DD/MM/YYYY');
+    return slotDates.notavailable.includes(dateStr);
+  };
 
   // Derived state to check if appointments exist for the selected date
-  const appointmentsAvailable = selectedDate && [14, 16, 17, 23].includes(selectedDate.getDate());
+  const appointmentsAvailable = selectedDate && (
+    isDateFullAvailable(dayjs(selectedDate)) || 
+    isDateAvailable(dayjs(selectedDate)) || 
+    isDateNotAvailable(dayjs(selectedDate)) ||
+    patientSlots.some(slot => slot.patientName && slot.appointmentStatus)
+  );
 
   // Check if selected date is in the past
   const isPastDate = selectedDate ? new Date(selectedDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) : false;
@@ -45,8 +141,9 @@ const Appointments: React.FC = () => {
   const handleDateSelect = (date: Dayjs | null) => {
     const newDate = date ? date.toDate() : null;
     setSelectedDate(newDate);
-    if (newDate) {
+    if (newDate && selectedFacility?.facilityId) {
       setShowDateHelper(false);
+      fetchPatientSlots(selectedFacility.facilityId, newDate);
     }
     setOpenCalendarDialog(false);
   };
@@ -91,17 +188,18 @@ const Appointments: React.FC = () => {
 
   const AppointmentDay = (props: PickersDayProps<Dayjs>) => {
     const { day, ...other } = props;
-    const isFourteenth = day.date() === 14;
-    const isSixteenth = day.date() === 16;
-    const isSeventeenth = day.date() === 17;
-    const isTwentyThird = day.date() === 23;
-
+    
     let dayClassName = styles.default;
-    if (isSeventeenth || isTwentyThird) {
-      dayClassName = styles.available;
-    } else if (isFourteenth || isSixteenth) {
-      dayClassName = styles.partial;
+    
+    // Check date availability based on API data
+    if (isDateFullAvailable(day)) {
+      dayClassName = styles.available; // Green - fully available
+    } else if (isDateAvailable(day)) {
+      dayClassName = styles.partial; // Orange - partially available
+    } else if (isDateNotAvailable(day)) {
+      dayClassName = styles.booked; // Red - not available
     }
+    
     return <PickersDay {...other} day={day} className={`${styles.appointmentDay} ${dayClassName}`} />;
   };
 
@@ -175,10 +273,16 @@ const Appointments: React.FC = () => {
               {/* Step 3: Appointment Details */}
               <Box>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5, color: selectedDate ? '#34495e' : '#bdc3c7' }}>3. Appointments for the day</Typography>
-                <Box sx={{ minHeight: 100 }}>
-                  {appointmentsAvailable ? (
-                    <AppointmentDetails selectedDate={selectedDate} />
-                  ) : (
+                                 <Box sx={{ minHeight: 100 }}>
+                   {isLoadingPatientSlots ? (
+                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, bgcolor: '#f7f9fc', borderRadius: '12px' }}>
+                       <Typography sx={{ color: '#7f8c8d', fontStyle: 'italic' }}>
+                         Loading appointments...
+                       </Typography>
+                     </Box>
+                   ) : appointmentsAvailable ? (
+                     <AppointmentDetails selectedDate={selectedDate} patientSlots={patientSlots} />
+                   ) : (
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, bgcolor: '#f7f9fc', borderRadius: '12px' }}>
                       <Typography sx={{ color: '#7f8c8d', fontStyle: 'italic' }}>
                         {selectedDate ? "No appointments scheduled for this date." : "Appointments will be shown here once you select a date."}
@@ -217,6 +321,13 @@ const Appointments: React.FC = () => {
               <Typography className={styles.headerTitle}><CalendarIcon sx={{ fontSize: '1.5rem' }} /> Select Date</Typography>
             </DialogTitle>
             <DialogContent className={styles.dialogContent}>
+              {isLoadingSlotDates && (
+                <Box sx={{ mb: 2, p: 2, bgcolor: '#e3f2fd', borderRadius: '8px', border: '1px solid #2196f3', textAlign: 'center' }}>
+                  <Typography variant="body2" sx={{ color: '#1976d2' }}>
+                    Loading available dates...
+                  </Typography>
+                </Box>
+              )}
               <div className={styles.calendarContainer}>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <StaticDatePicker
@@ -229,19 +340,20 @@ const Appointments: React.FC = () => {
                 </LocalizationProvider>
               </div>
               <div className={styles.legendContainer}>
-                <div className={styles.legendItem}><div className={`${styles.legendIndicator} ${styles.available}`}></div><Typography className={styles.legendText}>Available</Typography></div>
-                <div className={styles.legendItem}><div className={`${styles.legendIndicator} ${styles.partial}`}></div><Typography className={styles.legendText}>Partial</Typography></div>
-                <div className={styles.legendItem}><div className={`${styles.legendIndicator} ${styles.booked}`}></div><Typography className={styles.legendText}>Booked</Typography></div>
+                <div className={styles.legendItem}><div className={`${styles.legendIndicator} ${styles.available}`}></div><Typography className={styles.legendText}>Fully Available</Typography></div>
+                <div className={styles.legendItem}><div className={`${styles.legendIndicator} ${styles.partial}`}></div><Typography className={styles.legendText}>Partially Available</Typography></div>
+                <div className={styles.legendItem}><div className={`${styles.legendIndicator} ${styles.booked}`}></div><Typography className={styles.legendText}>Fully Booked</Typography></div>
               </div>
             </DialogContent>
           </Dialog>
 
-          <CreateAppointmentDialog
-            open={openCreateDialog}
-            onClose={handleCloseCreateDialog}
-            selectedDate={selectedDate}
-            onBook={handleProceedToPatientSearch}
-          />
+                     <CreateAppointmentDialog
+             open={openCreateDialog}
+             onClose={handleCloseCreateDialog}
+             selectedDate={selectedDate}
+             patientSlots={patientSlots}
+             onBook={handleProceedToPatientSearch}
+           />
 
           <PatientSearchDialog 
             open={openPatientSearchDialog}

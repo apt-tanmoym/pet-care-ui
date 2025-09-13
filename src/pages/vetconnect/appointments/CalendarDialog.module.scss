@@ -147,15 +147,15 @@
     border-radius: 50%;
     
     &.available {
-      background: #4CAF50;
+      background: #4CAF50; // Green - fully available
     }
     
     &.partial {
-      background: #FFC107;
+      background: #FF9800; // Orange - partially available
     }
     
     &.booked {
-      background: #F44336;
+      background: #F44336; // Red - fully booked
     }
   }
   
@@ -169,19 +169,19 @@
 // Custom day styling for appointment status
 .appointmentDay {
   &.available {
-    background: #4CAF50 !important;
+    background: #4CAF50 !important; // Green - fully available
     color: #ffffff !important;
     font-weight: 500;
   }
   
   &.partial {
-    background: #FFC107 !important;
-    color: #2c3e50 !important;
+    background: #FF9800 !important; // Orange - partially available
+    color: #ffffff !important;
     font-weight: 500;
   }
   
   &.booked {
-    background: #F44336 !important;
+    background: #F44336 !important; // Red - fully booked
     color: #ffffff !important;
     font-weight: 500;
   }
