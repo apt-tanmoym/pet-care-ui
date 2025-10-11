@@ -5,13 +5,21 @@ import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { Typography, Box, Alert } from '@mui/material';
 import { PatientHistorySection } from '@/components/manageEncounter/PatientHistorySection';
 import { Vital } from '@/components/manageEncounter/Vital';
-
 import Sidebar from '@/components/manageEncounter/Sidebar';
 import { Assignment, Feedback, Home, LocalHospital, LockClock, Medication, MonitorHeart, Note, PersonAdd, Science, Summarize, Warning } from '@mui/icons-material';
 import { History, Upload } from 'lucide-react';
 import { MedicalRecord } from './medical';
 import Complaint from './Complaint';
 import Allergy from './Allergy';
+import Referral from './Referral';
+import Diagnosis from './Diagnosis';
+import LabOrder from './LabOrder';
+import PharmacyOrder from './PharmacyOrder';
+import ProcedureOrder from './ProcedureOrder';
+import GeneralNote from './GeneralNote';
+import PrivateNote from './PrivateNote';
+import DocumentUpload from './DocumentUpload';
+import AdviceSummary from './AdviceSummary';
 
 const theme = createTheme({
   palette: {
@@ -64,6 +72,24 @@ const ManageEncounter: React.FC<ManageEncounterProps> = ({ record }) => {
           return <Complaint record={record} />;
         case 'allergy':
           return <Allergy record={record} />;
+            case 'referral':
+          return <Referral record={record} />;
+          case 'diagnosis':
+          return <Diagnosis record={record} />;
+            case 'lab-order':
+          return <LabOrder record={record} />;
+          case 'pharmacy-order':
+          return <PharmacyOrder record={record} />;
+          case 'procedure':
+          return <ProcedureOrder record={record} />;
+           case 'general-note':
+          return <GeneralNote record={record} />;
+           case 'private-note':
+          return <PrivateNote record={record} />;
+           case 'upload-document':
+          return <DocumentUpload record={record} />;
+          case 'advice-summary':
+          return <AdviceSummary record={record} />;
         default:
           return (
             <Box>

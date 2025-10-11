@@ -1,4 +1,5 @@
 import React from 'react';
+
 import {
   Box,
   Card,
@@ -11,7 +12,8 @@ import {
   Paper,
   Stack,
   IconButton,
-  Tooltip
+  Tooltip,
+  Button
 } from '@mui/material';
 import {
   MonitorHeart,
@@ -128,7 +130,8 @@ const TimeStampChip: React.FC<{ date: string; time?: string }> = ({ date, time }
 export const PatientHistorySection: React.FC<PatientHistorySectionProps> = ({ record }) => {
   return (
     <Box sx={{ p: 3, bgcolor: 'grey.50', minHeight: '100vh' }}>
-      <Paper elevation={1} sx={{ p: 3, mb: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+      <Paper elevation={1} sx={{ p: 3, mb: 3,     background: 'linear-gradient(135deg, #4B6CB7 0%, #182848 100%)',
+          color: 'white', }}>
         <Typography variant="h4" fontWeight="700" color="white" gutterBottom>
           Patient Medical History
         </Typography>
@@ -270,36 +273,29 @@ export const PatientHistorySection: React.FC<PatientHistorySectionProps> = ({ re
         </Grid>
       </Grid>
 
-      <Paper elevation={2} sx={{ p: 3, mt: 4, background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
-        <Stack direction="row" spacing={2} justifyContent="flex-end">
-          <Tooltip title="Save current progress as draft">
-            <IconButton 
-              size="large"
-              sx={{ 
-                bgcolor: 'primary.main', 
-                color: 'white',
-                '&:hover': { bgcolor: 'primary.dark', transform: 'scale(1.05)' },
-                transition: 'all 0.2s ease-in-out'
-              }}
-            >
-              <Save />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Cancel current encounter">
-            <IconButton 
-              size="large"
-              sx={{ 
-                bgcolor: 'error.main', 
-                color: 'white',
-                '&:hover': { bgcolor: 'error.dark', transform: 'scale(1.05)' },
-                transition: 'all 0.2s ease-in-out'
-              }}
-            >
-              <Cancel />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-      </Paper>
+      <Stack direction="row" spacing={2} justifyContent="flex-end" mt={4}>
+      <Tooltip title="Save current progress as draft">
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<Save />}
+          
+        >
+          Save
+        </Button>
+      </Tooltip>
+
+      <Tooltip title="Cancel current encounter">
+        <Button
+          variant="contained"
+          color="error"
+          startIcon={<Cancel />}
+         
+        >
+          Cancel
+        </Button>
+      </Tooltip>
+    </Stack>
     </Box>
   );
 };

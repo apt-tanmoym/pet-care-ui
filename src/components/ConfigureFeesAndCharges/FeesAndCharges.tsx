@@ -16,7 +16,7 @@ const FeesAndCharges: React.FC = () => {
     <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
       <Box>
         <Typography variant="h5" fontWeight="medium" sx={{ mb: 2 }}>
-          Fees and Charges of Test1
+          Fees and Charges
         </Typography>
         <Tabs
           value={activeTab}

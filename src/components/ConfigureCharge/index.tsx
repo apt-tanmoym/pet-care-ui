@@ -35,7 +35,7 @@ export default function ChargeEvent() {
   return (
     <Paper elevation={3} sx={{ p: 3, maxWidth: 800, margin: "auto", mt: 0 }}>
       <Typography variant="h5" gutterBottom>
-        Charge Event of Test11
+        Charge Event
       </Typography>
 
       <Tabs value={tabIndex} onChange={handleTabChange} sx={{ mb: 3 }}>

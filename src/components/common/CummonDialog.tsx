@@ -34,9 +34,7 @@ const CummonDialog: React.FC<CommonDialogProps> = ({
       <DialogContent dividers>{children}</DialogContent>
       {showActions && !hideDefaultButtons && (
         <DialogActions>
-          <Button onClick={onClose} variant="outlined">
-            {cancelLabel}
-          </Button>
+          
           <Button
             onClick={onSubmit}
             type='submit'
@@ -45,6 +43,11 @@ const CummonDialog: React.FC<CommonDialogProps> = ({
           >
             {submitLabel}
           </Button>
+
+          <Button onClick={onClose} variant="outlined">
+            {cancelLabel}
+          </Button>
+          
         </DialogActions>
       )}
     </Dialog>

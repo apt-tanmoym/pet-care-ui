@@ -75,7 +75,7 @@ const InsurerTable: React.FC = () => {
 
   return (
     <CommonTable
-      heading="Main Insurer of Test11"
+      heading="Main Insurer"
       showSearch={true}
       showAddButton={true}
       showFilterButton={false}

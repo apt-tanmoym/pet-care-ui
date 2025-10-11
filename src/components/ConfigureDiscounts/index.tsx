@@ -15,7 +15,7 @@ export default function DiscountTabs() {
     <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
       <Box>
         <Typography variant="h5" fontWeight="medium" sx={{ mb: 2 }}>
-          Manage Discount of Test11
+          Manage Discount
         </Typography>
 
         <Tabs

@@ -75,7 +75,7 @@ const MaintainTable: React.FC = () => {
 
   return (
     <CommonTable
-      heading="Maintain Corporate of Test11"
+      heading="Maintain Corporate"
       showSearch={true}
       showAddButton={true}
       showFilterButton={false}

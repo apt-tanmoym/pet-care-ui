@@ -689,3 +689,65 @@ export const cancelHomeVisitAppointment = async (payload: CancelHomeVisitAppoint
     throw error;
   }
 };
+
+// Upload Voice Prescription API interfaces and function
+interface UploadVoicePrescriptionPayload {
+  userName: string;
+  userPass: string;
+  deviceStat: string;
+  patientId: number;
+  appointmentId: number;
+  publicNote: string;
+}
+
+interface UploadVoicePrescriptionResponse {
+  message: string;
+  status: string;
+}
+
+export const uploadVoicePrescription = async (payload: UploadVoicePrescriptionPayload): Promise<UploadVoicePrescriptionResponse> => {
+  try {
+    const { data } = await http.post<UploadVoicePrescriptionResponse>('/uploadvoiceprescription', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get Voice Prescriptions API interfaces and function
+interface GetVoicePrescriptionsPayload {
+  userName: string;
+  userPass: string;
+  deviceStat: string;
+  appointmentId: number;
+}
+
+interface VoicePrescription {
+  userName: string | null;
+  userPass: string | null;
+  deviceStat: string | null;
+  savedFileName: string | null;
+  prescriptionName: string | null;
+  documentDate: string | null;
+  patientName: string | null;
+  documentType: string | null;
+  publicNote: string;
+  publicNoteDate: string;
+  publicNoteTime: string;
+  prescriptionId: number;
+  orgId: number;
+  patientId: number;
+  patientUid: number;
+  encounterId: number;
+  appointmentId: number;
+  encounterPublicNoteId: number;
+}
+
+export const getVoicePrescriptions = async (payload: GetVoicePrescriptionsPayload): Promise<VoicePrescription[]> => {
+  try {
+    const { data } = await http.post<VoicePrescription[]>('/getvoiceprescriptions', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
