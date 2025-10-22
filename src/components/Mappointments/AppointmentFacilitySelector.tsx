@@ -30,11 +30,11 @@ const AppointmentFacilitySelector: React.FC<AppointmentFacilitySelectorProps> = 
       setLoading(true);
       try {
         const payload: FaclityServicePayload = {
-          userName: 'jibons',
-          userPass: 'P@ssw0rd',
+          userName: localStorage.getItem('userName') || '',
+          userPass: localStorage.getItem('userPwd') || '',
           deviceStat: 'M',
           callingFrom: 'web',
-          orgId: '20',
+          orgId: localStorage.getItem('orgId') || '',
           searchFacility: '',
           status: 'All',
         };

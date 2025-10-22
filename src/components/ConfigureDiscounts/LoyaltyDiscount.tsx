@@ -39,9 +39,9 @@ export default function LoyaltyDiscount() {
   };
   const basePayload: GetAllDiscountDetailsPayload = {
           callingFrom: "web",
-          userName: "devthomas",
-          userPass: "P@ssw0rd",
-          orgId: "45",
+          userName: localStorage.getItem('userName') || '',
+          userPass: localStorage.getItem('userPwd') || '',
+          orgId: localStorage.getItem('orgId') || '',
           loggedInFacilityId: "1",
 
           };

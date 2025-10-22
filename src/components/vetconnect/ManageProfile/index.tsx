@@ -1,557 +1,871 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
-  Grid,
-  TextField,
-  Button,
-  Typography,
-  Card,
-  CardContent,
-  CardMedia,
-  Box,
-  Chip,
-  Stack,
+	Grid,
+	TextField,
+	Button,
+	Typography,
+	Card,
+	CardContent,
+	CardMedia,
+	Box,
+	Stack,
+	Autocomplete,
+	InputLabel,
+	Select,
+	MenuItem,
 } from "@mui/material";
 import dayjs, { Dayjs } from "dayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { CloudUpload } from "@mui/icons-material";
-import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import { HexColorPicker } from "react-colorful";
-import { FaclityServiceResponse } from "@/interfaces/facilityInterface";
-import styles from "./styles.module.scss";
 import UploadBadge from "@/components/common/uploadBadge/UploadBadge";
 import CommonTable from "@/components/common/table/Table";
 import TableLinkButton from "@/components/common/buttons/TableLinkButton";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CommonDialog from "@/components/common/CummonDialog";
-import AddEditModel from "./add-edit-user";
+import AddEditModel, { AddDocumentRef } from "./add-edit-user";
+import { useForm, Controller, SubmitHandler } from "react-hook-form";
+import {
+	getDoctorDetails,
+	saveDoctorEducation,
+	saveDoctorExperience,
+} from "@/services/manageProfile";
+import styles from "./styles.module.scss";
+import { debounce } from "lodash";
+import {
+	getAreaListSearchText,
+	getCityList,
+} from "@/services/faclilityService";
+import { Search } from "@mui/icons-material";
+import Message from "@/components/common/Message";
+import { getSpecalityList } from "@/services/userService";
 
-type EditFacilityProps = {
-  facility: FaclityServiceResponse;
-};
-
-type ChipVariant = "filled" | "outlined";
-
-interface ChipData {
-  id: number;
-  label: string;
-  variant: ChipVariant;
-}
-
-interface TableColumn {
-  id: string;
-  label: string;
-}
-
-interface TableRowData {
-  [key: string]: any;
+interface FormValues {
+	title: string;
+	firstName: string;
+	lastName: string;
+	birthDate?: string;
+	qualification: string;
+	languageKnown?: string;
+	speciality?: string;
+	city?: string;
+	state?: string;
+	pin?: string;
+	addressFirst?: string;
+	email: string;
+	cellNumber: string;
+	areaName?: string;
+	cityPincodeMappingId?: number;
 }
 
 function VetConnectUserProfile() {
-  const [showColorPicker, setShowColorPicker] = useState(false);
+	const formRef = useRef<AddDocumentRef>(null);
+	const [profileData, setProfileData] = useState<any>(null);
 
-  const [themeColor, setThemeColor] = useState("#1a365d");
-  const [hexInput, setHexInput] = useState("#1a365d");
-  const colorPickerRef = useRef<HTMLDivElement>(null);
-  const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [openAddExprienceDialog, setOpenAddExprienceDialog] = useState(false);
-  const [showAddForm, setShowAddForm] = useState<
-    "education" | "experience" | null
-  >(null);
-  const [selectedRow, setSelectedRow] = useState<TableRowData | null>(null);
+	const [openEditDialog, setOpenEditDialog] = useState(false);
+	const [openAddExprienceDialog, setOpenAddExprienceDialog] = useState(false);
+	const [showAddForm, setShowAddForm] = useState<
+		"education" | "experience" | null
+	>(null);
+	const [selectedRow, setSelectedRow] = useState<any>(null);
 
-  const initialChips: ChipData[] = [
-    { id: 1, label: "Cat", variant: "filled" },
-    { id: 2, label: "Dog", variant: "filled" },
-    { id: 3, label: "Hourse", variant: "filled" },
-    { id: 4, label: "Moenky", variant: "outlined" },
-    { id: 5, label: "Behaviour", variant: "outlined" },
-    { id: 6, label: "Bird", variant: "outlined" },
-    { id: 7, label: "Eye", variant: "outlined" },
-    { id: 8, label: "Ear", variant: "outlined" },
-    { id: 9, label: "Psychology", variant: "outlined" },
-  ];
-  const [chips, setChips] = useState(initialChips);
+	const [educationData, setEducationData] = useState<any[]>([]);
+	const [experienceData, setExperienceData] = useState<any[]>([]);
 
-  const data = [{
-      institution: "TEST",
-      degree: "Test",
-      fieldOfStudy: "Test",
-      grade: "Not Available",
-      startDate: "2022-04-17",
-      endDate: "2022-04-17",
-  }]
+	const [cityOptions, setCityOptions] = useState<any[]>([]);
+	const [areaOptions, setAreaOptions] = useState<any[]>([]);
+	const [cityLoading, setCityLoading] = useState(false);
+	const [areaLoading, setAreaLoading] = useState(false);
+	const [selectedCity, setSelectedCity] = useState<any>(null);
 
-  
+	const [openSnackbar, setOpenSnackbar] = useState(false);
+	const [snackbarMessage, setSnackbarMessage] = useState("");
+	const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">(
+		"success"
+	);
+	const [specalityList, setSpecalityList] = useState<any[]>([]);
+	const educationColumns = [
+		{ id: "institution", label: "Institution" },
+		{ id: "degree", label: "Degree" },
+		{ id: "fieldOfStudy", label: "Field of Study" },
+		{ id: "grade", label: "Grade" },
+		{ id: "startDate", label: "Start Date" },
+		{ id: "endDate", label: "End Date" },
+		{ id: "action", label: "Action" },
+	];
 
-  const [educationData, setEducationData] = useState<TableRowData[]>([
-    {
-      institution: "TEST",
-      degree: "Test",
-      fieldOfStudy: "Test",
-      grade: "Not Available",
-      startDate: "2022-04-17",
-      endDate: "2022-04-17",
-      action: (
-        <>
-          <TableLinkButton
-            text="Edit"
-            icon={<EditIcon />}
-            onClick={() => handleEdit("education", educationData[0])}
-          />
-          <TableLinkButton
-            text="Delete"
-            icon={<DeleteIcon />}
-            color="error"
-            onClick={() => handleDelete("education", 0)}
-          />
-        </>
-      ),
-    },
-  ]);
+	const experienceColumns = [
+		{ id: "jobTitle", label: "Job Title" },
+		{ id: "employmentType", label: "Employment Type" },
+		{ id: "companyName", label: "Company Name" },
+		{ id: "location", label: "Location" },
+		{ id: "startDate", label: "Start Date" },
+		{ id: "endDate", label: "End Date" },
+		{ id: "action", label: "Action" },
+	];
 
-  const [experienceData, setExperienceData] = useState<TableRowData[]>([
-    {
-      jobTitle: "TEST",
-      employmentType: "Permanent",
-      companyName: "Test",
-      location: "Not Available",
-      startDate: "2022-04-17",
-      endDate: "2022-04-17",
-      action: (
-        <>
-          <TableLinkButton
-            text="Edit"
-            icon={<EditIcon />}
-            onClick={() => handleEdit("experience", experienceData[0])}
-          />
-          <TableLinkButton
-            text="Delete"
-            icon={<DeleteIcon />}
-            color="error"
-            onClick={() => handleDelete("experience", 0)}
-          />
-        </>
-      ),
-    },
-  ]);
+	const fetchCities = debounce(async (searchText: string) => {
+		setCityLoading(true);
+		try {
+			const data = await getCityList(searchText);
+			setCityOptions(data || []);
+		} finally {
+			setCityLoading(false);
+		}
+	}, 400);
 
-  const handleToggle = (id: number) => {
-    setChips((prev) =>
-      prev.map((chip) =>
-        chip.id === id
-          ? {
-              ...chip,
-              variant: chip.variant === "filled" ? "outlined" : "filled",
+	const fetchAreas = debounce(async (cityId: string, searchText: string) => {
+		setAreaLoading(true);
+		try {
+			const data = await getAreaListSearchText(cityId, searchText);
+			setAreaOptions(data || []);
+		} finally {
+			setAreaLoading(false);
+		}
+	}, 400);
+
+	const fetchSpecalityList = async () => {
+		const specalityList: any = await getSpecalityList();
+		setSpecalityList(specalityList);
+	};
+
+	const {
+		register,
+		control,
+		handleSubmit,
+		reset,
+		setValue,
+		formState: { errors, isSubmitting },
+	} = useForm<FormValues>({
+		defaultValues: {
+			title: "",
+			firstName: "",
+			lastName: "",
+			birthDate: undefined,
+			qualification: "",
+			languageKnown: "",
+			speciality: "",
+			city: "",
+			state: "",
+			pin: "",
+			addressFirst: "",
+			email: "",
+			cellNumber: "",
+			areaName: "",
+			cityPincodeMappingId: 0,
+		},
+	});
+
+	const fetchDoctorProfileDetails = async () => {
+		try {
+			const result: any = await getDoctorDetails({
+				userName: "dasdebashisindia",
+				userPwd: "P@ssw0rd",
+				deviceStat: "M",
+			});
+			setProfileData(result);
+			console.log("result");
+			console.log(result);
+			setSelectedCity(result.city);
+			// populate form fields
+			reset({
+				title: result.userTitle || "",
+				firstName: result?.firstName || "",
+				lastName: result.lastName || "",
+				birthDate: result.birthDate
+					? dayjs(result.birthDate, "DD/MM/YYYY").format("YYYY-MM-DD")
+					: undefined,
+				qualification: result.qualification || "",
+				languageKnown: result.languageKnown || "",
+				speciality: result.gblSpltyName || "",
+				city: result.city || "",
+				state: result.state || "",
+				pin: result.pin || "",
+				addressFirst: result.addressFirst || "",
+				email: result.email || "",
+				cellNumber: result.cellNumber || "",
+				areaName: result.areaName || "",
+				cityPincodeMappingId: result.cityPincodeMappingId || "",
+			});
+
+			// map education
+			const eduRows = (result.educations || []).map(
+				(edu: any, idx: number) => ({
+					institution: edu.docEducationInstitute || "",
+					degree: edu.docDegree || "",
+					doctorEducationUid: edu.doctorEducationUid,
+					fieldOfStudy: edu.docFieldOfStudy || "",
+					grade: edu.docGrade || "",
+					startDate: dayjs(edu.educationFromDt, "DD/MM/YYYY").format(
+						"DD-MM-YYYY"
+					),
+					endDate: dayjs(edu.educationToDt, "DD/MM/YYYY").format("DD-MM-YYYY"),
+					action: (
+						<>
+							<TableLinkButton
+								text='Edit'
+								icon={<EditIcon />}
+								onClick={() => handleEdit("education", idx, edu)}
+							/>
+							{/* <TableLinkButton
+								text='Delete'
+								icon={<DeleteIcon />}
+								color='error'
+								onClick={() => handleDelete("education", idx)}
+							/> */}
+						</>
+					),
+				})
+			);
+			setEducationData([]);
+			setEducationData(eduRows);
+
+			// map experience
+			const expRows = (result.experiences || []).map(
+				(exp: any, idx: number) => ({
+					jobTitle: exp.docExperience || "",
+					employmentType: exp.employmentType || "",
+					companyName: exp.docExperienceInstitute || "",
+					doctorExperienceUid: exp.doctorExperienceUid,
+					location: exp.instituteAddress || "",
+					startDate: dayjs(exp.experienceFromDt, "DD/MM/YYYY").format(
+						"DD-MM-YYYY"
+					),
+					endDate: dayjs(exp.experienceToDt, "DD/MM/YYYY").format("DD-MM-YYYY"),
+					action: (
+						<>
+							<TableLinkButton
+								text='Edit'
+								icon={<EditIcon />}
+								onClick={() => handleEdit("experience", idx, exp)}
+							/>
+							{/* <TableLinkButton
+								text='Delete'
+								icon={<DeleteIcon />}
+								color='error'
+								onClick={() => handleDelete("experience", idx)}
+							/> */}
+						</>
+					),
+				})
+			);
+			setExperienceData(expRows);
+		} catch (error) {
+			console.error("Failed to fetch doctor profile details:", error);
+		}
+	};
+	// Fetch profile and populate form
+	useEffect(() => {
+		fetchSpecalityList();
+		fetchDoctorProfileDetails();
+	}, [reset]);
+
+	const onSubmit: SubmitHandler<FormValues> = async (data) => {
+		// handle save logic
+		console.log("Form data to save:", data);
+		try {
+			const response = await fetch("/your/api/save-endpoint", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(data),
+			});
+			const result = await response.json();
+			console.log("Save result:", result);
+			// optionally update UI/notify success
+		} catch (err) {
+			console.error("Save failed:", err);
+		}
+	};
+
+	const handleEdit = (
+		type: "education" | "experience",
+		index: number,
+		row: any
+	) => {
+		/* const row =
+			type === "education" ? educationData[index] : experienceData[index]; */
+		console.log("edit");
+		setShowAddForm(type);
+		console.log(row);
+		setSelectedRow({ index, row });
+		setOpenEditDialog(true);
+	};
+
+	const handleAdd = (type: "education" | "experience") => {
+		setShowAddForm(type);
+		setSelectedRow(null);
+		setOpenAddExprienceDialog(true);
+	};
+
+	const saveTableChanges = (
+		type: "education" | "experience",
+		newRows: any[]
+	) => {
+		if (type === "education") {
+			setEducationData(newRows);
+		} else {
+			setExperienceData(newRows);
+		}
+	};
+
+	const onSaveAddEdit = async () => {
+		console.log("hit");
+		const loginDetails = {
+			userName: "dasdebashisindia",
+			userPwd: "P@ssw0rd",
+			deviceStat: "M",
+		};
+		const formData: any = await formRef.current?.submit();
+		if (selectedRow) {
+			var { index, row } = selectedRow;
+		}
+		if (showAddForm === "education") {
+			try {
+				const data = {
+					...loginDetails,
+					doctorEducationUid: row?.doctorEducationUid
+						? row?.doctorEducationUid
+						: 0,
+					doctorUid: profileData.userUid,
+					docEducation: formData?.degree,
+					docEducationInstitute: formData?.institution,
+					docFieldOfStudy: formData?.fieldOfStudy,
+					docDegree: formData?.degree,
+					docGrade: formData?.grade,
+					educationFromDt: formData?.startDate,
+					educationToDt: formData?.endDate,
+				};
+				saveDoctorEducation(data);
+				fetchDoctorProfileDetails();
+				setOpenSnackbar(true);
+				setSnackbarSeverity("success");
+				setSnackbarMessage("Details Saved Successfully");
+			} catch (error) {
+				console.log(error);
+				setOpenSnackbar(true);
+				setSnackbarSeverity("error");
+				setSnackbarMessage("Error Occured");
+			}
+		}
+		if (showAddForm === "experience") {
+			try {
+				const data = {
+					...loginDetails,
+					doctorExperienceUid: row?.doctorExperienceUid
+						? row?.doctorExperienceUid
+						: 0,
+					doctorUid: profileData.userUid,
+					currentlyWorking: 0,
+					docExperience: formData?.jobTitle,
+					docExperienceInstitute: formData?.companyName,
+					employmentType: formData?.employmentType,
+					instituteAddress: formData?.location,
+					experienceFromDt: formData?.startDate,
+					experienceToDt: formData?.endDate,
+				};
+				saveDoctorExperience(data);
+				fetchDoctorProfileDetails();
+				setOpenSnackbar(true);
+				setSnackbarSeverity("success");
+				setSnackbarMessage("Details Saved Successfully");
+			} catch (error) {
+				console.log(error);
+				setOpenSnackbar(true);
+				setSnackbarSeverity("error");
+				setSnackbarMessage("Error Occured");
+			}
+		}
+	};
+
+	const handleCloseSnackbar = () => {
+		setOpenSnackbar(false);
+	};
+
+	return (
+		<Box sx={{ p: 3 }}>
+			<form onSubmit={handleSubmit(onSubmit)}>
+				<Card sx={{ maxWidth: 1345 }}>
+					{/* <CardMedia
+            component="img"
+            height="140"
+            image={
+              profileData?.imageFileName
+                ? `/images/${profileData.imageFileName}`
+                : "/images/sample.jpeg"
             }
-          : chip
-      )
-    );
-  };
+            alt="profile banner"
+          /> */}
+					<CardMedia
+						component='img'
+						height='140'
+						image={"/images/sample.jpeg"}
+						alt='profile banner'
+					/>
+					<CardContent>
+						<Grid container spacing={2}>
+							<Grid item xs={12} sm={1}>
+								<UploadBadge />
+							</Grid>
+							<Grid
+								item
+								xs={12}
+								sm={4}
+								sx={{ marginTop: "50px", marginLeft: "25px" }}>
+								<Typography gutterBottom variant='h5' component='div'>
+									{`${profileData?.userTitle || ""} ${
+										profileData?.firstName || ""
+									} ${profileData?.lastName || ""}`}
+								</Typography>
+							</Grid>
+						</Grid>
 
-  const [value, setValue] = React.useState<Dayjs | null>(dayjs("2022-04-17"));
+						<Box
+							component='fieldset'
+							sx={{
+								border: "1px solid #ccc",
+								padding: 2,
+								borderRadius: 2,
+								marginTop: 2,
+							}}>
+							<legend className={styles.personalLegend}>
+								Personal Information
+							</legend>
+							<Grid container spacing={2}>
+								<Grid item xs={12} sm={4}>
+									<Controller
+										name='title'
+										control={control}
+										render={({ field }) => (
+											<TextField
+												{...field}
+												label='Title'
+												fullWidth
+												error={!!errors.title}
+												helperText={errors.title?.message}
+											/>
+										)}
+									/>
+								</Grid>
+								<Grid item xs={12} sm={4}>
+									<Controller
+										name='firstName'
+										control={control}
+										render={({ field }) => (
+											<TextField
+												{...field}
+												label='First Name'
+												fullWidth
+												error={!!errors.firstName}
+												helperText={errors.firstName?.message}
+											/>
+										)}
+									/>
+								</Grid>
+								<Grid item xs={12} sm={4}>
+									<Controller
+										name='lastName'
+										control={control}
+										render={({ field }) => (
+											<TextField
+												{...field}
+												fullWidth
+												label='Last Name'
+												error={!!errors.lastName}
+												helperText={errors.lastName?.message}
+											/>
+										)}
+									/>
+								</Grid>
+								<Grid item xs={12} sm={4}>
+									<Controller
+										name='email'
+										control={control}
+										render={({ field }) => (
+											<TextField
+												{...field}
+												fullWidth
+												label='Email'
+												error={!!errors.email}
+												helperText={errors.email?.message}
+											/>
+										)}
+									/>
+								</Grid>
+								<Grid item xs={12} sm={4}>
+									<Controller
+										name='cellNumber'
+										control={control}
+										render={({ field }) => (
+											<TextField
+												{...field}
+												fullWidth
+												label='Phone'
+												error={!!errors.cellNumber}
+												helperText={errors.cellNumber?.message}
+											/>
+										)}
+									/>
+								</Grid>
+								<Grid item xs={12} sm={4}>
+									<LocalizationProvider dateAdapter={AdapterDayjs}>
+										<Controller
+											name='birthDate'
+											control={control}
+											defaultValue={"01/12/2025"}
+											render={({ field }) => (
+												<DatePicker
+													label='Date of Birth'
+													value={field.value ? dayjs(field.value) : null}
+													onChange={(date) => {
+														field.onChange(date ? date.toISOString() : null);
+													}}
+													slots={{ textField: TextField }}
+													slotProps={{ textField: { fullWidth: true } }}
+												/>
+											)}
+										/>
+									</LocalizationProvider>
+								</Grid>
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        colorPickerRef.current &&
-        !colorPickerRef.current.contains(event.target as Node)
-      ) {
-        setShowColorPicker(false);
-      }
-    }
+								<Grid item xs={12} sm={4}>
+									<Controller
+										name='qualification'
+										control={control}
+										render={({ field }) => (
+											<TextField
+												{...field}
+												fullWidth
+												label='Education'
+												error={!!errors.qualification}
+												helperText={errors.qualification?.message}
+											/>
+										)}
+									/>
+								</Grid>
 
-    if (showColorPicker) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
+								<Grid item xs={12} sm={4}>
+									<Controller
+										name='languageKnown'
+										control={control}
+										render={({ field }) => (
+											<TextField
+												{...field}
+												fullWidth
+												label='Language'
+												error={!!errors.languageKnown}
+												helperText={errors.languageKnown?.message}
+											/>
+										)}
+									/>
+								</Grid>
 
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showColorPicker]);
+								<Grid item xs={12} sm={4}>
+									<Controller
+										name='speciality'
+										control={control}
+										render={({ field }) => (
+											<Select
+												{...field}
+												labelId='speciality-label'
+												fullWidth
+												placeholder='Speciality'
+												error={!!errors.speciality}>
+												{specalityList.map((s) => (
+													<MenuItem key={s.specialtyId} value={s.specialtyName}>
+														{s.specialtyName}
+													</MenuItem>
+												))}
+											</Select>
+										)}
+									/>
+								</Grid>
+							</Grid>
+						</Box>
 
-  useEffect(() => {
-    setHexInput(themeColor);
-  }, [themeColor]);
+						<Grid container spacing={2}>
+							<Grid item xs={12} sm={12}>
+								<Box
+									component='fieldset'
+									sx={{
+										border: "1px solid #ccc",
+										padding: 2,
+										borderRadius: 2,
+										marginTop: 2,
+									}}>
+									<legend className={styles.homeLegend}>Home Address</legend>
+									<Grid container spacing={2}>
+										<Grid item xs={12} sm={6}>
+											<Autocomplete
+												freeSolo
+												loading={cityLoading}
+												options={cityOptions}
+												getOptionLabel={(option) =>
+													typeof option === "string"
+														? option
+														: `${option.cityName}${
+																option.stateName ? ", " + option.stateName : ""
+														  }`
+												}
+												value={selectedCity || null}
+												onInputChange={(_, value) => {
+													fetchCities(value);
+												}}
+												onChange={(_, value) => {
+													setSelectedCity(value);
+													if (value && typeof value !== "string") {
+														setValue("city", value.cityName || "");
+														setValue("state", value.stateName || "");
+														setValue("pin", value.pincode || "");
+														// If you have country or area in your form values, update them too
+													}
+												}}
+												renderInput={(params) => (
+													<TextField
+														{...params}
+														label='City'
+														fullWidth
+														error={!!errors.city}
+														helperText={errors.city?.message}
+														InputProps={{
+															...params.InputProps,
+															endAdornment: (
+																<>
+																	{params.InputProps.endAdornment}
+																	<Search
+																		sx={{
+																			color: "action.active",
+																			mr: 1,
+																			my: 0.5,
+																		}}
+																	/>
+																</>
+															),
+														}}
+													/>
+												)}
+											/>
+										</Grid>
 
-  const educationColumns: TableColumn[] = [
-    { id: "institution", label: "Institution" },
-    { id: "degree", label: "Degree" },
-    { id: "fieldOfStudy", label: "Field of Study" },
-    { id: "grade", label: "Grade" },
-    { id: "startDate", label: "Start Date" },
-    { id: "endDate", label: "End Date" },
-    { id: "action", label: "Action" },
-  ];
+										<Grid item xs={12} sm={6}>
+											<Controller
+												name='areaName'
+												control={control}
+												render={({ field }) => (
+													<Autocomplete
+														freeSolo
+														loading={areaLoading}
+														options={areaOptions}
+														getOptionLabel={(option) =>
+															typeof option === "string"
+																? option
+																: `${option.areaName}${
+																		option.cityPincodeMappingId
+																			? " (" + option.cityPincodeMappingId + ")"
+																			: ""
+																  }`
+														}
+														value={field.value || ""}
+														onInputChange={(_, value) => {
+															if (selectedCity && value) {
+																fetchAreas(String(selectedCity.cityId), value);
+															}
+														}}
+														onChange={(_, value) => {
+															if (typeof value === "string") {
+																setValue("areaName", value);
+																setValue("cityPincodeMappingId", 0);
+															} else if (value && value.areaName) {
+																setValue("areaName", value.areaName);
+																setValue(
+																	"cityPincodeMappingId",
+																	Number(value.cityPincodeMappingId) || 0
+																);
+																setValue("pin", value.pincode || "");
+															} else {
+																setValue("areaName", "");
+																setValue("cityPincodeMappingId", 0);
+															}
+														}}
+														renderInput={(params) => (
+															<TextField
+																{...params}
+																label='Area'
+																fullWidth
+																helperText={
+																	!selectedCity ? "Select a city first" : ""
+																}
+																InputProps={{
+																	...params.InputProps,
+																	endAdornment: (
+																		<>
+																			{params.InputProps.endAdornment}
+																			<Search
+																				sx={{
+																					color: "action.active",
+																					mr: 1,
+																					my: 0.5,
+																				}}
+																			/>
+																		</>
+																	),
+																}}
+															/>
+														)}
+														disabled={!selectedCity}
+													/>
+												)}
+											/>
+										</Grid>
+										<Grid item xs={12} sm={6}>
+											<Controller
+												name='state'
+												control={control}
+												render={({ field }) => (
+													<TextField
+														{...field}
+														fullWidth
+														label='State'
+														error={!!errors.state}
+														helperText={errors.state?.message}
+													/>
+												)}
+											/>
+										</Grid>
+										<Grid item xs={12} sm={6}>
+											<Controller
+												name='pin'
+												control={control}
+												render={({ field }) => (
+													<TextField
+														{...field}
+														fullWidth
+														label='Pincode'
+														error={!!errors.pin}
+														helperText={errors.pin?.message}
+													/>
+												)}
+											/>
+										</Grid>
+									</Grid>
+								</Box>
+							</Grid>
+						</Grid>
 
-  const experienceColumns: TableColumn[] = [
-    { id: "jobTitle", label: "Job Title" },
-    { id: "employmentType", label: "Employment Type" },
-    { id: "companyName", label: "Company Name" },
-    { id: "location", label: "Location" },
-    { id: "startDate", label: "Start Date" },
-    { id: "endDate", label: "End Date" },
-    { id: "action", label: "Action" },
-  ];
+						<Box
+							component='fieldset'
+							sx={{
+								border: "1px solid #ccc",
+								padding: 2,
+								borderRadius: 2,
+								marginTop: 2,
+							}}>
+							<legend className={styles.educationLegend}>Education</legend>
+							<CommonTable
+								heading=''
+								colHeaders={educationColumns}
+								rowData={educationData}
+								showSearch={false}
+								showAddButton={true}
+								addButtonLabel='Add Education'
+								onAddButtonClick={() => handleAdd("education")}
+								showFilterButton={false}
+							/>
+						</Box>
 
-  const handleEdit = (type: "education" | "experience", row: TableRowData) => {
-    setShowAddForm(type);
-    setSelectedRow(row);
-    setOpenEditDialog(true);
-  };
+						<Box
+							component='fieldset'
+							sx={{
+								border: "1px solid #ccc",
+								padding: 2,
+								borderRadius: 2,
+								marginTop: 2,
+							}}>
+							<legend className={styles.expirenceLegend}>Experience</legend>
+							<CommonTable
+								heading=''
+								colHeaders={experienceColumns}
+								rowData={experienceData}
+								showSearch={false}
+								showAddButton={true}
+								addButtonLabel='Add Experience'
+								onAddButtonClick={() => handleAdd("experience")}
+								showFilterButton={false}
+							/>
+						</Box>
 
-  const handleDelete = (type: string, index: number) => {
-    if (type === "education") {
-      setEducationData(educationData.filter((_, i) => i !== index));
-    } else if (type === "experience") {
-      setExperienceData(experienceData.filter((_, i) => i !== index));
-    }
-  };
+						<Box sx={{ mt: 3, textAlign: "right" }}>
+							<Button variant='contained' type='submit' disabled={isSubmitting}>
+								Save Profile
+							</Button>
+						</Box>
 
-  const handleSaveEdit = (data: any) => {
-    if (selectedRow) {
-      const updatedData = { ...selectedRow, ...data };
-      if (educationData.includes(selectedRow)) {
-        setEducationData(
-          educationData.map((row) => (row === selectedRow ? updatedData : row))
-        );
-      } else if (experienceData.includes(selectedRow)) {
-        setExperienceData(
-          experienceData.map((row) => (row === selectedRow ? updatedData : row))
-        );
-      }
-    }
-    setOpenEditDialog(false);
-  };
+						<CommonDialog
+							open={openEditDialog}
+							title={`Edit ${
+								showAddForm === "education" ? "Education" : "Experience"
+							}`}
+							onClose={() => setOpenEditDialog(false)}
+							onSubmit={(newRowData) => {
+								if (selectedRow) {
+									const { index, row } = selectedRow;
+									if (showAddForm === "education") {
+										const newEdu = [...educationData];
+										newEdu[index] = newRowData;
+										onSaveAddEdit();
+										setEducationData(newEdu);
+									} else {
+										const newExp = [...experienceData];
+										newExp[index] = newRowData;
+										onSaveAddEdit();
+										setExperienceData(newExp);
+									}
+								}
+								setOpenEditDialog(false);
+							}}
+							maxWidth='md'>
+							{selectedRow && (
+								<AddEditModel
+									initialData={selectedRow.row}
+									ref={formRef}
+									formType={showAddForm}
+								/>
+							)}
+						</CommonDialog>
 
-  const handleAdd = (type: "education" | "experience") => {
-    setShowAddForm(type);
-    setOpenAddExprienceDialog(true);
-  };
+						<CommonDialog
+							open={openAddExprienceDialog}
+							title={`Add ${
+								showAddForm === "education" ? "Education" : "Experience"
+							}`}
+							onClose={() => setOpenAddExprienceDialog(false)}
+							onSubmit={(newRowData) => {
+								onSaveAddEdit();
 
-  return (
-    <Box sx={{ p: 3 }}>
-      <Card sx={{ maxWidth: 1345 }}>
-        <CardMedia
-          component="img"
-          height="140"
-          image="/images/sample.jpeg"
-          alt="green iguana"
-        />
-        <CardContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={1}>
-              <UploadBadge />
-            </Grid>
-            <Grid
-              item
-              xs={12}
-              sm={4}
-              sx={{ marginTop: "50px", marginLeft: "25px" }}
-            >
-              <Typography gutterBottom variant="h5" component="div">
-                Dr Test
-              </Typography>
-            </Grid>
-          </Grid>
+								setEducationData((prev) => [...prev, newRowData]);
 
-          <Box
-            component="fieldset"
-            sx={{
-              border: "1px solid #ccc",
-              padding: 2,
-              borderRadius: 2,
-              marginTop: 2,
-            }}
-          >
-            <legend className={styles.legend}>Personal Information</legend>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  required
-                  label="Name"
-                  fullWidth
-                  defaultValue="TEST"
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={4}>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DatePicker
-                    slotProps={{ textField: { fullWidth: true } }}
-                    label="DOB"
-                    defaultValue={dayjs("2022-04-17")}
-                  />
-                </LocalizationProvider>
-              </Grid>
-
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  required
-                  label="Education"
-                  fullWidth
-                  defaultValue="MBBS"
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  label="Language"
-                  fullWidth
-                  defaultValue="Not Available"
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={8}>
-                <TextField
-                  label="Speciality"
-                  fullWidth
-                  defaultValue="Large Animal Internal Medicine"
-                />
-              </Grid>
-            </Grid>
-          </Box>
-
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Box
-                component="fieldset"
-                sx={{
-                  border: "1px solid #ccc",
-                  padding: 2,
-                  borderRadius: 2,
-                  marginTop: 2,
-                }}
-              >
-                <legend className={styles.homeLegend}>Home Address</legend>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      required
-                      label="City"
-                      fullWidth
-                      defaultValue="TEST"
-                    />
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      required
-                      label="State"
-                      fullWidth
-                      defaultValue="TEST"
-                    />
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      required
-                      label="Pincode"
-                      fullWidth
-                      defaultValue="123456"
-                    />
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      required
-                      label="Landmark"
-                      fullWidth
-                      defaultValue="Test"
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Box
-                component="fieldset"
-                sx={{
-                  border: "1px solid #ccc",
-                  padding: 2,
-                  borderRadius: 2,
-                  marginTop: 2,
-                }}
-              >
-                <legend className={styles.contactLegend}>Contacts</legend>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      required
-                      label="Primary Email"
-                      fullWidth
-                      defaultValue="TEST@test.com"
-                    />
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      required
-                      label="Optional Email"
-                      fullWidth
-                      defaultValue="TEST@test.com"
-                    />
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      required
-                      label="Primary Phone"
-                      fullWidth
-                      defaultValue="123456"
-                    />
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      required
-                      label="Optional Phone"
-                      fullWidth
-                      defaultValue="123456"
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
-            </Grid>
-          </Grid>
-
-          <Box
-            component="fieldset"
-            sx={{
-              border: "1px solid #ccc",
-              padding: 2,
-              borderRadius: 2,
-              marginTop: 2,
-            }}
-          >
-            <legend className={styles.expirenceLegend}>Education</legend>
-            <CommonTable
-              heading=""
-              colHeaders={educationColumns}
-              rowData={educationData}
-              showSearch={false}
-              showAddButton={true}
-              addButtonLabel="Add Education"
-              onAddButtonClick={() => handleAdd("education")}
-              showFilterButton={false}
-            />
-          </Box>
-
-          <Box
-            component="fieldset"
-            sx={{
-              border: "1px solid #ccc",
-              padding: 2,
-              borderRadius: 2,
-              marginTop: 2,
-            }}
-          >
-            <legend className={styles.expirenceLegend}>Experience</legend>
-            <CommonTable
-              heading=""
-              colHeaders={experienceColumns}
-              rowData={experienceData}
-              showSearch={false}
-              showAddButton={true}
-              addButtonLabel="Add Experience"
-              onAddButtonClick={() => handleAdd("experience")}
-              showFilterButton={false}
-            />
-          </Box>
-
-          <Box
-            component="fieldset"
-            sx={{
-              border: "1px solid #ccc",
-              padding: 2,
-              borderRadius: 2,
-              marginTop: 2,
-            }}
-          >
-            <legend className={styles.expirenceLegend}>Categories</legend>
-            <Grid container spacing={2}>
-              <Stack direction="row" spacing={1} sx={{ margin: "25px" }}>
-                {chips.map((chip) => (
-                  <Chip
-                    key={chip.id}
-                    label={chip.label}
-                    variant={chip.variant}
-                    onClick={() => handleToggle(chip.id)}
-                    clickable
-                    color="primary"
-                  />
-                ))}
-              </Stack>
-            </Grid>
-          </Box>
-
-          <Box
-            component="fieldset"
-            sx={{
-              border: "1px solid #ccc",
-              padding: 2,
-              borderRadius: 2,
-              marginTop: 2,
-            }}
-          >
-            <legend className={styles.expirenceLegend}>Facilities</legend>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                paddingBottom: "15px",
-              }}
-            >
-              <Button
-                variant="contained"
-                endIcon={<AddCircleOutlineIcon />}
-                size="large"
-              >
-                Add Facilities
-              </Button>
-            </Box>
-          </Box>
-
-          <CommonDialog
-            open={openEditDialog}
-            title={`Edit ${
-              showAddForm === "education" ? "Education" : "Experience"
-            }`}
-            onClose={() => setOpenEditDialog(false)}
-            onSubmit={handleSaveEdit}
-            maxWidth="md"
-          >
-            {selectedRow && (
-              <AddEditModel
-                initialData={selectedRow}
-                onSave={handleSaveEdit}
-                onCancel={() => setOpenEditDialog(false)}
-                formType={showAddForm}
-              />
-            )}
-          </CommonDialog>
-
-          <CommonDialog
-            open={openAddExprienceDialog}
-            title="Add Education"
-            onClose={() => setOpenAddExprienceDialog(false)}
-            onSubmit={handleSaveEdit}
-            maxWidth="md"
-          >
-            <AddEditModel
-              initialData={{}}
-              onSave={handleSaveEdit}
-              formType={showAddForm}
-              onCancel={() => setOpenEditDialog(false)}
-            />
-          </CommonDialog>
-        </CardContent>
-      </Card>
-    </Box>
-  );
-};
+								setOpenAddExprienceDialog(false);
+							}}
+							maxWidth='md'>
+							<AddEditModel
+								initialData={{}}
+								ref={formRef}
+								formType={showAddForm}
+							/>
+						</CommonDialog>
+					</CardContent>
+				</Card>
+			</form>
+			<Message
+				openSnackbar={openSnackbar}
+				handleCloseSnackbar={handleCloseSnackbar}
+				snackbarSeverity={snackbarSeverity}
+				snackbarMessage={snackbarMessage}
+			/>
+		</Box>
+	);
+}
 
 export default VetConnectUserProfile;

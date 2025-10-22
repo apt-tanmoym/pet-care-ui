@@ -94,8 +94,8 @@ function VetConnectHomeVisit() {
       setIsLoadingData(true);
       try {
         const payload = {
-          userName: 'tonmoy',
-          userPwd: '4vpzrnly',
+          userName: localStorage.getItem('userName') || '',
+          userPwd: localStorage.getItem('userPwd') || '',
           deviceStat: 'M'
         };
 
@@ -201,10 +201,10 @@ function VetConnectHomeVisit() {
       }));
 
       const payload = {
-        userName: 'tonmoy',
-        userPwd: '4vpzrnly',
+        userName: localStorage.getItem('userName') || ''  ,
+        userPwd: localStorage.getItem('userPwd') || '',
         deviceStat: 'M',
-        orgId: localStorage.getItem('orgId')?.toString(),
+        orgId: localStorage.getItem('orgId') || '',
         preferredDaysSlots,
         homeVisit: allowHomeVisit ? 'true' : 'false',
         emergencyRequest: emergencyRequest ? 'true' : 'false'
@@ -235,8 +235,8 @@ function VetConnectHomeVisit() {
     setIsLoadingAppointments(true);
     try {
       const payload = {
-        userName: 'tonmoy',
-        userPwd: '4vpzrnly',
+        userName: localStorage.getItem('userName') || '',
+        userPwd: localStorage.getItem('userPwd') || '',
         deviceStat: 'M',
         appointmentFilter: filter
       };
@@ -274,8 +274,8 @@ function VetConnectHomeVisit() {
     setIsLoadingSpecificDate(true);
     try {
       const payload = {
-        userName: 'tonmoy',
-        userPass: '4vpzrnly',
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
         deviceStat: 'M',
         checkedDay: date.format('YYYY-MM-DD') // Format: "2025-09-04"
       };
@@ -301,8 +301,8 @@ function VetConnectHomeVisit() {
     setCancellingAppointmentId(appointment.homeVisitAppointmentId);
     try {
       const payload = {
-        userName: 'tonmoy',
-        userPass: '4vpzrnly',
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
         deviceStat: 'M',
         appointmentId: appointment.homeVisitAppointmentId,
         petOwnerUid: appointment.petOwnerUid,

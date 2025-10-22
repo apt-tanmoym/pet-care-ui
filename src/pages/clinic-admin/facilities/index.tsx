@@ -12,20 +12,21 @@ export default function FacilityPage() {
   const [facilites, setFacilites] = useState<FaclityServiceResponse[]>([]);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const facilityPayload:FaclityServicePayload = {
-      userName: "jibons",
-      userPass: "P@ssw0rd",
+  
+  const getFacilityPayload = (): FaclityServicePayload => ({
+      userName: typeof window !== 'undefined' ? localStorage.getItem('userName') || '' : '',
+      userPass: typeof window !== 'undefined' ? localStorage.getItem('userPwd') || '' : '',
       deviceStat: "M",
       callingFrom: "web",
-      orgId: "20",
+      orgId: typeof window !== 'undefined' ? localStorage.getItem('orgId') || '' : '',
       searchFacility: "",
       status: "All"
-  }
+  });
   
   useEffect(() => {
     const fetchFacilities = async () => {
       try {
-        const response = await getOwnFacilites(facilityPayload);
+        const response = await getOwnFacilites(getFacilityPayload());
         const data: FaclityServiceResponse[] = await response;
         setFacilites(data);
       } catch (error: any) {
@@ -40,7 +41,7 @@ export default function FacilityPage() {
   // Add this function to refresh facilities
   const refreshFacilities = async () => {
     try {
-      const response = await getOwnFacilites(facilityPayload);
+      const response = await getOwnFacilites(getFacilityPayload());
       const data: FaclityServiceResponse[] = await response;
       setFacilites(data);
     } catch (error: any) {

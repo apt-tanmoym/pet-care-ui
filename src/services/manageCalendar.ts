@@ -751,3 +751,324 @@ export const getVoicePrescriptions = async (payload: GetVoicePrescriptionsPayloa
     throw error;
   }
 };
+
+// Update Status Arrive API
+interface UpdateStatusArrivePayload {
+  userName: string;
+  userPass: string;
+  deviceStat: string;
+  orgId: number;
+  facilityId: number;
+  patientMrn: string;
+  petOwnerUid: string;
+  patientUid: string;
+  appointmentId: string;
+  appointmentStatus: string;
+  changeStatus: string;
+  meetingUrl: string;
+}
+
+interface UpdateStatusArriveResponse {
+  message: string;
+  status: string;
+  encounterId: string;
+}
+
+export const updateStatusArrive = async (payload: UpdateStatusArrivePayload): Promise<UpdateStatusArriveResponse> => {
+  try {
+    const { data } = await http.post<UpdateStatusArriveResponse>('/updatestatusarrive', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Update Consultation Started API
+interface UpdateConsultationStartedPayload {
+  userName: string;
+  userPass: string;
+  deviceStat: string;
+  orgId: number;
+  facilityId: number;
+  patientMrn: string;
+  petOwnerUid: string;
+  patientUid: string;
+  appointmentId: string;
+  appointmentStatus: string;
+  changeStatus: string;
+  consultationType: string;
+  meetingUrl: string;
+}
+
+interface UpdateConsultationStartedResponse {
+  message: string;
+  status: string;
+}
+
+export const updateConsultationStarted = async (payload: UpdateConsultationStartedPayload): Promise<UpdateConsultationStartedResponse> => {
+  try {
+    const { data } = await http.post<UpdateConsultationStartedResponse>('/updateconsultationstarted', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Update Status Complete API
+interface UpdateStatusCompletePayload {
+  userName: string;
+  userPass: string;
+  deviceStat: string;
+  orgId: number;
+  facilityId: number;
+  patientMrn: string;
+  petOwnerUid: string;
+  patientUid: string;
+  appointmentId: string;
+  encounterId: string;
+  appointmentStatus: string;
+  changeStatus: string;
+}
+
+interface UpdateStatusCompleteResponse {
+  message: string;
+  status: string;
+}
+
+export const updateStatusComplete = async (payload: UpdateStatusCompletePayload): Promise<UpdateStatusCompleteResponse> => {
+  try {
+    const { data } = await http.post<UpdateStatusCompleteResponse>('/updatestatuscomplete', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+
+// Pet Owner and Pet List APIs
+export interface GetPetOwnerListPayload {
+  callingFrom: string;
+  userName: string;
+  userPwd: string;
+  deviceStat: string;
+  orgId: number;
+}
+
+export interface PetOwnerResponse {
+  firstName: string;
+  lastName: string;
+  cellNumber: string;
+  email: string;
+  petOwnerUid: number;
+  mrn: number;
+  patientUid: number;
+}
+
+export interface GetPetListPayload {
+  callingFrom: string;
+  userName: string;
+  userPwd: string;
+  deviceStat: string;
+  orgId: number;
+  petOwnerUid: number;
+}
+
+export interface PetResponse {
+  petName: string;
+  petOwnerUid: number;
+  patientUid: number;
+  mrn: number;
+}
+
+export const getPetOwnerList = async (payload: GetPetOwnerListPayload): Promise<PetOwnerResponse[]> => {
+  try {
+    const { data } = await http.post<PetOwnerResponse[]>('/getpetownerlist', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getPetList = async (payload: GetPetListPayload): Promise<PetResponse[]> => {
+  try {
+    const { data } = await http.post<PetResponse[]>('/getpetlist', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Save Appointment API
+export interface SaveAppointmentPayload {
+  userName: string;
+  userPass: string;
+  deviceStat: string;
+  orgId: string;
+  facilityId: number;
+  bookAppType: string;
+  apptSelDate: string;
+  startTime: string;
+  stopTime: string;
+  episode: string;
+  petOwnerUid: string;
+  patientUid: string;
+  patientId: number;
+}
+
+export interface SaveAppointmentResponse {
+  message: string;
+  status: string;
+}
+
+export const saveAppointment = async (payload: SaveAppointmentPayload): Promise<SaveAppointmentResponse> => {
+  try {
+    const { data } = await http.post<SaveAppointmentResponse>('/saveappointment', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get Uploaded Documents API
+export interface GetUploadedDocumentsPayload {
+  userName: string;
+  userPass: string;
+  deviceStat: string;
+  patientUid: string;
+}
+
+export interface UploadedDocument {
+  userName: string | null;
+  userPass: string | null;
+  deviceStat: string | null;
+  savedFileName: string;
+  documentName: string;
+  documentDate: string;
+  patientName: string | null;
+  documentType: string;
+  documentId: number;
+  orgId: number;
+  patientId: number;
+  patientUid: number;
+  appointmentId: number;
+}
+
+export const getUploadedDocuments = async (payload: GetUploadedDocumentsPayload): Promise<UploadedDocument[] | { message: string; status: string }> => {
+  try {
+    const { data } = await http.post<UploadedDocument[] | { message: string; status: string }>('/getuploadeddocuments', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get Document Type List API
+export interface GetDocumentTypeListPayload {
+  userName: string;
+  userPass: string;
+  deviceStat: string;
+}
+
+export interface DocumentTypeResponse {
+  docTypeId: number;
+  docTypeShortName: string;
+  docTypeDetailName: string;
+}
+
+export const getDocumentTypeList = async (payload: GetDocumentTypeListPayload): Promise<DocumentTypeResponse[]> => {
+  try {
+    const { data } = await http.post<DocumentTypeResponse[]>('/getdocumenttypelist', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Upload Document API
+export interface UploadDocumentPayload {
+  userName: string;
+  userPwd: string;
+  deviceStat: string;
+  docname: string;
+  docdate: string; // DD/MM/YYYY format
+  select_doctype_list: string; // docTypeId as string
+  patientUid: string;
+  appointmentId: string; // "0" if not for specific appointment
+  uploaded_file: File;
+}
+
+export interface UploadDocumentResponse {
+  message: string;
+  status: string;
+}
+
+export const uploadDocument = async (payload: UploadDocumentPayload): Promise<UploadDocumentResponse> => {
+  try {
+    const formData = new FormData();
+    formData.append('userName', payload.userName);
+    formData.append('userPwd', payload.userPwd);
+    formData.append('deviceStat', payload.deviceStat);
+    formData.append('docname', payload.docname);
+    formData.append('docdate', payload.docdate);
+    formData.append('select_doctype_list', payload.select_doctype_list);
+    formData.append('patientUid', payload.patientUid);
+    formData.append('appointmentId', payload.appointmentId);
+    formData.append('uploaded_file', payload.uploaded_file);
+
+    const { data } = await http.post<UploadDocumentResponse>('/uploaddocument', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Remove Document API
+export interface RemoveDocumentPayload {
+  userName: string;
+  userPass: string;
+  deviceStat: string;
+  documentId: string;
+  patientUid: string;
+}
+
+export interface RemoveDocumentResponse {
+  message: string;
+  status: string;
+  statusCode: string;
+}
+
+export const removeDocument = async (payload: RemoveDocumentPayload): Promise<RemoveDocumentResponse> => {
+  try {
+    const { data } = await http.post<RemoveDocumentResponse>('/removedocument', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Share with Doctor API
+export interface ShareWithDocPayload {
+  userName: string;
+  password: string;
+  deviceStat: string;
+  sharefileId: string;
+  docList: string[];
+}
+
+export interface ShareWithDocResponse {
+  message: string;
+  status: string;
+}
+
+export const shareWithDoc = async (payload: ShareWithDocPayload): Promise<ShareWithDocResponse> => {
+  try {
+    const { data } = await http.post<ShareWithDocResponse>('/sharewithdoc', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};

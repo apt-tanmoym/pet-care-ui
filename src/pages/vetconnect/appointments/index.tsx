@@ -52,10 +52,10 @@ const Appointments: React.FC = () => {
     try {
       const response = await viewPatientsInSlot({
         callingFrom: 'web',
-        userName: 'tonmoy',
-        userPass: '4vpzrnly',
-        loggedInFacilityId: 2,
-        orgId: parseInt(localStorage.getItem('orgId') || '39'),
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
+        loggedInFacilityId: selectedFacility?.facilityId || 0,
+        orgId: parseInt(localStorage.getItem('orgId') || ''),
         facilityId: facilityId,
         slotIndex: 1, // Default slot index, can be made dynamic
         startDate: dayjs(date).format('DD/MM/YYYY')
@@ -75,8 +75,8 @@ const Appointments: React.FC = () => {
     setIsLoadingSlotDates(true);
     try {
       const response = await getSlotDates({
-        userName: 'tonmoy',
-        userPass: '4vpzrnly',
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
         deviceStat: 'M',
         facilityId: facilityId
       });
@@ -281,7 +281,11 @@ const Appointments: React.FC = () => {
                        </Typography>
                      </Box>
                    ) : appointmentsAvailable ? (
-                     <AppointmentDetails selectedDate={selectedDate} patientSlots={patientSlots} />
+                     <AppointmentDetails 
+                       selectedDate={selectedDate} 
+                       patientSlots={patientSlots} 
+                       selectedFacility={selectedFacility}
+                     />
                    ) : (
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, bgcolor: '#f7f9fc', borderRadius: '12px' }}>
                       <Typography sx={{ color: '#7f8c8d', fontStyle: 'italic' }}>
@@ -353,6 +357,7 @@ const Appointments: React.FC = () => {
              selectedDate={selectedDate}
              patientSlots={patientSlots}
              onBook={handleProceedToPatientSearch}
+             selectedFacility={selectedFacility}
            />
 
           <PatientSearchDialog 

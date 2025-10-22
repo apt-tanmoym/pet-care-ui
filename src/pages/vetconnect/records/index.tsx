@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PrivateRoute from '@/components/PrivateRoute';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
 import Box from '@mui/material/Box';
@@ -9,6 +9,7 @@ import Divider from '@mui/material/Divider';
 import AddRecordsDialog from '@/components/AddRecords/AddRecordsDialog';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
@@ -29,8 +30,11 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Checkbox from '@mui/material/Checkbox';
+import CircularProgress from '@mui/material/CircularProgress';
+import { getPetOwnerList, getPetList, getUploadedDocuments, PetOwnerResponse, PetResponse, UploadedDocument, removeDocument, shareWithDoc } from '@/services/manageCalendar';
 
 const recordTypes = [
+  { label: 'All Records' },
   { label: 'Pathology' },
   { label: 'Prescription' },
   { label: 'Radiology' },
@@ -205,150 +209,356 @@ const FilterDialog = ({ open, onClose }: { open: boolean; onClose: () => void })
 };
 
 // ShareDialog component
-function ShareDialog({ open, onClose, fileName, petName }: { open: boolean; onClose: () => void; fileName: string; petName: string }) {
+function ShareDialog({ open, onClose, fileName, petName, documentId }: { open: boolean; onClose: () => void; fileName: string; petName: string; documentId: string }) {
   const [expanded, setExpanded] = React.useState(false);
   const [searchName, setSearchName] = React.useState('');
   const [searchMobile, setSearchMobile] = React.useState('');
   const [selectedUsers, setSelectedUsers] = React.useState<string[]>([]);
+  const [isSharing, setIsSharing] = React.useState(false);
   const dummyUsers = [
-    { name: 'Deb Sarkar', category: 'Anatomical Pathology' },
-    { name: 'Debashis Sharma', category: 'Equine' },
-    { name: 'Debashis Das', category: 'Small Animal Surgery' },
-    { name: 'Debashis Sarkar', category: 'Cardiology' },
+    { id: '24', name: 'Dr. Sarah Johnson', category: 'Dermatology' },
+    { id: '25', name: 'Dr. Michael Chen', category: 'Oncology' },
+    { id: '26', name: 'Dr. Emily Rodriguez', category: 'Cardiology' },
+    { id: '27', name: 'Dr. James Wilson', category: 'Orthopedics' },
+    { id: '28', name: 'Dr. Lisa Thompson', category: 'Internal Medicine' },
+    { id: '29', name: 'Dr. Robert Davis', category: 'Surgery' },
   ];
-  const handleUserToggle = (name: string) => {
-    setSelectedUsers(selectedUsers.includes(name)
-      ? selectedUsers.filter(u => u !== name)
-      : [...selectedUsers, name]);
+  const handleUserToggle = (userId: string) => {
+    setSelectedUsers(selectedUsers.includes(userId)
+      ? selectedUsers.filter(u => u !== userId)
+      : [...selectedUsers, userId]);
   };
   const handleShareClick = () => setExpanded(true);
-  const handleShareDocuments = () => { setExpanded(false); onClose(); };
+  const handleShareDocuments = async () => {
+    if (selectedUsers.length === 0) {
+      alert('Please select at least one doctor to share with');
+      return;
+    }
+
+    setIsSharing(true);
+    try {
+      const payload = {
+        userName: localStorage.getItem('userName') || '',
+        password: localStorage.getItem('userPwd') || '',
+        deviceStat: 'M',
+        sharefileId: documentId,
+        docList: selectedUsers
+      };
+
+      console.log('Sharing document with payload:', payload);
+      const response = await shareWithDoc(payload);
+      
+      if (response.status === 'Success') {
+        alert('Document shared successfully!');
+        setExpanded(false);
+        onClose();
+      } else {
+        alert('Failed to share document: ' + response.message);
+      }
+    } catch (error) {
+      console.error('Error sharing document:', error);
+      alert('Error sharing document. Please try again.');
+    } finally {
+      setIsSharing(false);
+    }
+  };
   const handleClose = () => { setExpanded(false); onClose(); };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-      <Box sx={{ borderRadius: 3, overflow: 'hidden', bgcolor: '#fff', boxShadow: 3 }}>
-        <Box sx={{ bgcolor: '#174a7c', p: 2, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
-          <Typography variant="h6" fontWeight={700} sx={{ color: '#fff', lineHeight: 1 }}>{fileName}</Typography>
-          <Typography sx={{ color: '#fff', fontSize: 14 }}>{petName}</Typography>
+    <Dialog 
+      open={open} 
+      onClose={handleClose} 
+      maxWidth="md" 
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+          maxHeight: '90vh',
+          overflow: 'hidden'
+        }
+      }}
+    >
+      {/* Header */}
+      <Box sx={{ 
+        bgcolor: '#174a7c', 
+        p: 3, 
+        borderTopLeftRadius: 12, 
+        borderTopRightRadius: 12,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        <Box>
+          <Typography variant="h5" fontWeight={700} sx={{ color: '#fff', mb: 0.5 }}>
+            {fileName}
+          </Typography>
+          <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.95rem' }}>
+            Pet: {petName}
+          </Typography>
         </Box>
-        {!expanded ? (
-          <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-            <Button
-              variant="outlined"
-              fullWidth
-              startIcon={<DownloadIcon />}
-              sx={{
-                borderColor: '#174a7c',
-                color: '#174a7c',
-                fontWeight: 700,
-                fontSize: 16,
-                borderRadius: 2,
-                py: 1.1,
-                mb: 1,
-                '&:hover': { borderColor: '#103a61', color: '#103a61', bgcolor: '#f5faff' },
-              }}
-              onClick={handleClose}
-            >
-              Download
-            </Button>
-            <Button
-              variant="contained"
-              fullWidth
-              startIcon={<ShareOutlinedIcon sx={{ color: '#fff' }} />}
-              sx={{
-                bgcolor: '#174a7c',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: 16,
-                borderRadius: 2,
-                py: 1.1,
-                '&:hover': { bgcolor: '#103a61' },
-              }}
-              onClick={handleShareClick}
-            >
-              Share Documents
-            </Button>
-          </Box>
-        ) : (
-          <Box sx={{ p: 0, display: 'flex', flexDirection: 'column', height: 500 }}>
-            <IconButton onClick={handleClose} sx={{ alignSelf: 'flex-start', m: 2, color: '#174a7c' }}>
-              <ArrowBackIcon />
-            </IconButton>
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 2, color: '#174a7c', px: 3 }}>Share Documents</Typography>
-            <Box sx={{ px: 3, mb: 2 }}>
-              <TextField
-                label="Name"
-                value={searchName}
-                onChange={e => setSearchName(e.target.value)}
-                fullWidth
-                sx={{ mb: 1 }}
-              />
-              <TextField
-                label="By Mobile Number"
-                value={searchMobile}
-                onChange={e => setSearchMobile(e.target.value)}
-                fullWidth
-                sx={{ mb: 2 }}
-              />
-              <Button
-                variant="contained"
-                fullWidth
-                sx={{ bgcolor: '#174a7c', color: '#fff', fontWeight: 700, fontSize: 16, borderRadius: 2, py: 1, mb: 2, '&:hover': { bgcolor: '#103a61' } }}
-              >
-                Search
-              </Button>
-            </Box>
-            <Box sx={{ flex: 1, overflow: 'auto', px: 3 }}>
-              <TableContainer sx={{ mb: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 700 }}>Name</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700 }}>Select</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {dummyUsers.map(user => (
-                      <TableRow key={user.name}>
-                        <TableCell>{user.name}</TableCell>
-                        <TableCell>{user.category}</TableCell>
-                        <TableCell align="center">
-                          <Checkbox
-                            checked={selectedUsers.includes(user.name)}
-                            onChange={() => handleUserToggle(user.name)}
-                            color="primary"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-            <Box sx={{ position: 'sticky', bottom: 0, left: 0, right: 0, bgcolor: '#fff', p: 3, boxShadow: '0 -2px 8px 0 rgba(23,74,124,0.07)' }}>
-              <Button
-                variant="contained"
-                fullWidth
-                sx={{ bgcolor: '#174a7c', color: '#fff', fontWeight: 700, fontSize: 18, borderRadius: 2, py: 1.5, letterSpacing: 1, boxShadow: 'none', '&:hover': { bgcolor: '#103a61' } }}
-                onClick={handleShareDocuments}
-              >
-                SHARE DOCUMENTS
-              </Button>
-            </Box>
-          </Box>
+        {expanded && (
+          <IconButton 
+            onClick={handleClose} 
+            sx={{ 
+              color: '#fff',
+              bgcolor: 'rgba(255,255,255,0.1)',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
+            }}
+          >
+            <ArrowBackIcon />
+          </IconButton>
         )}
       </Box>
+
+      {!expanded ? (
+        // Initial Actions
+        <Box sx={{ p: 4, display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center' }}>
+          <Typography variant="h6" fontWeight={600} sx={{ color: '#2c3e50', mb: 2 }}>
+            What would you like to do?
+          </Typography>
+          <Button
+            variant="outlined"
+            fullWidth
+            startIcon={<DownloadIcon />}
+            sx={{
+              borderColor: '#174a7c',
+              color: '#174a7c',
+              fontWeight: 600,
+              fontSize: '1rem',
+              borderRadius: 2,
+              py: 1.5,
+              px: 3,
+              '&:hover': { 
+                borderColor: '#103a61', 
+                color: '#103a61', 
+                bgcolor: '#f5faff' 
+              },
+            }}
+            onClick={handleClose}
+          >
+            Download Document
+          </Button>
+          <Button
+            variant="contained"
+            fullWidth
+            startIcon={<ShareOutlinedIcon sx={{ color: '#fff' }} />}
+            sx={{
+              bgcolor: '#174a7c',
+              color: '#fff',
+              fontWeight: 600,
+              fontSize: '1rem',
+              borderRadius: 2,
+              py: 1.5,
+              px: 3,
+              '&:hover': { 
+                bgcolor: '#103a61',
+                boxShadow: '0 4px 12px rgba(23, 74, 124, 0.3)'
+              },
+            }}
+            onClick={handleShareClick}
+          >
+            Share with Others
+          </Button>
+        </Box>
+      ) : (
+        // Share Form
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '75vh' }}>
+          {/* Search Section */}
+          <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0', bgcolor: '#f8f9fa' }}>
+            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: '#2c3e50', fontSize: '0.9rem' }}>
+              Search Recipients
+            </Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5, mb: 1.5 }}>
+              <TextField
+                label="Search by Name"
+                value={searchName}
+                onChange={e => setSearchName(e.target.value)}
+                placeholder="Enter recipient name"
+                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: 'white',
+                    borderRadius: 1,
+                    '& fieldset': {
+                      borderColor: '#dde2e7',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: '#174a7c',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#174a7c',
+                    },
+                  },
+                }}
+                fullWidth
+              />
+              <TextField
+                label="Search by Mobile Number"
+                value={searchMobile}
+                onChange={e => setSearchMobile(e.target.value)}
+                placeholder="Enter mobile number"
+                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: 'white',
+                    borderRadius: 1,
+                    '& fieldset': {
+                      borderColor: '#dde2e7',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: '#174a7c',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#174a7c',
+                    },
+                  },
+                }}
+                fullWidth
+              />
+            </Box>
+            <Button
+              variant="contained"
+              size="small"
+              sx={{ 
+                bgcolor: '#174a7c', 
+                color: '#fff', 
+                fontWeight: 600, 
+                fontSize: '0.85rem', 
+                borderRadius: 1, 
+                px: 2.5,
+                py: 0.8,
+                '&:hover': { 
+                  bgcolor: '#103a61',
+                  boxShadow: '0 4px 12px rgba(23, 74, 124, 0.3)'
+                } 
+              }}
+            >
+              Search Recipients
+            </Button>
+          </Box>
+
+          {/* Recipients List */}
+          <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: '#2c3e50', fontSize: '0.9rem' }}>
+              Select Recipients ({selectedUsers.length} selected)
+            </Typography>
+            <TableContainer sx={{ 
+              border: '1px solid #e0e0e0', 
+              borderRadius: 1,
+              bgcolor: 'white',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.05)'
+            }}>
+              <Table size="small">
+                <TableHead sx={{ bgcolor: '#f7f9fc' }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600, color: '#2c3e50', fontSize: '0.85rem', py: 1 }}>
+                      Name
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#2c3e50', fontSize: '0.85rem', py: 1 }}>
+                      Specialty
+                    </TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, color: '#2c3e50', fontSize: '0.85rem', py: 1 }}>
+                      Select
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {dummyUsers.map(user => (
+                    <TableRow 
+                      key={user.id}
+                      sx={{ 
+                        '&:hover': { bgcolor: 'rgba(23, 74, 124, 0.04)' },
+                        '&:last-child td': { borderBottom: 0 }
+                      }}
+                    >
+                      <TableCell sx={{ fontWeight: 500, color: '#2c3e50', fontSize: '0.85rem', py: 0.5 }}>
+                        {user.name}
+                      </TableCell>
+                      <TableCell sx={{ color: '#666', fontSize: '0.8rem', py: 0.5 }}>
+                        {user.category}
+                      </TableCell>
+                      <TableCell align="center" sx={{ py: 0.5 }}>
+                        <Checkbox
+                          checked={selectedUsers.includes(user.id)}
+                          onChange={() => handleUserToggle(user.id)}
+                          size="small"
+                          sx={{
+                            color: '#174a7c',
+                            '&.Mui-checked': {
+                              color: '#174a7c',
+                            },
+                          }}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+
+          {/* Action Buttons */}
+          <Box sx={{ 
+            p: 4, 
+            borderTop: '1px solid #e0e0e0', 
+            bgcolor: '#f8f9fa',
+            display: 'flex',
+            gap: 2,
+            justifyContent: 'flex-end'
+          }}>
+            <Button
+              variant="outlined"
+              onClick={handleClose}
+              sx={{
+                borderColor: '#dde2e7',
+                color: '#666',
+                fontWeight: 600,
+                px: 4,
+                py: 1.2,
+                borderRadius: 2,
+                '&:hover': {
+                  borderColor: '#999',
+                  bgcolor: '#f5f5f5',
+                }
+              }}
+            >
+              Cancel
+            </Button>
+                  <Button
+                    variant="contained"
+                    disabled={selectedUsers.length === 0 || isSharing}
+                    startIcon={isSharing ? <CircularProgress size={16} color="inherit" /> : null}
+                    sx={{ 
+                      bgcolor: '#174a7c', 
+                      color: '#fff', 
+                      fontWeight: 600, 
+                      fontSize: '1rem', 
+                      borderRadius: 2, 
+                      px: 4,
+                      py: 1.2,
+                      minWidth: 160,
+                      boxShadow: 'none',
+                      '&:hover': { 
+                        bgcolor: '#103a61',
+                        boxShadow: '0 4px 12px rgba(23, 74, 124, 0.3)'
+                      },
+                      '&:disabled': {
+                        bgcolor: '#bdc3c7',
+                        color: '#7f8c8d',
+                        boxShadow: 'none'
+                      }
+                    }}
+                    onClick={handleShareDocuments}
+                  >
+                    {isSharing ? 'Sharing...' : `Share Document${selectedUsers.length > 1 ? 's' : ''}`}
+                  </Button>
+          </Box>
+        </Box>
+      )}
     </Dialog>
   );
 }
-
-const petsList = [
-  { label: 'Sheru', value: 'sheru' },
-  { label: 'Tommy', value: 'tommy' },
-  { label: 'Max', value: 'max' },
-];
 
 const RecordsPage: React.FC = () => {
   const [openAddDialog, setOpenAddDialog] = useState(false);
@@ -356,18 +566,220 @@ const RecordsPage: React.FC = () => {
   const [documentType, setDocumentType] = useState(documentTypes[0].value);
   const [selectedCategory, setSelectedCategory] = useState(recordTypes[0].label);
   const [openShareDialog, setOpenShareDialog] = useState(false);
-  const [selectedPet, setSelectedPet] = useState(petsList[0].value);
+  const [shareDocument, setShareDocument] = useState<UploadedDocument | null>(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Pet Owner and Pet states
+  const [petOwners, setPetOwners] = useState<PetOwnerResponse[]>([]);
+  const [selectedPetOwner, setSelectedPetOwner] = useState<number | null>(null);
+  const [pets, setPets] = useState<PetResponse[]>([]);
+  const [selectedPet, setSelectedPet] = useState<PetResponse | null>(null);
+  const [loadingPetOwners, setLoadingPetOwners] = useState(false);
+  const [loadingPets, setLoadingPets] = useState(false);
+
+  // Documents state
+  const [documents, setDocuments] = useState<UploadedDocument[]>([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [filteredDocuments, setFilteredDocuments] = useState<UploadedDocument[]>([]);
+
+  // Fetch pet owners on component mount
+  useEffect(() => {
+    const fetchPetOwners = async () => {
+      setLoadingPetOwners(true);
+      try {
+        const payload = {
+          callingFrom: "app",
+          userName: localStorage.getItem('userName') || '' ,
+          userPwd: localStorage.getItem('userPwd') || '',
+          deviceStat: "M",
+          orgId: parseInt(localStorage.getItem('orgId') || '2')
+        };
+        const response = await getPetOwnerList(payload);
+        setPetOwners(response);
+      } catch (error) {
+        console.error('Error fetching pet owners:', error);
+      } finally {
+        setLoadingPetOwners(false);
+      }
+    };
+
+    fetchPetOwners();
+  }, []);
+
+  // Fetch pets when pet owner is selected
+  useEffect(() => {
+    if (selectedPetOwner) {
+      const fetchPets = async () => {
+        setLoadingPets(true);
+        try {
+          const payload = {
+            callingFrom: "app",
+            userName: localStorage.getItem('userName') || '',
+            userPwd: localStorage.getItem('userPwd') || '',
+            deviceStat: "M",
+            orgId: parseInt(localStorage.getItem('orgId') || '2'),
+            petOwnerUid: selectedPetOwner
+          };
+          const response = await getPetList(payload);
+          setPets(response);
+        } catch (error) {
+          console.error('Error fetching pets:', error);
+        } finally {
+          setLoadingPets(false);
+        }
+      };
+
+      fetchPets();
+    } else {
+      setPets([]);
+      setSelectedPet(null);
+    }
+  }, [selectedPetOwner]);
+
+  // Fetch documents when pet is selected
+  useEffect(() => {
+    if (selectedPet) {
+      const fetchDocuments = async () => {
+        setLoadingDocuments(true);
+        try {
+          const payload = {
+            userName: localStorage.getItem('userName') || '',
+            userPass: localStorage.getItem('userPwd') || '',
+            deviceStat: "M",
+            patientUid: selectedPet.patientUid.toString()
+          };
+          const response = await getUploadedDocuments(payload);
+          
+          // Handle different response formats
+          if (Array.isArray(response)) {
+            setDocuments(response);
+          } else if (response && response.status === 'notfound') {
+            // Handle "notfound" status response
+            console.log('No documents found:', response.message);
+            setDocuments([]);
+          } else {
+            // Fallback for unexpected response format
+            console.log('Unexpected response format:', response);
+            setDocuments([]);
+          }
+        } catch (error) {
+          console.error('Error fetching documents:', error);
+          setDocuments([]);
+        } finally {
+          setLoadingDocuments(false);
+        }
+      };
+
+      fetchDocuments();
+    } else {
+      setDocuments([]);
+    }
+  }, [selectedPet]);
+
+  // Filter documents based on selected category
+  useEffect(() => {
+    if (documents.length === 0) {
+      setFilteredDocuments([]);
+      return;
+    }
+
+    if (selectedCategory === 'All Records') {
+      // Show all documents
+      setFilteredDocuments(documents);
+    } else if (selectedCategory === 'Pathology') {
+      const filtered = documents.filter(doc => 
+        doc.documentType.toLowerCase().includes('pathology') || 
+        doc.documentType.toLowerCase().includes('patho')
+      );
+      setFilteredDocuments(filtered);
+    } else if (selectedCategory === 'Prescription') {
+      const filtered = documents.filter(doc => 
+        doc.documentType.toLowerCase().includes('prescription') || 
+        doc.documentType.toLowerCase().includes('presc')
+      );
+      setFilteredDocuments(filtered);
+    } else if (selectedCategory === 'Radiology') {
+      const filtered = documents.filter(doc => 
+        doc.documentType.toLowerCase().includes('radiology') || 
+        doc.documentType.toLowerCase().includes('radio') ||
+        doc.documentType.toLowerCase().includes('xray')
+      );
+      setFilteredDocuments(filtered);
+    } else if (selectedCategory === 'Referrals') {
+      const filtered = documents.filter(doc => 
+        doc.documentType.toLowerCase().includes('referral') || 
+        doc.documentType.toLowerCase().includes('refer')
+      );
+      setFilteredDocuments(filtered);
+    } else {
+      // Show all documents for any other category
+      setFilteredDocuments(documents);
+    }
+  }, [documents, selectedCategory]);
+
+  const handlePetOwnerChange = (petOwnerUid: number) => {
+    setSelectedPetOwner(petOwnerUid);
+    setSelectedPet(null); // Reset pet selection when owner changes
+  };
+
+  const handlePetChange = (petName: string) => {
+    const pet = pets.find(p => p.petName === petName);
+    setSelectedPet(pet || null);
+  };
 
   const handleDeleteClick = (recordId: string) => {
     setRecordToDelete(recordId);
     setOpenDeleteDialog(true);
   };
-  const handleConfirmDelete = () => {
-    setOpenDeleteDialog(false);
-    setRecordToDelete(null);
-    // Here you would remove the record from your list
+  const handleConfirmDelete = async () => {
+    if (!recordToDelete || !selectedPet) {
+      alert('Missing required information for deletion');
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const payload = {
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
+        deviceStat: 'M',
+        documentId: recordToDelete,
+        patientUid: selectedPet.patientUid.toString()
+      };
+
+      console.log('Deleting document with payload:', payload);
+      const response = await removeDocument(payload);
+      
+      if (response.status === 'Success' || response.statusCode === '200') {
+        alert('Document removed successfully!');
+        // Refresh the documents list
+        if (selectedPet) {
+          const fetchPayload = {
+            userName: localStorage.getItem('userName') || '',
+            userPass: localStorage.getItem('userPwd') || '',
+            deviceStat: 'M',
+            patientUid: selectedPet.patientUid.toString()
+          };
+          const updatedDocuments = await getUploadedDocuments(fetchPayload);
+          if (Array.isArray(updatedDocuments)) {
+            setDocuments(updatedDocuments);
+          } else {
+            setDocuments([]);
+          }
+        }
+      } else {
+        alert('Failed to remove document: ' + response.message);
+      }
+    } catch (error) {
+      console.error('Error removing document:', error);
+      alert('Error removing document. Please try again.');
+    } finally {
+      setIsDeleting(false);
+      setOpenDeleteDialog(false);
+      setRecordToDelete(null);
+    }
   };
   const handleCancelDelete = () => {
     setOpenDeleteDialog(false);
@@ -387,52 +799,154 @@ const RecordsPage: React.FC = () => {
             </Typography>
           </Box>
 
-          <Paper elevation={0} sx={{ border: '1px solid #e0e0e0', borderRadius: '16px', position: 'relative' }}>
-            {/* Top right action buttons */}
-            <Box sx={{ position: 'absolute', top: 12, right: 16, display: 'flex', gap: 1, alignItems: 'center' }}>
-              <Typography sx={{ fontSize: 13, fontWeight: 500, color: '#555', mr: 0.5 }}>Filter:</Typography>
-              <IconButton
-                sx={{ bgcolor: '#f5f5f5', borderRadius: 2 }}
-                onClick={() => setOpenFilterDialog(true)}
-                aria-label="Filter"
-              >
-                <FilterListIcon />
-              </IconButton>
-              <Button
-                variant="contained"
-                sx={{
-                  bgcolor: '#174a7c',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: 15,
-                  borderRadius: 2,
-                  px: 3,
-                  py: 1,
-                  textTransform: 'none',
-                  boxShadow: 'none',
-                  '&:hover': { bgcolor: '#103a61' },
-                }}
-                onClick={() => setOpenAddDialog(true)}
-              >
-                Add New Record
-              </Button>
-            </Box>
+          <Paper elevation={0} sx={{ border: '1px solid #e0e0e0', borderRadius: '16px' }}>
             <Box sx={{ p: { xs: 2, sm: 3 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2, flexWrap: 'wrap' }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#34495e' }}>
-                  Select Your Pet :
-                </Typography>
-                <TextField
-                  select
-                  value={selectedPet}
-                  onChange={e => setSelectedPet(e.target.value)}
-                  sx={{ minWidth: 140 }}
-                  size="small"
+              {/* Top Action Buttons - Right Aligned */}
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'flex-end', 
+                alignItems: 'center', 
+                mb: 2,
+                gap: 2
+              }}>
+                {/* Filter Section */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography sx={{ 
+            fontSize: '0.8rem', 
+            fontWeight: 500, 
+            color: '#555',
+            whiteSpace: 'nowrap'
+          }}>
+            Filter:
+          </Typography>
+                  <IconButton
+                    sx={{ 
+                      bgcolor: '#f5f5f5', 
+                      borderRadius: 2,
+                      width: 36,
+                      height: 36,
+                      '&:hover': {
+                        bgcolor: '#e0e0e0'
+                      }
+                    }}
+                    onClick={() => setOpenFilterDialog(true)}
+                    aria-label="Filter"
+                  >
+                    <FilterListIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </Box>
+                
+                {/* Add Record Button */}
+                <Button
+                  variant="contained"
+          sx={{
+            bgcolor: '#174a7c',
+            color: '#fff',
+            fontWeight: 600,
+            fontSize: '0.8rem',
+            borderRadius: 1.5,
+            px: 2,
+            py: 1,
+            textTransform: 'none',
+            boxShadow: 'none',
+            minWidth: 'fit-content',
+            whiteSpace: 'nowrap',
+            '&:hover': { 
+              bgcolor: '#103a61',
+              boxShadow: '0 2px 8px rgba(23, 74, 124, 0.3)'
+            },
+          }}
+                  onClick={() => setOpenAddDialog(true)}
                 >
-                  {petsList.map(pet => (
-                    <MenuItem key={pet.value} value={pet.value}>{pet.label}</MenuItem>
-                  ))}
-                </TextField>
+                  Add New Record
+                </Button>
+              </Box>
+
+              {/* Pet Selection - One Line */}
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 3, 
+                flexWrap: 'wrap',
+                p: 2,
+                bgcolor: '#f8f9fa',
+                borderRadius: 2,
+                border: '1px solid #e0e0e0',
+                mb: 3
+              }}>
+        {/* Pet Owner Selection */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: '#174a7c', minWidth: 'fit-content', fontSize: '0.875rem' }}>
+            Select Pet Owner:
+          </Typography>
+                  <TextField
+                    select
+                    value={selectedPetOwner || ''}
+                    onChange={e => handlePetOwnerChange(Number(e.target.value))}
+                    sx={{ 
+                      minWidth: 220,
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: 'white',
+                        borderRadius: 2,
+                        '& fieldset': {
+                          borderColor: '#dde2e7',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#174a7c',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#174a7c',
+                        },
+                      },
+                    }}
+                    size="small"
+                    disabled={loadingPetOwners}
+                  >
+                    {petOwners.map(owner => (
+                      <MenuItem key={owner.petOwnerUid} value={owner.petOwnerUid}>
+                        {owner.firstName} {owner.lastName} ({owner.cellNumber})
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  {loadingPetOwners && <CircularProgress size={20} sx={{ color: '#174a7c' }} />}
+                </Box>
+
+        {/* Pet Selection */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: '#174a7c', minWidth: 'fit-content', fontSize: '0.875rem' }}>
+            Select Your Pet:
+          </Typography>
+                  <TextField
+                    select
+                    value={selectedPet?.petName || ''}
+                    onChange={e => handlePetChange(e.target.value)}
+                    sx={{ 
+                      minWidth: 160,
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: 'white',
+                        borderRadius: 2,
+                        '& fieldset': {
+                          borderColor: '#dde2e7',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#174a7c',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#174a7c',
+                        },
+                      },
+                    }}
+                    size="small"
+                    disabled={!selectedPetOwner || loadingPets}
+                  >
+                    {pets.map(pet => (
+                      <MenuItem key={pet.patientUid} value={pet.petName}>
+                        {pet.petName}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  {loadingPets && <CircularProgress size={20} sx={{ color: '#174a7c' }} />}
+                </Box>
               </Box>
               <Divider sx={{ mb: 3 }} />
               {/* Document Type Dropdown */}
@@ -459,65 +973,246 @@ const RecordsPage: React.FC = () => {
                 sx={{ mb: 4, display: 'flex', gap: 2 }}
                 fullWidth
               >
-                {recordTypes.map((type) => (
-                  <ToggleButton
-                    key={type.label}
-                    value={type.label}
-                    sx={{
-                      borderRadius: 2,
-                      fontWeight: 600,
-                      fontSize: 14,
-                      px: 2,
-                      py: 0.7,
-                      border: '1px solid #e0e0e0',
-                      color: selectedCategory === type.label ? '#fff' : '#174a7c',
-                      bgcolor: selectedCategory === type.label ? '#174a7c' : '#f5f5f5',
-                      boxShadow: selectedCategory === type.label ? '0 2px 8px 0 rgba(23,74,124,0.15)' : 'none',
-                      outline: selectedCategory === type.label ? '2px solid #174a7c' : 'none',
-                      '&:hover': {
-                        bgcolor: selectedCategory === type.label ? '#103a61' : '#e0e0e0',
-                      },
-                      transition: 'all 0.2s',
-                      flex: 1,
-                      minWidth: 120,
-                    }}
-                  >
-                    {type.label}
-                  </ToggleButton>
-                ))}
+                {recordTypes.map((type) => {
+                  // Calculate count for each category
+                  const getCategoryCount = (category: string) => {
+                    if (documents.length === 0) return 0;
+                    
+                    switch (category) {
+                      case 'All Records':
+                        return documents.length;
+                      case 'Pathology':
+                        return documents.filter(doc => 
+                          doc.documentType.toLowerCase().includes('pathology') || 
+                          doc.documentType.toLowerCase().includes('patho')
+                        ).length;
+                      case 'Prescription':
+                        return documents.filter(doc => 
+                          doc.documentType.toLowerCase().includes('prescription') || 
+                          doc.documentType.toLowerCase().includes('presc')
+                        ).length;
+                      case 'Radiology':
+                        return documents.filter(doc => 
+                          doc.documentType.toLowerCase().includes('radiology') || 
+                          doc.documentType.toLowerCase().includes('radio') ||
+                          doc.documentType.toLowerCase().includes('xray')
+                        ).length;
+                      case 'Referrals':
+                        return documents.filter(doc => 
+                          doc.documentType.toLowerCase().includes('referral') || 
+                          doc.documentType.toLowerCase().includes('refer')
+                        ).length;
+                      default:
+                        return documents.length;
+                    }
+                  };
+
+                  const count = getCategoryCount(type.label);
+                  
+                  return (
+                    <ToggleButton
+                      key={type.label}
+                      value={type.label}
+                      sx={{
+                        borderRadius: 1.5,
+                        fontWeight: 600,
+                        fontSize: '0.8rem',
+                        px: 1.5,
+                        py: 0.5,
+                        border: '1px solid #e0e0e0',
+                        color: selectedCategory === type.label ? '#fff' : '#174a7c',
+                        bgcolor: selectedCategory === type.label ? '#174a7c' : '#f5f5f5',
+                        boxShadow: selectedCategory === type.label ? '0 2px 8px 0 rgba(23,74,124,0.15)' : 'none',
+                        outline: selectedCategory === type.label ? '2px solid #174a7c' : 'none',
+                        '&:hover': {
+                          bgcolor: selectedCategory === type.label ? '#103a61' : '#e0e0e0',
+                        },
+                        transition: 'all 0.2s',
+                        flex: 1,
+                        minWidth: 100,
+                        position: 'relative',
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <span>{type.label}</span>
+                        {count > 0 && (
+                          <Box sx={{
+                            bgcolor: selectedCategory === type.label ? 'rgba(255,255,255,0.2)' : '#174a7c',
+                            color: selectedCategory === type.label ? '#fff' : '#fff',
+                            borderRadius: '50%',
+                            minWidth: 16,
+                            height: 16,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                          }}>
+                            {count}
+                          </Box>
+                        )}
+                      </Box>
+                    </ToggleButton>
+                  );
+                })}
               </ToggleButtonGroup>
-              <Typography variant="h6" fontWeight={700} sx={{ mb: 2, color: '#34495e' }}>
+              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: '#34495e', fontSize: '1rem' }}>
                 All Records
               </Typography>
-              {/* Dummy Record List - each record is a full-width row, content side by side */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 4 }}>
-                <Paper sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Typography sx={{ minWidth: 180, fontWeight: 600 }}>
-                    Blood Test Report
+              
+              {/* Records List */}
+              {loadingDocuments ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                  <CircularProgress size={40} sx={{ color: '#174a7c' }} />
+                  <Typography variant="body2" sx={{ ml: 2, color: '#666' }}>
+                    Loading records...
                   </Typography>
-                  <Typography sx={{ minWidth: 120 }}>2025-07-15</Typography>
-                  <Typography sx={{ minWidth: 140 }}>Pathology (PDF)</Typography>
-                  <Typography sx={{ minWidth: 100 }}>My Vet</Typography>
-                  <Box sx={{ flex: 1 }} />
-                  <IconButton aria-label="share" size="small" sx={{ color: '#174a7c', mr: 1 }} onClick={() => setOpenShareDialog(true)}>
-                    <ShareOutlinedIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton aria-label="delete" size="small" sx={{ color: '#d32f2f' }} onClick={() => handleDeleteClick('dummy-id')}>
-                    <DeleteOutlineIcon fontSize="small" />
-                  </IconButton>
-                </Paper>
-                {/* Add more dummy records here if needed */}
-              </Box>
+                </Box>
+              ) : filteredDocuments.length === 0 ? (
+                <Box sx={{ 
+                  textAlign: 'center', 
+                  py: 6, 
+                  bgcolor: '#f8f9fa', 
+                  borderRadius: 2, 
+                  border: '1px solid #e0e0e0' 
+                }}>
+                  <Typography variant="h6" sx={{ color: '#666', mb: 1 }}>
+                    No Records Found
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#999' }}>
+                    {selectedPet 
+                      ? selectedCategory === 'All Records' 
+                        ? `No records found for ${selectedPet.petName}` 
+                        : `No ${selectedCategory.toLowerCase()} records found for ${selectedPet.petName}`
+                      : 'Please select a pet to view records'
+                    }
+                  </Typography>
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 4 }}>
+                  {filteredDocuments.map((doc) => (
+                    <Paper 
+                      key={doc.documentId} 
+                      sx={{ 
+                        p: 1.5, 
+                        border: '1px solid #e0e0e0', 
+                        borderRadius: 1.5, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          borderColor: '#174a7c',
+                        }
+                      }}
+                    >
+                      <Typography sx={{ 
+                        minWidth: 160, 
+                        fontWeight: 600, 
+                        fontSize: '0.875rem',
+                        color: '#2c3e50'
+                      }}>
+                        {doc.documentName}
+                      </Typography>
+                      <Typography sx={{ 
+                        minWidth: 100, 
+                        fontSize: '0.8rem',
+                        color: '#666'
+                      }}>
+                        {doc.documentDate}
+                      </Typography>
+                      <Typography sx={{ 
+                        minWidth: 120, 
+                        fontSize: '0.8rem',
+                        color: '#666'
+                      }}>
+                        {doc.documentType}
+                      </Typography>
+                      <Typography sx={{ 
+                        minWidth: 80, 
+                        fontSize: '0.8rem',
+                        color: '#666'
+                      }}>
+                        My Vet
+                      </Typography>
+                      <Box sx={{ flex: 1 }} />
+                      <IconButton 
+                        aria-label="share" 
+                        size="small" 
+                        sx={{ 
+                          color: '#174a7c', 
+                          mr: 0.5,
+                          '&:hover': {
+                            bgcolor: 'rgba(23, 74, 124, 0.1)'
+                          }
+                        }} 
+                        onClick={() => {
+                          setShareDocument(doc);
+                          setOpenShareDialog(true);
+                        }}
+                      >
+                        <ShareOutlinedIcon sx={{ fontSize: '1rem' }} />
+                      </IconButton>
+                      <IconButton 
+                        aria-label="delete" 
+                        size="small" 
+                        sx={{ 
+                          color: '#d32f2f',
+                          '&:hover': {
+                            bgcolor: 'rgba(211, 47, 47, 0.1)'
+                          }
+                        }} 
+                        onClick={() => handleDeleteClick(doc.documentId.toString())}
+                      >
+                        <DeleteOutlineIcon sx={{ fontSize: '1rem' }} />
+                      </IconButton>
+                    </Paper>
+                  ))}
+                </Box>
+              )}
             </Box>
           </Paper>
-          <AddRecordsDialog open={openAddDialog} onClose={() => setOpenAddDialog(false)} />
+          <AddRecordsDialog 
+            open={openAddDialog} 
+            onClose={() => setOpenAddDialog(false)} 
+            selectedPet={selectedPet}
+          />
           <FilterDialog open={openFilterDialog} onClose={() => setOpenFilterDialog(false)} />
-          <ShareDialog open={openShareDialog} onClose={() => setOpenShareDialog(false)} fileName="Ghg.jpg" petName="Sheru" />
+          <ShareDialog 
+            open={openShareDialog} 
+            onClose={() => {
+              setOpenShareDialog(false);
+              setShareDocument(null);
+            }} 
+            fileName={shareDocument?.documentName || ''} 
+            petName={selectedPet?.petName || ''} 
+            documentId={shareDocument?.documentId?.toString() || ''} 
+          />
           <Dialog open={openDeleteDialog} onClose={handleCancelDelete}>
-            <DialogTitle>Are you sure you want to delete?</DialogTitle>
+            <DialogTitle>Are you sure you want to delete this document?</DialogTitle>
+            <DialogContent>
+              <Typography variant="body2" color="text.secondary">
+                This action cannot be undone. The document will be permanently removed.
+              </Typography>
+            </DialogContent>
             <DialogActions>
-              <Button onClick={handleCancelDelete} color="primary">Cancel</Button>
-              <Button onClick={handleConfirmDelete} color="error" variant="contained">Delete</Button>
+              <Button 
+                onClick={handleCancelDelete} 
+                color="primary"
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleConfirmDelete} 
+                color="error" 
+                variant="contained"
+                disabled={isDeleting}
+                startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </Button>
             </DialogActions>
           </Dialog>
         </Box>

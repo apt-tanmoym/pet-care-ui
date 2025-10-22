@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Badge, Avatar, IconButton } from '@mui/material';
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
 
-function UploadBadge() {
+function UploadBadge(path?:any) {
     const [image, setImage] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
   
@@ -44,10 +44,18 @@ function UploadBadge() {
           </IconButton>
         }
       >
+        {path && (
+          <Avatar
+          src={path || undefined}
+          sx={{ width: 120, height: 120 }}
+        />
+        )}
+        {!path && (
         <Avatar
           src={image || undefined}
           sx={{ width: 120, height: 120 }}
         />
+        )}
       </Badge>
     </div>
   );

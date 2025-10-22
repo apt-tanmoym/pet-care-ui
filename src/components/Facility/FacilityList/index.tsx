@@ -127,11 +127,11 @@ function FacilityList({ facilities, onAddSuccess }: FacilityTableProps) {
   const handleEditClick = async (facility: FaclityServiceResponse) => {
     try {
       const payload = {
-        userName: 'jibons',
-        userPass: 'P@ssw0rd',
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
         deviceStat: 'M',
         callingFrom: 'web',
-        orgId: '20',
+        orgId: localStorage.getItem('orgId') || '',
         facilityId: String(facility.facilityId),
       };
       const details = await getFacilityDetails(payload);

@@ -16,12 +16,13 @@ import MicIcon from "@mui/icons-material/Mic";
 import SendIcon from "@mui/icons-material/Send";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
+import CloseIcon from "@mui/icons-material/Close";
 import Divider from "@mui/material/Divider";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import dynamic from "next/dynamic";
-import { sampleMedicalRecord } from "@/components/manageEncounter/sampleMedicalRecord";
+// import { sampleMedicalRecord } from "@/components/manageEncounter/sampleMedicalRecord";
 import { uploadVoicePrescription, getVoicePrescriptions } from "@/services/manageCalendar";
 // import { MedicalRecord } from "@/components/manageEncounter/types";
 
@@ -38,14 +39,18 @@ interface ConsultationItem {
   imageUrl?: string;
   patientId?: number;
   appointmentId?: number;
+  patientUid?: number;
+  patientMrn?: number;
 }
 
 interface ConsultationPopupProps {
   consultation: ConsultationItem;
+  onCompleteConsultation?: (consultation: ConsultationItem) => void;
 }
 
 const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
   consultation,
+  onCompleteConsultation,
 }) => {
   const currentDate = new Date();
   const formattedDate = currentDate.toLocaleDateString("en-GB", {
@@ -63,8 +68,9 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
   const recognitionRef = useRef<any>(null);
 
   // State for controlling popup visibility
-  const [openPopup, setOpenPopup] = useState(false);
-  const [openChatModal, setOpenChatModal] = useState(false);
+  const [openPrescriptionModal, setOpenPrescriptionModal] = useState(false);
+  const [openManualPrescriptionModal, setOpenManualPrescriptionModal] = useState(false);
+  const [prescriptionMode, setPrescriptionMode] = useState<'selection' | 'textToSpeech' | 'attachDocument'>('selection');
   
   // State for comments functionality
   const [comment, setComment] = useState("");
@@ -124,14 +130,14 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
   // Fetch consultation history when modal opens
   useEffect(() => {
     const fetchConsultationHistory = async () => {
-      if (openChatModal) {
+      if (openPrescriptionModal) {
         setIsLoadingComments(true);
         try {
           const payload = {
-            userName: "jibons",
-            userPass: "P@ssw0rd",
+            userName: localStorage.getItem('userName') || '',
+            userPass: localStorage.getItem('userPwd') || '',
             deviceStat: "M",
-            appointmentId: 1428
+            appointmentId: consultation.appointmentId || 0
           };
 
           const response = await getVoicePrescriptions(payload);
@@ -172,7 +178,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
     };
 
     fetchConsultationHistory();
-  }, [openChatModal]);
+  }, [openPrescriptionModal]);
 
   const handleFileChange =
     (label: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,20 +189,40 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
       }
     };
 
-  const handleOpenPopup = () => {
-    setOpenPopup(true);
+  const handleOpenPrescriptionModal = () => {
+    setOpenPrescriptionModal(true);
+    setPrescriptionMode('selection');
   };
 
-  const handleClosePopup = () => {
-    setOpenPopup(false);
+  const handleClosePrescriptionModal = () => {
+    setOpenPrescriptionModal(false);
+    setPrescriptionMode('selection');
+    setComment("");
+    if (isRecording && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+    }
   };
 
-  const handleOpenChatModal = () => {
-    setOpenChatModal(true);
+  const handleOpenManualPrescription = () => {
+    setOpenManualPrescriptionModal(true);
   };
 
-  const handleCloseChatModal = () => {
-    setOpenChatModal(false);
+  const handleCloseManualPrescription = () => {
+    setOpenManualPrescriptionModal(false);
+  };
+
+  const handleModeSelect = (mode: 'textToSpeech' | 'attachDocument' | 'addManually') => {
+    if (mode === 'addManually') {
+      setOpenPrescriptionModal(false);
+      setOpenManualPrescriptionModal(true);
+    } else {
+      setPrescriptionMode(mode);
+    }
+  };
+
+  const handleBackToSelection = () => {
+    setPrescriptionMode('selection');
     setComment("");
     if (isRecording && recognitionRef.current) {
       recognitionRef.current.stop();
@@ -230,14 +256,23 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
       return;
     }
 
+    if (!consultation.patientMrn || !consultation.appointmentId) {
+      setSnackbar({
+        open: true,
+        message: "Missing patient or appointment information",
+        severity: "error"
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const payload = {
-        userName: "jibons",
-        userPass: "P@ssw0rd",
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
         deviceStat: "M",
-        patientId: 9,
-        appointmentId: 1428,
+        patientId: consultation.patientMrn,
+        appointmentId: consultation.appointmentId,
         publicNote: comment.trim()
       };
 
@@ -255,10 +290,10 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
         // Refresh consultation history
         try {
           const historyPayload = {
-            userName: "jibons",
-            userPass: "P@ssw0rd",
+            userName: localStorage.getItem('userName') || '',
+            userPass: localStorage.getItem('userPwd') || '',
             deviceStat: "M",
-            appointmentId: 1428
+            appointmentId: consultation.appointmentId || 0
           };
 
           const historyResponse = await getVoicePrescriptions(historyPayload);
@@ -377,7 +412,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
           >
             <Typography
               variant="body2"
-              sx={{ fontWeight: 500, color: "#2196F3", mb: 0.5 }}
+              sx={{ fontWeight: 500, color: "#174a7c", mb: 0.5 }}
             >
               IN ONLINE
             </Typography>
@@ -399,19 +434,55 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
             >
               <Button 
                 variant="contained" 
-                sx={{ bgcolor: "#2196F3" }}
-                onClick={handleOpenChatModal}
+                sx={{ 
+                  bgcolor: "#174a7c",
+                  '&:hover': {
+                    bgcolor: '#0d3a5f',
+                  },
+                }}
               >
                 ONLINE CONSULTATION
               </Button>
-              <Button variant="outlined" onClick={handleOpenPopup}>
+              <Button 
+                variant="outlined" 
+                onClick={handleOpenPrescriptionModal}
+                sx={{
+                  borderColor: '#174a7c',
+                  color: '#174a7c',
+                  '&:hover': {
+                    borderColor: '#0d3a5f',
+                    bgcolor: '#e8f0f7',
+                  },
+                }}
+              >
                 Add Prescription
               </Button>
               <Button
                 variant="outlined"
                 onClick={() => addDocRef.current?.click()}
+                sx={{
+                  borderColor: '#174a7c',
+                  color: '#174a7c',
+                  '&:hover': {
+                    borderColor: '#0d3a5f',
+                    bgcolor: '#e8f0f7',
+                  },
+                }}
               >
                 Add Documents
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => onCompleteConsultation?.(consultation)}
+                sx={{
+                  bgcolor: '#4CAF50',
+                  color: '#fff',
+                  '&:hover': {
+                    bgcolor: '#45a049',
+                  },
+                }}
+              >
+                Complete Consultation
               </Button>
               <input
                 type="file"
@@ -428,7 +499,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
       <Box sx={{ mb: 3, p: 2, bgcolor: "#fff", borderRadius: 4, boxShadow: 1 }}>
         <Typography
           variant="h6"
-          sx={{ fontWeight: 700, color: "#2196F3" }}
+          sx={{ fontWeight: 700, color: "#174a7c" }}
           gutterBottom
         >
           About Rocky
@@ -453,7 +524,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
         >
           <Typography
             variant="h6"
-            sx={{ fontWeight: 700, color: "#2196F3" }}
+            sx={{ fontWeight: 700, color: "#174a7c" }}
             gutterBottom
           >
             Address
@@ -467,7 +538,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
         >
           <Typography
             variant="h6"
-            sx={{ fontWeight: 700, color: "#2196F3" }}
+            sx={{ fontWeight: 700, color: "#174a7c" }}
             gutterBottom
           >
             History
@@ -483,7 +554,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
       <Box sx={{ mt: 3 }}>
         <Typography
           variant="h6"
-          sx={{ fontWeight: 700, color: "#2196F3", mb: 1 }}
+          sx={{ fontWeight: 700, color: "#174a7c", mb: 1 }}
         >
           Shared Documents
         </Typography>
@@ -515,9 +586,15 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
           ))}
           <Button
             variant="contained"
-            color="primary"
             startIcon={<CloudUploadIcon />}
             onClick={() => docUploadRef.current?.click()}
+            sx={{
+              bgcolor: '#174a7c',
+              color: 'white',
+              '&:hover': {
+                bgcolor: '#0d3a5f',
+              },
+            }}
           >
             Upload
           </Button>
@@ -532,7 +609,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
         {/* My Prescriptions */}
         <Typography
           variant="h6"
-          sx={{ fontWeight: 700, color: "#2196F3", mt: 3, mb: 1 }}
+          sx={{ fontWeight: 700, color: "#174a7c", mt: 3, mb: 1 }}
         >
           My Prescriptions
         </Typography>
@@ -564,9 +641,15 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
           ))}
           <Button
             variant="contained"
-            color="primary"
             startIcon={<CloudUploadIcon />}
             onClick={() => docUploadRef.current?.click()}
+            sx={{
+              bgcolor: '#174a7c',
+              color: 'white',
+              '&:hover': {
+                bgcolor: '#0d3a5f',
+              },
+            }}
           >
             Upload
           </Button>
@@ -579,10 +662,10 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
         </Box>
       </Box>
 
-      {/* Popup for ManageEncounter */}
+      {/* Manual Prescription Modal - ManageEncounter */}
       <Dialog
-        open={openPopup}
-        onClose={handleClosePopup}
+        open={openManualPrescriptionModal}
+        onClose={handleCloseManualPrescription}
         maxWidth={false}
         fullWidth
         sx={{
@@ -598,7 +681,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
           },
         }}
       >
-        <DialogTitle sx={{backgroundColor: '#4B6CB7', color:'white'}}>Add Prescription</DialogTitle>
+        <DialogTitle sx={{backgroundColor: '#174a7c', color:'white'}}>Add Prescription Manually</DialogTitle>
         <DialogContent
           sx={{
             p: 0,
@@ -608,11 +691,26 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
             position: 'relative', 
           }}
         >
-          <ManageEncounter record={sampleMedicalRecord} />
+          <ManageEncounter record={{
+            patientInfo: {
+              patientName: `${consultation.petName} of ${consultation.ownerName}`,
+              doctorName: 'Doctor',
+              userName: 'Doctor',
+              date: formattedDate,
+              time: startTime,
+            },
+            vitals: [],
+            allergies: [],
+            complaints: [],
+            diagnoses: [],
+            medicines: [],
+            labOrders: [],
+            procedureAdvices: [],
+          }} />
         </DialogContent>
         <DialogActions 
         sx={{background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)"}}>
-          <Button variant="contained" onClick={handleClosePopup} color="primary">
+          <Button variant="contained" onClick={handleCloseManualPrescription} sx={{ bgcolor: '#174a7c', '&:hover': { bgcolor: '#0d3a5f' } }}>
             Close
           </Button>
         </DialogActions>
@@ -620,8 +718,8 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
 
       {/* Prescription Comments Modal */}
       <Dialog
-        open={openChatModal}
-        onClose={handleCloseChatModal}
+        open={openPrescriptionModal}
+        onClose={handleClosePrescriptionModal}
         maxWidth="md"
         fullWidth
         sx={{
@@ -688,202 +786,394 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
             gap: 3,
           }}
         >
-          {/* Comment Input Section */}
-          <Box 
-            sx={{ 
-              bgcolor: '#ffffff',
-              p: 3,
-              borderRadius: 3,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            }}
-          >
-            <Typography 
-              variant="subtitle1" 
-              sx={{ 
-                fontWeight: 600, 
-                color: '#174a7c',
-                mb: 2,
-              }}
-            >
-              Add Comment
-            </Typography>
-            
-            {/* Text Input with Mic and Send */}
-            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-end', mb: 2 }}>
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Type your prescription comments or use voice input..."
-                variant="outlined"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    bgcolor: '#fafafa',
-                    fontSize: '1rem',
-                  },
-                }}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end" sx={{ alignSelf: 'flex-end', mb: 1 }}>
-                      <IconButton
-                        onClick={handleToggleRecording}
-                        color={isRecording ? 'error' : 'primary'}
-                        sx={{
-                          bgcolor: isRecording ? '#ffebee' : '#e3f2fd',
-                          '&:hover': {
-                            bgcolor: isRecording ? '#ffcdd2' : '#bbdefb',
-                          },
-                        }}
-                      >
-                        <MicIcon />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <Button
-                variant="contained"
-                onClick={handleAddComment}
-                disabled={!comment.trim() || isSubmitting}
-                endIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
-                sx={{
-                  bgcolor: '#174a7c',
-                  color: 'white',
-                  px: 3,
-                  py: 1.5,
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontSize: '1rem',
-                  minWidth: '120px',
-                  '&:hover': {
-                    bgcolor: '#0d3a5f',
-                  },
-                  '&:disabled': {
-                    bgcolor: '#e0e0e0',
-                    color: '#9e9e9e',
-                  },
-                }}
-              >
-                {isSubmitting ? 'Adding...' : 'Add'}
-              </Button>
-            </Box>
-
-            <Divider sx={{ my: 2 }} />
-
-            {/* File Attachment */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Button
-                variant="outlined"
-                startIcon={<AttachFileIcon />}
-                onClick={() => chatFileRef.current?.click()}
-                sx={{
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  borderColor: '#174a7c',
-                  color: '#174a7c',
-                  px: 2.5,
-                  py: 1,
-                  '&:hover': {
-                    borderColor: '#0d3a5f',
-                    bgcolor: '#e8f0f7',
-                  },
-                }}
-              >
-                Attach Document
-              </Button>
-              <input
-                type="file"
-                hidden
-                ref={chatFileRef}
-                onChange={handleChatFileChange}
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-              />
-              <Typography variant="caption" sx={{ color: '#666' }}>
-                Attach prescriptions, lab reports, or images
+          {/* Mode Selection Screen */}
+          {prescriptionMode === 'selection' && (
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              minHeight: '400px',
+              gap: 3,
+            }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: '#174a7c', mb: 2 }}>
+                Choose how to add prescription notes
               </Typography>
-            </Box>
-          </Box>
-
-          {/* Previous Comments List */}
-          <Box sx={{ flex: 1, overflowY: 'auto' }}>
-            <Typography 
-              variant="subtitle1" 
-              sx={{ 
-                fontWeight: 600, 
-                color: '#174a7c',
-                mb: 2,
-                px: 1,
-              }}
-            >
-              Consultation History
-            </Typography>
-            
-            {isLoadingComments ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
-                <CircularProgress size={40} sx={{ color: '#174a7c' }} />
-              </Box>
-            ) : comments.length === 0 ? (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography variant="body2" sx={{ color: '#999', fontStyle: 'italic' }}>
-                  No consultation history available. Add your first comment above.
-                </Typography>
-              </Box>
-            ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {comments.map((commentItem) => (
-                <Box
-                  key={commentItem.id}
+              
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%', maxWidth: '400px' }}>
+                <Button
+                  variant="contained"
+                  onClick={() => handleModeSelect('textToSpeech')}
+                  startIcon={<MicIcon />}
                   sx={{
-                    bgcolor: '#ffffff',
-                    p: 2.5,
+                    bgcolor: '#174a7c',
+                    color: 'white',
+                    py: 2,
+                    fontSize: '1.1rem',
                     borderRadius: 2,
-                    boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-                    borderLeft: '4px solid #174a7c',
-                    transition: 'transform 0.2s, box-shadow 0.2s',
                     '&:hover': {
-                      transform: 'translateX(4px)',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                      bgcolor: '#0d3a5f',
                     },
                   }}
                 >
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
-                        color: '#174a7c',
-                        fontWeight: 600,
-                        bgcolor: '#e8f0f7',
-                        px: 1.5,
-                        py: 0.5,
-                        borderRadius: 1,
-                      }}
-                    >
-                      {commentItem.date}
-                    </Typography>
-                    <Typography 
-                      variant="caption" 
-                      sx={{ color: '#999' }}
-                    >
-                      {commentItem.time}
-                    </Typography>
-                  </Box>
-                  <Typography 
-                    variant="body1" 
-                    sx={{ 
-                      color: '#333',
-                      lineHeight: 1.6,
+                  Voice Notes
+                </Button>
+                
+                <Button
+                  variant="contained"
+                  onClick={() => handleModeSelect('attachDocument')}
+                  startIcon={<AttachFileIcon />}
+                  sx={{
+                    bgcolor: '#174a7c',
+                    color: 'white',
+                    py: 2,
+                    fontSize: '1.1rem',
+                    borderRadius: 2,
+                    '&:hover': {
+                      bgcolor: '#0d3a5f',
+                    },
+                  }}
+                >
+                  Attach Document
+                </Button>
+                
+                <Button
+                  variant="contained"
+                  onClick={() => handleModeSelect('addManually')}
+                  startIcon={<CloudUploadIcon />}
+                  sx={{
+                    bgcolor: '#174a7c',
+                    color: 'white',
+                    py: 2,
+                    fontSize: '1.1rem',
+                    borderRadius: 2,
+                    '&:hover': {
+                      bgcolor: '#0d3a5f',
+                    },
+                  }}
+                >
+                  Add Manually
+                </Button>
+              </Box>
+            </Box>
+          )}
+
+          {/* Voice Notes Mode */}
+          {prescriptionMode === 'textToSpeech' && (
+            <>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <IconButton onClick={handleBackToSelection} sx={{ mr: 1 }}>
+                  <CloseIcon />
+                </IconButton>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#174a7c' }}>
+                  Voice Notes
+                </Typography>
+              </Box>
+              
+              {/* Comment Input Section */}
+              <Box 
+                sx={{ 
+                  bgcolor: '#ffffff',
+                  p: 3,
+                  borderRadius: 3,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                }}
+              >
+                <Typography 
+                  variant="subtitle1" 
+                  sx={{ 
+                    fontWeight: 600, 
+                    color: '#174a7c',
+                    mb: 2,
+                  }}
+                >
+                  Add Comment
+                </Typography>
+                
+                {/* Text Input with Mic and Send */}
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-end', mb: 2 }}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={4}
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Type your prescription notes or use voice recording..."
+                    variant="outlined"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        bgcolor: '#fafafa',
+                        fontSize: '1rem',
+                      },
+                    }}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end" sx={{ alignSelf: 'flex-end', mb: 1 }}>
+                          <IconButton
+                            onClick={handleToggleRecording}
+                            sx={{
+                              color: isRecording ? '#ff1744' : '#174a7c',
+                              bgcolor: isRecording ? '#ffebee' : '#e8f0f7',
+                              '&:hover': {
+                                bgcolor: isRecording ? '#ffcdd2' : '#d1e7f7',
+                              },
+                            }}
+                          >
+                            <MicIcon />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={handleAddComment}
+                    disabled={!comment.trim() || isSubmitting}
+                    endIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+                    sx={{
+                      bgcolor: '#174a7c',
+                      color: 'white',
+                      px: 3,
+                      py: 1.5,
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontSize: '1rem',
+                      minWidth: '120px',
+                      '&:hover': {
+                        bgcolor: '#0d3a5f',
+                      },
+                      '&:disabled': {
+                        bgcolor: '#e0e0e0',
+                        color: '#9e9e9e',
+                      },
                     }}
                   >
-                    {commentItem.text}
-                  </Typography>
+                    {isSubmitting ? 'Adding...' : 'Add'}
+                  </Button>
                 </Box>
-                ))}
               </Box>
-            )}
-          </Box>
+              
+              {/* Previous Comments List */}
+              <Box sx={{ flex: 1, overflowY: 'auto' }}>
+                <Typography 
+                  variant="subtitle1" 
+                  sx={{ 
+                    fontWeight: 600, 
+                    color: '#174a7c',
+                    mb: 2,
+                    px: 1,
+                  }}
+                >
+                  Consultation History
+                </Typography>
+                
+                {isLoadingComments ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                    <CircularProgress size={40} sx={{ color: '#174a7c' }} />
+                  </Box>
+                ) : comments.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="body2" sx={{ color: '#999', fontStyle: 'italic' }}>
+                      No consultation history available. Add your first comment above.
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {comments.map((commentItem) => (
+                      <Box
+                        key={commentItem.id}
+                        sx={{
+                          bgcolor: '#ffffff',
+                          p: 2.5,
+                          borderRadius: 2,
+                          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                          borderLeft: '4px solid #174a7c',
+                          transition: 'transform 0.2s, box-shadow 0.2s',
+                          '&:hover': {
+                            transform: 'translateX(4px)',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                          },
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              color: '#174a7c',
+                              fontWeight: 600,
+                              bgcolor: '#e8f0f7',
+                              px: 1.5,
+                              py: 0.5,
+                              borderRadius: 1,
+                            }}
+                          >
+                            {commentItem.date}
+                          </Typography>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ color: '#999' }}
+                          >
+                            {commentItem.time}
+                          </Typography>
+                        </Box>
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            color: '#333',
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {commentItem.text}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+            </>
+          )}
+
+          {/* Attach Document Mode */}
+          {prescriptionMode === 'attachDocument' && (
+            <>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <IconButton onClick={handleBackToSelection} sx={{ mr: 1 }}>
+                  <CloseIcon />
+                </IconButton>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#174a7c' }}>
+                  Attach Document
+                </Typography>
+              </Box>
+              
+              <Box 
+                sx={{ 
+                  bgcolor: '#ffffff',
+                  p: 4,
+                  borderRadius: 3,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 3,
+                  minHeight: '300px',
+                  justifyContent: 'center',
+                }}
+              >
+                <CloudUploadIcon sx={{ fontSize: 80, color: '#174a7c', opacity: 0.6 }} />
+                <Typography variant="h6" sx={{ color: '#666', textAlign: 'center' }}>
+                  Upload prescription documents
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<AttachFileIcon />}
+                  onClick={() => chatFileRef.current?.click()}
+                  sx={{
+                    bgcolor: '#174a7c',
+                    color: 'white',
+                    px: 4,
+                    py: 1.5,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontSize: '1rem',
+                    '&:hover': {
+                      bgcolor: '#0d3a5f',
+                    },
+                  }}
+                >
+                  Choose File
+                </Button>
+                <input
+                  type="file"
+                  hidden
+                  ref={chatFileRef}
+                  onChange={handleChatFileChange}
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                />
+                <Typography variant="caption" sx={{ color: '#666', textAlign: 'center' }}>
+                  Supported formats: PDF, DOC, DOCX, JPG, PNG
+                </Typography>
+              </Box>
+              
+              {/* Show uploaded documents in history */}
+              <Box sx={{ flex: 1, overflowY: 'auto' }}>
+                <Typography 
+                  variant="subtitle1" 
+                  sx={{ 
+                    fontWeight: 600, 
+                    color: '#174a7c',
+                    mb: 2,
+                    px: 1,
+                  }}
+                >
+                  Uploaded Documents
+                </Typography>
+                
+                {isLoadingComments ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                    <CircularProgress size={40} sx={{ color: '#174a7c' }} />
+                  </Box>
+                ) : comments.filter(c => c.text.includes('📎')).length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="body2" sx={{ color: '#999', fontStyle: 'italic' }}>
+                      No documents uploaded yet.
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {comments.filter(c => c.text.includes('📎')).map((commentItem) => (
+                      <Box
+                        key={commentItem.id}
+                        sx={{
+                          bgcolor: '#ffffff',
+                          p: 2.5,
+                          borderRadius: 2,
+                          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                          borderLeft: '4px solid #174a7c',
+                          transition: 'transform 0.2s, box-shadow 0.2s',
+                          '&:hover': {
+                            transform: 'translateX(4px)',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                          },
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              color: '#174a7c',
+                              fontWeight: 600,
+                              bgcolor: '#e8f0f7',
+                              px: 1.5,
+                              py: 0.5,
+                              borderRadius: 1,
+                            }}
+                          >
+                            {commentItem.date}
+                          </Typography>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ color: '#999' }}
+                          >
+                            {commentItem.time}
+                          </Typography>
+                        </Box>
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            color: '#333',
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {commentItem.text}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+            </>
+          )}
         </DialogContent>
 
         <DialogActions 
@@ -895,7 +1185,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
         >
           <Button 
             variant="outlined" 
-            onClick={handleCloseChatModal}
+            onClick={handleClosePrescriptionModal}
             sx={{
               borderRadius: 2,
               textTransform: 'none',
@@ -906,7 +1196,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
           </Button>
           <Button 
             variant="contained" 
-            onClick={handleCloseChatModal}
+            onClick={handleClosePrescriptionModal}
             sx={{
               borderRadius: 2,
               textTransform: 'none',
@@ -937,4 +1227,4 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
   );
 };
 
-export default ConsultationPopup;
+export default ConsultationPopup; 

@@ -13,9 +13,9 @@ export const chipData: ChipData[] = [
 ]
 
 export const dietData: ChipData[] = [
-    { id: 1, label: 'Kibble', variant: 'filled' },
-    { id: 2, label: 'Meat', variant: 'filled' },
-    { id: 3, label: 'Fish', variant: 'filled' },
+    { id: 1, label: 'Kibble', variant: 'outlined' },
+    { id: 2, label: 'Meat', variant: 'outlined' },
+    { id: 3, label: 'Fish', variant: 'outlined' },
     { id: 4, label: 'Vegetables', variant: 'outlined' },
     { id: 5, label: 'Grains', variant: 'outlined' },
     { id: 6, label: 'Hay', variant: 'outlined' },

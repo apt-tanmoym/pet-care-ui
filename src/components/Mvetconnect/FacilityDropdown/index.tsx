@@ -23,8 +23,8 @@ const FacilityDropdown: React.FC<FacilityDropdownProps> = ({ onFacilitySelect, s
       setLoading(true);
       try {
         const payload: FaclityServicePayload = {
-          userName: 'tonmoy',
-          userPass: '4vpzrnly',
+          userName: localStorage.getItem('userName') || '',
+          userPass: localStorage.getItem('userPwd') || '',
           deviceStat: 'M',
           callingFrom: 'web',
           orgId: localStorage.getItem('orgId')?.toString(),

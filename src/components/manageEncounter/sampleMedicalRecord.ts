@@ -4,21 +4,11 @@ export const sampleMedicalRecord: MedicalRecord = {
   patientInfo: {
     patientName: 'Sunny of Ratan Das',
     doctorName: 'Debashis Das',
-    userName: 'Debashis Das',
-    date: '21/08/2025',
-    time: '19:25',
+    userName: localStorage.getItem('userName') || '',
+    date: new Date().toLocaleDateString(),
+    time: new Date().toLocaleTimeString(),
   },
-  vitals: [
-    {
-      date: '12/08/2025',
-      time: '06:23 PM',
-      height: '5.0 ft',
-      weight: '50.0 kg',
-      bloodPressure: '80/100',
-      heartRate: '72 bpm',
-      temperature: '98.0 f',
-    },
-  ],
+  vitals: [],
   allergies: [
     {
       date: '26/08/2025',

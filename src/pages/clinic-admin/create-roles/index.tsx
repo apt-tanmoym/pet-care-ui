@@ -50,29 +50,29 @@ export default function DemoPage() {
     { name: 'status', options: ['Active', 'Inactive'], value: 'All Status' },
   ]);
 
-  const rolePayload: GetOrgRolesPayload = {
+  const getRolePayload = (): GetOrgRolesPayload => ({
     callingFrom: "web",
-    userName: "jibons",
-    userPass: "P@ssw0rd",
-    orgId: "20",
+    userName: typeof window !== 'undefined' ? localStorage.getItem('userName') || '' : '',
+    userPass: typeof window !== 'undefined' ? localStorage.getItem('userPwd') || '' : '',
+    orgId: typeof window !== 'undefined' ? localStorage.getItem('orgId') || '' : '',
     facilityId:"0",
     loggedInFacilityId: "1",
     status: "",
     roleGrpId: "",
     searchRole: "",
-  };
+  });
 
-  const roleGroupPayload: GetAllRoleGroupOfOrgPayload = {
+  const getRoleGroupPayload = (): GetAllRoleGroupOfOrgPayload => ({
     callingFrom: "web",
-    userName: "jibons",
-    userPass: "P@ssw0rd",
-    orgId: "20",
-  };
+    userName: typeof window !== 'undefined' ? localStorage.getItem('userName') || '' : '',
+    userPass: typeof window !== 'undefined' ? localStorage.getItem('userPwd') || '' : '',
+    orgId: typeof window !== 'undefined' ? localStorage.getItem('orgId') || '' : '',
+  });
 
   const fetchRolesAndGroups = async () => {
     try {
       // Fetch roles
-      const roleResponse = await getOrgRoles(rolePayload);
+      const roleResponse = await getOrgRoles(getRolePayload());
       const mappedData: any[] = roleResponse.map(role => ({
         roleGroupName: role.orgRoleGroup,
         roleName: role.roleName,
@@ -115,7 +115,7 @@ export default function DemoPage() {
       setRowData(mappedData);
 
       // Fetch role groups
-      const roleGroupResponse = await getAllRoleGroupOfOrg(roleGroupPayload);
+      const roleGroupResponse = await getAllRoleGroupOfOrg(getRoleGroupPayload());
       console.log({roleGroupResponse})
       const roleGroupNames = roleGroupResponse.map(group => group.roleGroupName);
 

@@ -27,9 +27,13 @@ interface CreateAppointmentDialogProps {
   selectedDate: Date | null;
   patientSlots?: any[];
   onBook: () => void;
+  selectedFacility?: {
+    facilityId: number;
+    facilityName: string;
+  } | null;
 }
 
-const CreateAppointmentDialog: React.FC<CreateAppointmentDialogProps> = ({ open, onClose, selectedDate, patientSlots = [], onBook }) => {
+const CreateAppointmentDialog: React.FC<CreateAppointmentDialogProps> = ({ open, onClose, selectedDate, patientSlots = [], onBook, selectedFacility }) => {
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -314,6 +318,13 @@ const CreateAppointmentDialog: React.FC<CreateAppointmentDialogProps> = ({ open,
         open={showPatientSearch}
         onClose={handlePatientSearchClose}
         onSearch={handlePatientSearch}
+        selectedTimeSlot={selectedSlots.length > 0 ? {
+          startTime: selectedSlots[0].split(' - ')[0],
+          stopTime: selectedSlots[0].split(' - ')[1],
+          date: selectedDate ? dayjs(selectedDate).format('DD/MM/YYYY') : ''
+        } : null}
+        selectedFacility={selectedFacility}
+        selectedDate={selectedDate}
       />
     </>
   );

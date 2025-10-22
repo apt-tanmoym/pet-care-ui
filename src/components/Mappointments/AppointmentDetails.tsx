@@ -12,15 +12,21 @@ import Paper from '@mui/material/Paper';
 import Chip from '@mui/material/Chip';
 import TablePagination from '@mui/material/TablePagination';
 import PatientSearchModal from '../Mvetconnect/PatientSearchModal';
+import dayjs from 'dayjs';
 
 interface AppointmentDetailsProps {
   selectedDate: Date | null;
   patientSlots?: any[];
+  selectedFacility?: {
+    facilityId: number;
+    facilityName: string;
+  } | null;
 }
 
 const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({
   selectedDate,
   patientSlots = [],
+  selectedFacility,
 }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -63,7 +69,10 @@ const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({
     setPage(0);
   };
 
-  const handleBookSlot = () => {
+  const [selectedSlot, setSelectedSlot] = useState<any>(null);
+
+  const handleBookSlot = (slot: any) => {
+    setSelectedSlot(slot);
     setShowPatientSearch(true);
   };
 
@@ -195,7 +204,7 @@ const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({
                         <Button
                           variant="contained"
                           size="small"
-                          onClick={handleBookSlot}
+                          onClick={() => handleBookSlot(slot)}
                           sx={{
                             bgcolor: '#174a7c',
                             color: 'white',
@@ -278,6 +287,13 @@ const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({
         open={showPatientSearch}
         onClose={handlePatientSearchClose}
         onSearch={handlePatientSearch}
+        selectedTimeSlot={selectedSlot ? {
+          startTime: selectedSlot.startTime,
+          stopTime: selectedSlot.stopTime,
+          date: selectedDate ? dayjs(selectedDate).format('DD/MM/YYYY') : ''
+        } : null}
+        selectedFacility={selectedFacility}
+        selectedDate={selectedDate}
       />
     </>
   );

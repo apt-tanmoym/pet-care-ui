@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Dialog from '@mui/material/Dialog';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -11,15 +11,22 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import Paper from '@mui/material/Paper';
 import Divider from '@mui/material/Divider';
+import CircularProgress from '@mui/material/CircularProgress';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import { getDocumentTypeList, DocumentTypeResponse, uploadDocument } from '@/services/manageCalendar';
 
 interface AddRecordsDialogProps {
   open: boolean;
   onClose: () => void;
+  selectedPet?: {
+    petName: string;
+    patientUid: number;
+    mrn: number;
+  } | null;
 }
 
 const documentTypes = [
@@ -29,27 +36,54 @@ const documentTypes = [
   { label: 'Video', value: 'video' },
 ];
 
-const recordTypes = [
-  { label: 'Pathology', value: 'pathology' },
-  { label: 'Prescription', value: 'prescription' },
-  { label: 'Radiology', value: 'radiology' },
-  { label: 'Referrals', value: 'referrals' },
-];
 
-const pets = [
-  { label: 'Sheru', value: 'sheru' },
-  { label: 'Tommy', value: 'tommy' },
-];
 
 const PRIMARY_COLOR = '#174a7c';
 
-const AddRecordsDialog: React.FC<AddRecordsDialogProps> = ({ open, onClose }) => {
+const AddRecordsDialog: React.FC<AddRecordsDialogProps> = ({ open, onClose, selectedPet }) => {
   const [documentType, setDocumentType] = useState('');
   const [recordType, setRecordType] = useState('');
   const [docName, setDocName] = useState('');
   const [docDate, setDocDate] = useState<Dayjs | null>(dayjs());
   const [pet, setPet] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [documentTypes, setDocumentTypes] = useState<DocumentTypeResponse[]>([]);
+  const [loadingDocumentTypes, setLoadingDocumentTypes] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Fetch document types when dialog opens
+  useEffect(() => {
+    if (open) {
+      fetchDocumentTypes();
+    }
+  }, [open]);
+
+  const fetchDocumentTypes = async () => {
+    setLoadingDocumentTypes(true);
+    try {
+      const userName = localStorage.getItem('userName');
+      const userPass = localStorage.getItem('userPwd');
+      
+      if (!userName || !userPass) {
+        console.error('Username or password not found in localStorage');
+        setDocumentTypes([]);
+        return;
+      }
+      
+      const payload = {
+        userName,
+        userPass,
+        deviceStat: 'M'
+      };
+      const response = await getDocumentTypeList(payload);
+      setDocumentTypes(response);
+    } catch (error) {
+      console.error('Error fetching document types:', error);
+      setDocumentTypes([]);
+    } finally {
+      setLoadingDocumentTypes(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -57,124 +91,350 @@ const AddRecordsDialog: React.FC<AddRecordsDialogProps> = ({ open, onClose }) =>
     }
   };
 
-  const handleConfirm = () => {
-    // TODO: handle form submission
-    onClose();
+  const handleConfirm = async () => {
+    // Validate required fields
+    if (!recordType || !docName || !docDate || !file || !selectedPet) {
+      alert('Please fill in all required fields and select a file');
+      return;
+    }
+
+    const userName = localStorage.getItem('userName');
+    const userPwd = localStorage.getItem('userPwd');
+    
+    if (!userName || !userPwd) {
+      alert('User credentials not found. Please login again.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Format date to DD/MM/YYYY
+      const formattedDate = docDate.format('DD/MM/YYYY');
+      
+      // Get the selected document type
+      const selectedDocType = documentTypes.find(type => type.docTypeId.toString() === recordType);
+      
+      const payload = {
+        userName,
+        userPwd,
+        deviceStat: 'M',
+        docname: docName,
+        docdate: formattedDate,
+        select_doctype_list: recordType, // docTypeId as string
+        patientUid: selectedPet.patientUid.toString(),
+        appointmentId: '0', // Default to "0" as per requirement
+        uploaded_file: file
+      };
+
+      console.log('Uploading document with payload:', {
+        ...payload,
+        uploaded_file: file.name // Log file name instead of File object
+      });
+
+      const response = await uploadDocument(payload);
+      
+      if (response.status === 'success') {
+        alert('Document uploaded successfully!');
+        // Reset form
+        setRecordType('');
+        setDocName('');
+        setDocDate(dayjs());
+        setFile(null);
+        onClose();
+      } else {
+        alert('Failed to upload document: ' + response.message);
+      }
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      alert('Error uploading document. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <Paper elevation={0} sx={{ borderRadius: 3, m: 2, p: 0, overflow: 'hidden' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', p: 3, borderBottom: '1px solid #e0e0e0', bgcolor: '#fff' }}>
-            <AddCircleOutlineIcon sx={{ color: PRIMARY_COLOR, fontSize: 32, mr: 2 }} />
-            <Typography variant="h6" fontWeight={700} sx={{ color: PRIMARY_COLOR }}>
-              Add New Record
-            </Typography>
-          </Box>
-          <Box sx={{ p: { xs: 2, sm: 4 } }}>
-            <Box sx={{ display: 'grid', gap: 3 }}>
+      <Dialog 
+        open={open} 
+        onClose={onClose} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+            maxHeight: '90vh',
+            overflow: 'hidden'
+          }
+        }}
+      >
+        {/* Header */}
+        <Box sx={{ 
+          bgcolor: PRIMARY_COLOR, 
+          color: 'white', 
+          p: 3, 
+          display: 'flex', 
+          alignItems: 'center',
+          borderTopLeftRadius: '12px',
+          borderTopRightRadius: '12px'
+        }}>
+          <AddCircleOutlineIcon sx={{ fontSize: 28, mr: 2 }} />
+          <Typography variant="h5" fontWeight={700}>
+            Add New Record
+          </Typography>
+        </Box>
+
+        {/* Content */}
+        <Box sx={{ p: 4, bgcolor: '#f8f9fa', minHeight: '400px' }}>
+          <Box sx={{ 
+            display: 'grid', 
+            gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+            gap: 3,
+            maxWidth: '800px',
+            mx: 'auto'
+          }}>
+            
+            {/* Left Column */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {/* Document Type */}
               <TextField
                 select
-                label="Select New Record"
+                label="Document Type"
                 value={recordType}
                 onChange={e => setRecordType(e.target.value)}
+                disabled={loadingDocumentTypes}
+                size="small"
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <IconButton size="small" disabled>
-                        <UploadFileIcon color="primary" />
-                      </IconButton>
+                      <UploadFileIcon sx={{ color: PRIMARY_COLOR, fontSize: 20 }} />
                     </InputAdornment>
                   ),
+                  endAdornment: loadingDocumentTypes ? (
+                    <InputAdornment position="end">
+                      <CircularProgress size={16} sx={{ color: PRIMARY_COLOR }} />
+                    </InputAdornment>
+                  ) : null,
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: 'white',
+                    borderRadius: 2,
+                    '& fieldset': {
+                      borderColor: '#dde2e7',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: PRIMARY_COLOR,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: PRIMARY_COLOR,
+                    },
+                  },
                 }}
                 fullWidth
               >
-                {recordTypes.map(type => (
-                  <MenuItem key={type.value} value={type.value}>{type.label}</MenuItem>
+                {documentTypes.map(type => (
+                  <MenuItem key={type.docTypeId} value={type.docTypeId}>
+                    {type.docTypeDetailName}
+                  </MenuItem>
                 ))}
               </TextField>
+
+              {/* Document Name */}
               <TextField
-                label="Name Of The Document"
+                label="Document Name"
                 value={docName}
                 onChange={e => setDocName(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <IconButton size="small" disabled>
-                        <UploadFileIcon color="primary" />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
+                size="small"
+                placeholder="Enter document name"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: 'white',
+                    borderRadius: 2,
+                    '& fieldset': {
+                      borderColor: '#dde2e7',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: PRIMARY_COLOR,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: PRIMARY_COLOR,
+                    },
+                  },
                 }}
                 fullWidth
               />
+
+              {/* Document Date */}
               <DatePicker
-                label="Date of Document"
+                label="Document Date"
                 value={docDate}
                 onChange={setDocDate}
-                slotProps={{ textField: { fullWidth: true, InputProps: { startAdornment: (
-                  <InputAdornment position="start">
-                    <CalendarTodayIcon color="primary" />
-                  </InputAdornment>
-                ) } } }}
+                slotProps={{ 
+                  textField: { 
+                    fullWidth: true, 
+                    size: 'small',
+                    InputProps: { 
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <CalendarTodayIcon sx={{ color: PRIMARY_COLOR, fontSize: 20 }} />
+                        </InputAdornment>
+                      ) 
+                    },
+                    sx: {
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: 'white',
+                        borderRadius: 2,
+                        '& fieldset': {
+                          borderColor: '#dde2e7',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: PRIMARY_COLOR,
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: PRIMARY_COLOR,
+                        },
+                      },
+                    }
+                  } 
+                }}
               />
+            </Box>
+
+            {/* Right Column */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {/* Selected Pet */}
               <TextField
                 select
-                label="My Pet"
-                value={pet}
-                onChange={e => setPet(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <IconButton size="small" disabled>
-                        <UploadFileIcon color="primary" />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
+                label="Selected Pet"
+                value={selectedPet?.petName || ''}
+                disabled={true}
+                size="small"
+                helperText={selectedPet ? `Pet: ${selectedPet.petName}` : 'No pet selected'}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: '#f5f5f5',
+                    borderRadius: 2,
+                    '& fieldset': {
+                      borderColor: '#dde2e7',
+                    },
+                  },
+                  '& .MuiInputBase-input.Mui-disabled': {
+                    WebkitTextFillColor: PRIMARY_COLOR,
+                    fontWeight: 600,
+                  },
+                  '& .MuiFormLabel-root.Mui-disabled': {
+                    color: PRIMARY_COLOR,
+                  },
                 }}
                 fullWidth
               >
-                {pets.map(p => (
-                  <MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>
-                ))}
+                {selectedPet && (
+                  <MenuItem value={selectedPet.petName}>
+                    {selectedPet.petName}
+                  </MenuItem>
+                )}
               </TextField>
-              <Button
-                variant="outlined"
-                component="label"
-                startIcon={<UploadFileIcon />}
-                sx={{ borderRadius: 2, justifySelf: 'start', width: { xs: '100%', sm: 220 } }}
-              >
-                Upload File
-                <input type="file" hidden onChange={handleFileChange} />
-              </Button>
-              {file && (
-                <Typography variant="body2" color="text.secondary">Selected: {file.name}</Typography>
-              )}
+
+              {/* File Upload */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<UploadFileIcon />}
+                  sx={{ 
+                    borderRadius: 2, 
+                    py: 1.5,
+                    borderColor: PRIMARY_COLOR,
+                    color: PRIMARY_COLOR,
+                    '&:hover': {
+                      borderColor: '#103a61',
+                      bgcolor: 'rgba(23, 74, 124, 0.04)',
+                    }
+                  }}
+                  fullWidth
+                >
+                  Choose File
+                  <input type="file" hidden onChange={handleFileChange} />
+                </Button>
+                {file && (
+                  <Box sx={{ 
+                    p: 2, 
+                    bgcolor: 'white', 
+                    borderRadius: 2, 
+                    border: '1px solid #e0e0e0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    <UploadFileIcon sx={{ color: '#4caf50', fontSize: 20 }} />
+                    <Typography variant="body2" sx={{ color: '#2c3e50', fontWeight: 500 }}>
+                      {file.name}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#666', ml: 'auto' }}>
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
             </Box>
           </Box>
-          <Divider />
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+
+          {/* Action Buttons */}
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            gap: 2, 
+            mt: 4,
+            pt: 3,
+            borderTop: '1px solid #e0e0e0'
+          }}>
+            <Button
+              variant="outlined"
+              onClick={onClose}
+              sx={{
+                borderRadius: 2,
+                px: 4,
+                py: 1.2,
+                fontWeight: 600,
+                borderColor: '#dde2e7',
+                color: '#666',
+                '&:hover': {
+                  borderColor: '#999',
+                  bgcolor: '#f5f5f5',
+                }
+              }}
+            >
+              Cancel
+            </Button>
             <Button
               variant="contained"
               sx={{
                 borderRadius: 2,
-                px: 5,
+                px: 4,
                 py: 1.2,
-                fontSize: 18,
-                minWidth: 180,
-                fontWeight: 700,
+                fontWeight: 600,
                 bgcolor: PRIMARY_COLOR,
                 color: '#fff',
-                '&:hover': { bgcolor: '#103a61' }
+                minWidth: 140,
+                '&:hover': { 
+                  bgcolor: '#103a61',
+                  boxShadow: '0 4px 12px rgba(23, 74, 124, 0.3)'
+                },
+                '&:disabled': {
+                  bgcolor: '#bdc3c7',
+                  color: '#7f8c8d',
+                  boxShadow: 'none'
+                }
               }}
               onClick={handleConfirm}
-              startIcon={<AddCircleOutlineIcon sx={{ color: '#fff' }} />}
+              disabled={isUploading || !recordType || !docName || !docDate || !file || !selectedPet}
+              startIcon={isUploading ? <CircularProgress size={20} color="inherit" /> : <AddCircleOutlineIcon sx={{ color: '#fff' }} />}
             >
-              Confirm
+              {isUploading ? 'Uploading...' : 'Upload Document'}
             </Button>
           </Box>
-        </Paper>
+        </Box>
       </Dialog>
     </LocalizationProvider>
   );

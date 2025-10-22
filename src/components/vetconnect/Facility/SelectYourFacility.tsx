@@ -56,11 +56,11 @@ const SelectYourFacility = ({
   
     try {
       const payload = {
-        userName: 'tonmoy',
-        userPass: '4vpzrnly',
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
         deviceStat: 'M',
         callingFrom: 'app',
-        orgId: '39',
+        orgId: localStorage.getItem('orgId') || '',
         facilityId: selectedId,
       };
   
@@ -86,11 +86,11 @@ const SelectYourFacility = ({
       setLoading(true);
       try {
         const payload: FaclityServicePayload = {
-          userName: 'tonmoy',
-          userPass: '4vpzrnly',
+          userName: localStorage.getItem('userName') || '',
+          userPass: localStorage.getItem('userPwd') || '',
           deviceStat: 'M',
           callingFrom: 'app',
-          orgId: '39',
+          orgId: localStorage.getItem('orgId') || '',
           searchFacility: '',
           status: 'All',
         };
@@ -121,9 +121,9 @@ const SelectYourFacility = ({
 
     const payload = {
       callingFrom:"app",
-      userName:"tonmoy",
-      userPass:"4vpzrnly",
-      orgId:"39",
+      userName:localStorage.getItem('userName') || '',
+      userPass:localStorage.getItem('userPwd') || '',
+      orgId:localStorage.getItem('orgId') || '',
       deviceStat:"M",
       facilityType: facilityDetails.facilityType,
       facilityId: facilityDetails.facilityId,

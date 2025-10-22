@@ -7,9 +7,10 @@ import { Typography, Box, Alert } from '@mui/material';
 import { PatientHistorySection } from '@/components/manageEncounter/PatientHistorySection';
 import { Vital } from '@/components/manageEncounter/Vital';
 import Sidebar from '@/components/manageEncounter/Sidebar';
-import { sampleMedicalRecord } from '@/components/manageEncounter/sampleMedicalRecord';
+// import { sampleMedicalRecord } from '@/components/manageEncounter/sampleMedicalRecord';
 import Complaint from '@/components/manageEncounter/Complaint';
 import Allergy from '@/components/manageEncounter/Allergy';
+import { MedicalRecord } from '@/components/manageEncounter/medical';
 import { Assignment, Feedback, Home, LocalHospital, Lock, LockClock, Medication, MonitorHeart, Note, PersonAdd, Science, Summarize, Warning } from '@mui/icons-material';
 import { History, Upload } from 'lucide-react';
 
@@ -50,18 +51,36 @@ const menuItems = [
 export default function Page() {
   const [activeSection, setActiveSection] = useState('patient-history');
 
+  // Create a default empty MedicalRecord
+  const defaultRecord: MedicalRecord = {
+    patientInfo: {
+      patientName: '',
+      doctorName: '',
+      userName: '',
+      date: '',
+      time: '',
+    },
+    vitals: [],
+    allergies: [],
+    complaints: [],
+    diagnoses: [],
+    medicines: [],
+    labOrders: [],
+    procedureAdvices: [],
+  };
+
   // Handle section rendering with error fallback
   const renderSection = () => {
     try {
       switch (activeSection) {
         case 'patient-history':
-          return <PatientHistorySection record={sampleMedicalRecord} />;
+          return <PatientHistorySection record={defaultRecord} />;
         case 'vital':
-          return <Vital record={sampleMedicalRecord} />;
+          return <Vital record={defaultRecord} />;
         case 'complaint':
-          return <Complaint record={sampleMedicalRecord} />;
+          return <Complaint record={defaultRecord} />;
         case 'allergy':
-          return <Allergy record={sampleMedicalRecord} />;
+          return <Allergy record={defaultRecord} />;
         default:
           return (
             <Box>

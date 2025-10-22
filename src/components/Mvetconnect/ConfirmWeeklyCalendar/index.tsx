@@ -191,8 +191,8 @@ const ConfirmWeeklyCalendar: React.FC<ConfirmWeeklyCalendarProps> = ({ open, onC
       };
 
       const payload = {
-        userName: "tonmoy", // This should come from user context
-        userPass: "4vpzrnly", // This should come from user context
+        userName: localStorage.getItem('userName') || '', // This should come from user context
+        userPass: localStorage.getItem('userPwd') || '', // This should come from user context
         deviceStat: "M",
         orgId: localStorage.getItem('orgId')?.toString() || "39", // This should come from user context
         startDate: formatDateForAPI(startDate),
@@ -333,8 +333,8 @@ const ConfirmWeeklyCalendar: React.FC<ConfirmWeeklyCalendarProps> = ({ open, onC
        };
 
               const payload = {
-         userName: "tonmoy", // This should come from user context
-         userPass: "4vpzrnly", // This should come from user context
+         userName: localStorage.getItem('userName') || '', // This should come from user context
+         userPass: localStorage.getItem('userPwd') || '', // This should come from user context
          deviceStat: "M",
          orgId: localStorage.getItem('orgId')?.toString() || "39", // This should come from user context
          facilityId: facility.facilityId || 1,

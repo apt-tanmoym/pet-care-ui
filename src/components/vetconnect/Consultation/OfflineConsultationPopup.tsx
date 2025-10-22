@@ -10,13 +10,21 @@ interface ConsultationItem {
   ownerName: string;
   timeRange: string;
   imageUrl?: string;
+  // API fields for updatestatusarrive
+  patientMrn?: number;
+  petOwnerUid?: string;
+  patientUid?: number;
+  appointmentId?: number;
+  facilityId?: number;
+  encounterId?: string;
 }
 
 interface OfflineConsultationPopupProps {
   consultation: ConsultationItem;
+  onCompleteConsultation?: (consultation: ConsultationItem) => void;
 }
 
-const OfflineConsultationPopup: React.FC<OfflineConsultationPopupProps> = ({ consultation }) => {
+const OfflineConsultationPopup: React.FC<OfflineConsultationPopupProps> = ({ consultation, onCompleteConsultation }) => {
   const currentDate = new Date();
   const formattedDate = currentDate.toLocaleDateString('en-GB');
   const [startTime, endTime] = consultation.timeRange.split(' - ');
@@ -61,6 +69,19 @@ const OfflineConsultationPopup: React.FC<OfflineConsultationPopupProps> = ({ con
               <Button variant="contained" sx={{ bgcolor: '#FFCA28', color: '#fff', '&:hover': { bgcolor: '#FFB300' } }}>START OFFLINE</Button>
               <Button variant="outlined" onClick={() => addPresRef.current?.click()}>Add Prescription</Button>
               <Button variant="outlined" onClick={() => addDocRef.current?.click()}>Add Documents</Button>
+              <Button
+                variant="contained"
+                onClick={() => onCompleteConsultation?.(consultation)}
+                sx={{
+                  bgcolor: '#4CAF50',
+                  color: '#fff',
+                  '&:hover': {
+                    bgcolor: '#45a049',
+                  },
+                }}
+              >
+                Complete Consultation
+              </Button>
               <input type="file" hidden ref={addPresRef} onChange={handleFileChange("Add Prescription")} />
               <input type="file" hidden ref={addDocRef} onChange={handleFileChange("Add Documents")} />
             </Box>

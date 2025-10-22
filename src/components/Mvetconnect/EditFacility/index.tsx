@@ -206,10 +206,10 @@ const EditFacility = forwardRef(function EditFacility({ facility, isEdit = true,
       await addNewFacility({
         ...form,
         callingFrom: 'web',
-        userName: 'jibons',
-        userPass: 'P@ssw0rd',
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
         deviceStat: 'M',
-        orgId: 20,
+        orgId: localStorage.getItem('orgId') || '',
       });
       if (onSubmit) onSubmit(form);
       if (callbacks.onSuccess) callbacks.onSuccess();

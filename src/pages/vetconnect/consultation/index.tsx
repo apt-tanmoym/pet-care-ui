@@ -4,15 +4,7 @@ import AuthenticatedLayout from "@/components/AuthenticatedLayout";
 import { FaclityServiceResponse } from '@/interfaces/facilityInterface';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import IconButton from '@mui/material/IconButton';
-import CloseIcon from '@mui/icons-material/Close';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
-import { PickersDay, PickersDayProps } from '@mui/x-date-pickers/PickersDay';
+import Button from '@mui/material/Button';
 import dayjs, { Dayjs } from 'dayjs';
 import ConsultationFacilitySelector from "@/components/vetconnect/Consultation/ConsultationFacilitySelector";
 import ConsultationDetails from "@/components/vetconnect/Consultation/ConsultationDetails";
@@ -24,28 +16,72 @@ interface ConsultationItem {
   ownerName: string;
   timeRange: string;
   imageUrl?: string;
+  // API fields for updatestatusarrive
+  patientMrn?: number;
+  petOwnerUid?: string;
+  patientUid?: number;
+  appointmentId?: number;
+  facilityId?: number;
 }
 
 const Consultation: React.FC = () => {
   const [selectedFacility, setSelectedFacility] = useState<FaclityServiceResponse | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [openCalendarDialog, setOpenCalendarDialog] = useState(false);
+  const [patientSlots, setPatientSlots] = useState<any[]>([]);
   const [showConsultationDetails, setShowConsultationDetails] = useState(false);
   const [showListOfConsultation, setShowListOfConsultation] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
+  
+  // Sample patient data for appointment booking
+  const [selectedPatient, setSelectedPatient] = useState<{
+    petOwnerUid: string;
+    patientUid: string;
+    patientId: number;
+    petName: string;
+    ownerName: string;
+  } | null>(null);
 
-  const consultations: ConsultationItem[] = [
+  // Map API data to ConsultationItem format
+  const mapPatientSlotsToConsultations = (slots: any[]): ConsultationItem[] => {
+    return slots
+      .filter(slot => slot.patientName) // Only include slots with actual patients
+      .map(slot => ({
+        petName: slot.patientName || 'Unknown Pet',
+        ownerName: slot.petOwnerUid ? `Owner ${slot.petOwnerUid}` : 'Unknown Owner',
+        timeRange: `${slot.startTime || '00:00'} - ${slot.stopTime || '00:00'}`,
+        imageUrl: undefined, // No image URL in API response
+        // API fields for updatestatusarrive
+        patientMrn: parseInt(slot.patientMrn) || 1,
+        petOwnerUid: slot.petOwnerUid?.toString() || '4',
+        patientUid: parseInt(slot.patientUid) || 125,
+        appointmentId: parseInt(slot.appointmentId) || 1174,
+        facilityId: selectedFacility?.facilityId || 1
+      }));
+  };
+
+  // Fallback dummy data
+  const dummyConsultations: ConsultationItem[] = [
     {
       petName: "Buddy",
       ownerName: "John Doe",
       timeRange: "13:00 - 13:30",
       imageUrl: "https://hips.hearstapps.com/hmg-prod/images/dog-puppy-on-garden-royalty-free-image-1586966191.jpg?crop=0.752xw:1.00xh;0.175xw,0&resize=1200:*",
+      patientMrn: 1,
+      petOwnerUid: "4",
+      patientUid: 125,
+      appointmentId: 1174,
+      facilityId: selectedFacility?.facilityId || 1
     },
     {
       petName: "Luna",
       ownerName: "Jane Smith",
       timeRange: "14:00 - 14:30",
       imageUrl: "https://cdn.thewirecutter.com/wp-content/media/2021/03/dogharnesses-2048px-6907.webp?auto=webp&quality=75&crop=1.91:1&width=1200",
+      patientMrn: 2,
+      petOwnerUid: "5",
+      patientUid: 126,
+      appointmentId: 1175,
+      facilityId: selectedFacility?.facilityId || 1
     },
   ];
 
@@ -54,18 +90,17 @@ const Consultation: React.FC = () => {
     return date.setHours(0, 0, 0, 0) === today.setHours(0, 0, 0, 0);
   };
 
-  const handleDateSelect = (date: Date | null) => {
-    setSelectedDate(date);
-    setOpenCalendarDialog(false);
-    if (date && isToday(date)) {
+  const handleDateSelect = (date: Dayjs, slots?: any[]) => {
+    const dateObj = date.toDate();
+    setSelectedDate(dateObj);
+    setPatientSlots(slots || []);
+    if (isToday(dateObj)) {
       setShowConsultationDetails(true);
       setShowListOfConsultation(false);
     } else {
       setShowConsultationDetails(false);
       setShowListOfConsultation(false);
-      if (date) {
-        setShowAlert(true);
-      }
+      setShowAlert(true);
     }
   };
 
@@ -79,45 +114,23 @@ const Consultation: React.FC = () => {
     // Optionally trigger modal or update status here
   };
 
-  const ConsultationDay = (props: PickersDayProps<Dayjs>) => {
-    const { day, outsideCurrentMonth, selected, ...other } = props;
-    const isSpecial = [14, 16, 17, 23].includes(day.date());
-
-    let dayColor = 'transparent';
-    let textColor = '#174a7c';
-
-    if ([17, 23].includes(day.date())) {
-      dayColor = '#4CAF50';
-      textColor = '#fff';
-    } else if ([14, 16].includes(day.date())) {
-      dayColor = '#FFC107';
-    }
-
-    return (
-      <PickersDay
-        {...other}
-        outsideCurrentMonth={outsideCurrentMonth}
-        day={day}
-        sx={{
-          backgroundColor: selected ? '#174a7c' : dayColor,
-          color: selected ? '#fff' : textColor,
-          fontWeight: 600,
-          '&:hover': {
-            backgroundColor: selected ? '#174a7c' : (dayColor === 'transparent' ? '#e0e0e0' : dayColor),
-            color: selected || dayColor !== 'transparent' ? textColor : '#174a7c',
-            boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
-          },
-          border: selected ? '2px solid #174a7c' : 'none',
-          boxShadow: selected ? '0 0 0 2px #174a7c, 0px 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-          borderRadius: '16px',
-          margin: '3px',
-          width: '40px',
-          height: '40px',
-          fontSize: '1.1rem',
-        }}
-      />
-    );
+  const handleAppointmentSaved = (response: { message: string; status: string }) => {
+    console.log('Appointment saved:', response.message);
+    // You can show a success message or redirect here
+    alert(`Appointment booked successfully! ${response.message}`);
   };
+
+  // Sample function to set a patient for booking (you would get this from your patient selection component)
+  const handleSelectPatient = () => {
+    setSelectedPatient({
+      petOwnerUid: "1",
+      patientUid: "296", 
+      patientId: 6,
+      petName: "Buddy",
+      ownerName: "John Doe"
+    });
+  };
+
 
   return (
     <PrivateRoute>
@@ -129,45 +142,14 @@ const Consultation: React.FC = () => {
 
           <ConsultationFacilitySelector
             onFacilitySelect={setSelectedFacility}
-            onSelectConsultationDate={() => setOpenCalendarDialog(true)}
+            onSelectConsultationDate={handleDateSelect}
             selectedFacility={selectedFacility}
+            selectedPatient={selectedPatient}
+            onAppointmentSaved={handleAppointmentSaved}
           />
 
-          <Dialog open={openCalendarDialog} onClose={() => setOpenCalendarDialog(false)} maxWidth="xs" fullWidth>
-            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, pb: 0 }}>
-              <span>Select Date</span>
-              <IconButton onClick={() => setOpenCalendarDialog(false)} size="small" sx={{ ml: 2 }}>
-                <CloseIcon />
-              </IconButton>
-            </DialogTitle>
-            <DialogContent sx={{ p: 2, pt: 0 }}>
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <StaticDatePicker
-                  displayStaticWrapperAs="desktop"
-                  value={selectedDate ? dayjs(selectedDate) : null}
-                  onChange={(newValue) => handleDateSelect(newValue ? newValue.toDate() : null)}
-                  slotProps={{ actionBar: { actions: [] } }}
-                  slots={{ day: ConsultationDay }}
-                />
-              </LocalizationProvider>
+         
 
-              {/* Legend */}
-              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2, mb: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ width: 20, height: 20, borderRadius: '50%', bgcolor: '#4CAF50' }}></Box>
-                  <Typography variant="body2">No booking</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ width: 20, height: 20, borderRadius: '50%', bgcolor: '#FFC107' }}></Box>
-                  <Typography variant="body2">Booking started</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ width: 20, height: 20, borderRadius: '50%', bgcolor: '#F44336' }}></Box>
-                  <Typography variant="body2">Fully booked</Typography>
-                </Box>
-              </Box>
-            </DialogContent>
-          </Dialog>
 
           {showConsultationDetails && selectedDate && isToday(selectedDate) && (
             <ConsultationDetails
@@ -179,7 +161,7 @@ const Consultation: React.FC = () => {
           {showListOfConsultation && selectedDate && isToday(selectedDate) && (
             <ListOfConsultation
               selectedDate={selectedDate}
-              consultations={consultations}
+             consultations={patientSlots.length > 0 ? mapPatientSlotsToConsultations(patientSlots) : dummyConsultations}
               onArriveClick={handleArriveClick}
             />
           )}

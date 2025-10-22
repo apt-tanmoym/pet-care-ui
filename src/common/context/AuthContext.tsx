@@ -53,6 +53,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('username')
       localStorage.removeItem('userRole')
       localStorage.removeItem('userProject')
+      localStorage.removeItem('userName')
+      localStorage.removeItem('userPwd')
       router.push("/"); // Redirect to home page
     };
   

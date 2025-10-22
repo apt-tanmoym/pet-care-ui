@@ -79,8 +79,8 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
     setIsLoadingSlotDates(true);
     try {
       const response = await getSlotDates({
-        userName: 'tonmoy',
-        userPass: '4vpzrnly',
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
         deviceStat: 'M',
         facilityId: facility.facilityId
       });
@@ -216,8 +216,8 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
 
       // Prepare API payload
       const payload = {
-        userName: 'tonmoy',
-        userPass: '4vpzrnly',
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
         deviceStat: 'M',
         startDate: formattedDate,
         orgId: localStorage.getItem('orgId') || undefined,

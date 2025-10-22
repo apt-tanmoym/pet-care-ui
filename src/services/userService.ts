@@ -73,10 +73,10 @@ interface RoleGroup {
 // Fetch all users (getorgusers)
 export const getOrgUsers = async (statusId: number): Promise<User[]> => {
   const payload: GetOrgUsersPayload = {
-    userName: 'devthomas',
-    userPwd: 'P@ssw0rd',
+    userName: localStorage.getItem('userName') || '',
+    userPwd: localStorage.getItem('userPwd') || '',
     callingFrom: 'web',
-    orgId: '45',
+    orgId: localStorage.getItem('orgId') || '',
     loggedinFacilityId: '1',
     orgFacilityId: '0',
     statusId,
@@ -95,9 +95,9 @@ export const getOrgUsers = async (statusId: number): Promise<User[]> => {
 export const getUserDetails = async (orgUserId: string): Promise<User | null> => {
   const payload: GetUserDetailsPayload = {
     callingFrom: 'web',
-    userName: 'devthomas',
-    userPwd: 'P@ssw0rd',
-    orgId: '45',
+    userName: localStorage.getItem('userName') || '',
+    userPwd: localStorage.getItem('userPwd') || '',
+    orgId: localStorage.getItem('orgId') || '',
     loggedinFacilityId: '1',
     orgUserId,
   };
@@ -161,11 +161,11 @@ export const getSpecalityList = async (): Promise<any[]> => {
 };
 
 // Fetch role group list (getallrolegroupoforg)
-export const getAllRoleGroupOfOrg = async (orgId: string = '2'): Promise<RoleGroup[]> => {
+export const getAllRoleGroupOfOrg = async (orgId: string = localStorage.getItem('orgId') || ''): Promise<RoleGroup[]> => {
   const payload: GetAllRoleGroupOfOrgPayload = {
     callingFrom: 'web',
-    userName: 'dasdebashisindia',
-    userPass: 'P@ssw0rd',
+    userName: localStorage.getItem('userName') || '',
+    userPass: localStorage.getItem('userPwd') || '',
     orgId,
   };
 

@@ -23,17 +23,28 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import CircularProgress from '@mui/material/CircularProgress';
-import { searchApptPatient, SearchApptPatientResponse } from '@/services/manageCalendar';
+import { searchApptPatient, SearchApptPatientResponse, saveAppointment } from '@/services/manageCalendar';
+import dayjs from 'dayjs';
 
 interface PatientSearchModalProps {
   open: boolean;
   onClose: () => void;
   onSearch: (searchData: any) => void;
+  selectedTimeSlot?: {
+    startTime: string;
+    stopTime: string;
+    date: string;
+  } | null;
+  selectedFacility?: {
+    facilityId: number;
+    facilityName: string;
+  } | null;
+  selectedDate?: Date | null;
 }
 
 type SearchOption = 'mrn' | 'name' | 'idProof' | 'mobile';
 
-const PatientSearchModal: React.FC<PatientSearchModalProps> = ({ open, onClose, onSearch }) => {
+const PatientSearchModal: React.FC<PatientSearchModalProps> = ({ open, onClose, onSearch, selectedTimeSlot, selectedFacility, selectedDate }) => {
   const [searchBy, setSearchBy] = useState<SearchOption>('mrn');
   const [searchValue, setSearchValue] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -49,10 +60,10 @@ const PatientSearchModal: React.FC<PatientSearchModalProps> = ({ open, onClose, 
     setIsLoading(true);
     try {
       let payload: any = {
-        userName: 'tonmoy',
-        userPwd: '4vpzrnly',
+        userName: localStorage.getItem('userName') || '',
+        userPwd: localStorage.getItem('userPwd') || '',
         deviceStat: 'M',
-        orgId: '2'
+        orgId: localStorage.getItem('orgId') || ''
       };
 
       if (searchBy === 'name') {
@@ -81,14 +92,21 @@ const PatientSearchModal: React.FC<PatientSearchModalProps> = ({ open, onClose, 
 
       const results = await searchApptPatient(payload);
       
+      console.log('API Response:', results);
+      console.log('Results type:', typeof results);
+      console.log('Is Array:', Array.isArray(results));
+      
       // Handle different response formats
       if (Array.isArray(results)) {
+        console.log('Setting search results:', results);
         setSearchResults(results);
       } else if (results && results.status === 'notfound') {
         // Handle "notfound" status response
+        console.log('No patients found');
         setSearchResults([]);
       } else {
         // Fallback for unexpected response format
+        console.log('Unexpected response format:', results);
         setSearchResults([]);
       }
       
@@ -114,10 +132,44 @@ const PatientSearchModal: React.FC<PatientSearchModalProps> = ({ open, onClose, 
     onClose();
   };
 
-  const handleBookAppointment = (patient: SearchApptPatientResponse) => {
-    setShowSuccessModal(true);
-    // Here you would typically navigate to appointment booking or call a callback
-    console.log('Booking appointment for:', patient);
+  const handleBookAppointment = async (patient: SearchApptPatientResponse) => {
+    if (!selectedFacility?.facilityId) {
+      console.error('No facility selected');
+      return;
+    }
+
+    try {
+      const payload = {
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
+        deviceStat: 'M',
+        orgId: localStorage.getItem('orgId') || '2',
+        facilityId: selectedFacility.facilityId,
+        bookAppType: 'timeslot',
+        apptSelDate: selectedDate ? dayjs(selectedDate).format('DD/MM/YYYY') : selectedTimeSlot?.date || '10/17/2025',
+        startTime: selectedTimeSlot?.startTime || '01:00',
+        stopTime: selectedTimeSlot?.stopTime || '01:10',
+        episode: 'new',
+        petOwnerUid: patient.petOwnerUid.toString(),
+        patientUid: patient.patientUid.toString(),
+        patientId: patient.mrn
+      };
+
+      console.log('Sending appointment payload:', payload);
+      const response = await saveAppointment(payload);
+      console.log('Appointment API response:', response);
+      
+      if (response.status === 'success') {
+        setShowSuccessModal(true);
+        console.log('Appointment saved successfully:', response.message);
+      } else {
+        console.error('Failed to save appointment:', response.message);
+        alert('Failed to save appointment: ' + response.message);
+      }
+    } catch (error) {
+      console.error('Error saving appointment:', error);
+      alert('Error saving appointment. Please try again.');
+    }
   };
 
   const handleSuccessModalClose = () => {
@@ -562,39 +614,39 @@ const PatientSearchModal: React.FC<PatientSearchModalProps> = ({ open, onClose, 
                       </TableHead>
                       <TableBody>
                         {(Array.isArray(searchResults) ? searchResults : []).map((patient, index) => (
-                          <TableRow 
-                            key={index}
-                            sx={{ 
-                              '&:hover': { bgcolor: 'rgba(23, 74, 124, 0.04)' }
-                            }}
-                          >
-                            <TableCell sx={{ fontWeight: 500, color: '#2c3e50' }}>
-                              {patient.mrn}
-                            </TableCell>
-                            <TableCell sx={{ fontWeight: 500, color: '#2c3e50' }}>
-                              {patient.petName} of {patient.firstName} {patient.lastName}
-                            </TableCell>
-                            <TableCell sx={{ color: '#7f8c8d' }}>
-                              {patient.cellNumber}
-                            </TableCell>
-                            <TableCell sx={{ textAlign: 'center' }}>
-                              <Button
-                                variant="text"
-                                onClick={() => handleBookAppointment(patient)}
-                                sx={{
-                                  color: '#174a7c',
-                                  textDecoration: 'underline',
-                                  fontWeight: 600,
-                                  textTransform: 'none',
-                                  '&:hover': {
-                                    bgcolor: 'rgba(23, 74, 124, 0.04)',
-                                  },
-                                }}
-                              >
-                                Book Appointment
-                              </Button>
-                            </TableCell>
-                          </TableRow>
+                            <TableRow 
+                              key={index}
+                              sx={{ 
+                                '&:hover': { bgcolor: 'rgba(23, 74, 124, 0.04)' }
+                              }}
+                            >
+                              <TableCell sx={{ fontWeight: 500, color: '#2c3e50' }}>
+                                {patient.mrn}
+                              </TableCell>
+                              <TableCell sx={{ fontWeight: 500, color: '#2c3e50' }}>
+                                {patient.petName} of {patient.firstName} {patient.lastName}
+                              </TableCell>
+                              <TableCell sx={{ color: '#7f8c8d' }}>
+                                {patient.cellNumber}
+                              </TableCell>
+                              <TableCell sx={{ textAlign: 'center' }}>
+                                <Button
+                                  variant="text"
+                                  onClick={() => handleBookAppointment(patient)}
+                                  sx={{
+                                    color: '#174a7c',
+                                    textDecoration: 'underline',
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    '&:hover': {
+                                      bgcolor: 'rgba(23, 74, 124, 0.04)',
+                                    },
+                                  }}
+                                >
+                                  Book Appointment 
+                                </Button>
+                              </TableCell>
+                            </TableRow>
                         ))}
                       </TableBody>
                     </Table>

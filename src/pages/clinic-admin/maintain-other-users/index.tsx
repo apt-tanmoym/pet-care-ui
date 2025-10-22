@@ -35,7 +35,7 @@ interface PrivilegeUser {
   image?: string;
 }
 
-const dummyUsers = [
+const getDummyUsers = () => [
   {
     id: 1,
     image: '',
@@ -51,7 +51,7 @@ const dummyUsers = [
     state: 'West Bengal',
     pin: '700091',
     cellNo: '9932123125',
-    userName: 'Partha07',
+    userName: typeof window !== 'undefined' ? localStorage.getItem('userName') || '' : '',
     status: 'Active',
   },
 ];
@@ -91,6 +91,8 @@ const UsersTable: React.FC = () => {
   const [firstNameFilter, setFirstNameFilter] = useState('');
   const [lastNameFilter, setLastNameFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  
+  const dummyUsers = getDummyUsers();
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);

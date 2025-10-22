@@ -57,8 +57,8 @@ const Calendar: React.FC = () => {
       console.log('Using orgId:', orgId);
       
       const response = await getdoctorSlots({
-        userName: 'tonmoy',
-        userPass: '4vpzrnly',
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
         deviceStat: 'M',
         orgId: orgId,
         facilityId: facilityId
@@ -179,10 +179,10 @@ const Calendar: React.FC = () => {
 
       // Prepare API payload
       const payload = {
-        userName: 'tonmoy',
-        userPass: '4vpzrnly',
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
         deviceStat: 'M',
-        orgId: localStorage.getItem('orgId')?.toString(),
+        orgId: localStorage.getItem('orgId') || '',
         facilityId: facility.facilityId, // use selected facility ID
         bookAppType: bookAppType,
         checkedDay: checkedDay,
@@ -246,8 +246,8 @@ const Calendar: React.FC = () => {
     try {
       // Call API to get edit slot data
       const response = await getEditSlotData({
-        userName: 'tonmoy',
-        userPass: '4vpzrnly',
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
         deviceStat: 'M',
         slotId: cal.slotId || 2 // Use slotId from the row data, fallback to 2
       });
@@ -576,10 +576,10 @@ const Calendar: React.FC = () => {
                 
                 // Check slot availability via API
                 const response = await checkDuplicateSlot({
-                  userName: 'tonmoy',
-                  userPass: '4vpzrnly', // hardcoded as per API spec
+                  userName: localStorage.getItem('userName') || '',
+                  userPass: localStorage.getItem('userPwd') || '', // hardcoded as per API spec
                   deviceStat: "M",
-                  orgId: 39, // hardcoded as per API spec
+                  orgId: parseInt(localStorage.getItem('orgId') || '39'),
                   facilityId: selectedFacility.facilityId, // use selected facility ID
                   slotId: editPrefill?.originalData?.slotId || 2, // Use actual slotId when editing, fallback to 2
                   startDate: startDateFormatted,
