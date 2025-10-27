@@ -12,6 +12,7 @@ import DialogActions from "@mui/material/DialogActions";
 import TextField from "@mui/material/TextField";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
+import Tooltip from "@mui/material/Tooltip";
 import MicIcon from "@mui/icons-material/Mic";
 import SendIcon from "@mui/icons-material/Send";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
@@ -21,10 +22,14 @@ import Divider from "@mui/material/Divider";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
+import Avatar from "@mui/material/Avatar";
+import PetsIcon from "@mui/icons-material/Pets";
 import dynamic from "next/dynamic";
 // import { sampleMedicalRecord } from "@/components/manageEncounter/sampleMedicalRecord";
-import { uploadVoicePrescription, getVoicePrescriptions } from "@/services/manageCalendar";
+import { uploadVoicePrescription, getVoicePrescriptions, getPetProfile, uploadDocument } from "@/services/manageCalendar";
 // import { MedicalRecord } from "@/components/manageEncounter/types";
+
+const BASE_URL = 'https://www.aptcarepet.com';
 
 // Dynamically import ManageEncounter with SSR disabled to avoid Quill SSR issues
 const ManageEncounter = dynamic(
@@ -68,7 +73,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
   const recognitionRef = useRef<any>(null);
 
   // State for controlling popup visibility
-  const [openPrescriptionModal, setOpenPrescriptionModal] = useState(false);
+  const [showPrescriptionSection, setShowPrescriptionSection] = useState(false);
   const [openManualPrescriptionModal, setOpenManualPrescriptionModal] = useState(false);
   const [prescriptionMode, setPrescriptionMode] = useState<'selection' | 'textToSpeech' | 'attachDocument'>('selection');
   
@@ -83,6 +88,10 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
     severity: 'success' as 'success' | 'error' | 'warning' | 'info' 
   });
   const [comments, setComments] = useState<Array<{ id: number; text: string; date: string; time: string }>>([]);
+  
+  // State for pet profile data
+  const [petProfile, setPetProfile] = useState<any>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   const router = useRouter();
 
@@ -127,10 +136,10 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
     }
   }, []);
 
-  // Fetch consultation history when modal opens
+  // Fetch consultation history when section expands
   useEffect(() => {
     const fetchConsultationHistory = async () => {
-      if (openPrescriptionModal) {
+      if (showPrescriptionSection) {
         setIsLoadingComments(true);
         try {
           const payload = {
@@ -178,29 +187,126 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
     };
 
     fetchConsultationHistory();
-  }, [openPrescriptionModal]);
+  }, [showPrescriptionSection]);
 
-  const handleFileChange =
-    (label: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (file) {
-        console.log(`File uploaded from [${label}]:`, file.name);
-        // Handle file upload logic here
+  // Fetch pet profile on mount
+  useEffect(() => {
+    const fetchPetProfile = async () => {
+      if (consultation.patientUid) {
+        setIsLoadingProfile(true);
+        try {
+          const payload = {
+            userName: localStorage.getItem('userName') || '',
+            userPwd: localStorage.getItem('userPwd') || '',
+            deviceStat: "D",
+            patientUid: consultation.patientUid
+          };
+
+          const response = await getPetProfile(payload);
+          setPetProfile(response);
+        } catch (error) {
+          console.error('Error fetching pet profile:', error);
+          setSnackbar({
+            open: true,
+            message: "Failed to load pet profile",
+            severity: "error"
+          });
+        } finally {
+          setIsLoadingProfile(false);
+        }
       }
     };
 
-  const handleOpenPrescriptionModal = () => {
-    setOpenPrescriptionModal(true);
-    setPrescriptionMode('selection');
+    fetchPetProfile();
+  }, [consultation.patientUid]);
+
+  const handleFileUpload = (label: string) => async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+      if (!consultation.patientUid || !consultation.appointmentId) {
+        setSnackbar({
+          open: true,
+          message: "Missing patient or appointment information",
+          severity: "error"
+        });
+        return;
+      }
+
+      try {
+        const currentDate = new Date();
+        const formattedDate = currentDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const docName = label === "Shared Documents Upload" 
+          ? `Document on ${currentDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+          : `Prescription on ${currentDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+
+        const payload = {
+          userName: localStorage.getItem('userName') || '',
+          userPass: localStorage.getItem('userPwd') || '',
+          deviceStat: 'M',
+          docname: docName,
+          docdate: formattedDate,
+          select_doctype_list: '1',
+          patientUid: consultation.patientUid?.toString() || '0',
+          appointmentId: consultation.appointmentId?.toString() || '0',
+          uploaded_file: file
+        };
+
+        setSnackbar({
+          open: true,
+          message: "Uploading document...",
+          severity: "info"
+        });
+
+        const response = await uploadDocument(payload);
+
+        if (response.status === "Success") {
+          setSnackbar({
+            open: true,
+            message: response.message || "Document uploaded successfully!",
+            severity: "success"
+          });
+
+          // Refresh pet profile to show new documents
+          if (consultation.patientUid) {
+            const profilePayload = {
+              userName: localStorage.getItem('userName') || '',
+              userPwd: localStorage.getItem('userPwd') || '',
+              deviceStat: "D",
+              patientUid: consultation.patientUid
+            };
+            
+            const profileResponse = await getPetProfile(profilePayload);
+            setPetProfile(profileResponse);
+          }
+        } else {
+          setSnackbar({
+            open: true,
+            message: response.message || "Failed to upload document",
+            severity: "error"
+          });
+        }
+      } catch (error) {
+        console.error('Error uploading document:', error);
+        setSnackbar({
+          open: true,
+          message: "Error uploading document. Please try again.",
+          severity: "error"
+        });
+      }
+    }
   };
 
-  const handleClosePrescriptionModal = () => {
-    setOpenPrescriptionModal(false);
+  const handleTogglePrescriptionSection = () => {
+    setShowPrescriptionSection(!showPrescriptionSection);
+    if (!showPrescriptionSection) {
+    setPrescriptionMode('selection');
+    } else {
     setPrescriptionMode('selection');
     setComment("");
     if (isRecording && recognitionRef.current) {
       recognitionRef.current.stop();
       setIsRecording(false);
+      }
     }
   };
 
@@ -214,7 +320,6 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
 
   const handleModeSelect = (mode: 'textToSpeech' | 'attachDocument' | 'addManually') => {
     if (mode === 'addManually') {
-      setOpenPrescriptionModal(false);
       setOpenManualPrescriptionModal(true);
     } else {
       setPrescriptionMode(mode);
@@ -278,12 +383,12 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
 
       const response = await uploadVoicePrescription(payload);
 
-      if (response.status === "True" || response.status === "success") {
+      if (response.status === "True" || response.status === "success" || response.status === "Success") {
         setComment("");
         
         setSnackbar({
           open: true,
-          message: response.message || "Comment added successfully",
+          message: response.message || "Voice prescription uploaded successfully",
           severity: "success"
         });
 
@@ -345,18 +450,103 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
     setSnackbar({ ...snackbar, open: false });
   };
 
-  const handleChatFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDocumentClick = (savedFileName: string) => {
+    if (savedFileName) {
+      const fullUrl = `${BASE_URL}/${savedFileName}`;
+      window.open(fullUrl, '_blank');
+    }
+  };
+
+  const handleChatFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      console.log("File attached to comments:", file.name);
+      if (!consultation.patientUid || !consultation.appointmentId) {
+        setSnackbar({
+          open: true,
+          message: "Missing patient or appointment information",
+          severity: "error"
+        });
+        return;
+      }
+
+      try {
       const currentDate = new Date();
-      const newComment = {
-        id: comments.length + 1,
-        text: `📎 Attached Document: ${file.name}`,
-        date: currentDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-        time: currentDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      };
-      setComments([...comments, newComment]);
+        const formattedDate = currentDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const docName = `Prescription on ${currentDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+
+        const payload = {
+          userName: localStorage.getItem('userName') || '',
+          userPass: localStorage.getItem('userPwd') || '',
+          deviceStat: 'M',
+          docname: docName,
+          docdate: formattedDate,
+          select_doctype_list: '1', // Default document type ID - can be made dynamic with a dropdown
+          patientUid: consultation.patientUid?.toString() || '0',
+          appointmentId: consultation.appointmentId?.toString() || '0',
+          uploaded_file: file
+        };
+
+        setSnackbar({
+          open: true,
+          message: "Uploading document...",
+          severity: "info"
+        });
+
+        const response = await uploadDocument(payload);
+
+        if (response.status === "Success") {
+          setSnackbar({
+            open: true,
+            message: response.message || "Document uploaded successfully!",
+            severity: "success"
+          });
+
+          // Refresh consultation history to show the new document
+          const historyPayload = {
+            userName: localStorage.getItem('userName') || '',
+            userPass: localStorage.getItem('userPwd') || '',
+            deviceStat: "M",
+            appointmentId: consultation.appointmentId || 0
+          };
+
+          const historyResponse = await getVoicePrescriptions(historyPayload);
+          if (Array.isArray(historyResponse)) {
+            const stripHtmlTags = (html: string) => {
+              if (typeof window === 'undefined') {
+                return html.replace(/<[^>]*>/g, '');
+              }
+              const tmp = document.createElement("DIV");
+              tmp.innerHTML = html;
+              return tmp.textContent || tmp.innerText || "";
+            };
+
+            const formattedComments = historyResponse.map((item, index) => ({
+              id: item.encounterPublicNoteId || index + 1,
+              text: stripHtmlTags(item.publicNote),
+              date: item.publicNoteDate,
+              time: item.publicNoteTime
+            }));
+
+            setComments(formattedComments);
+          }
+
+          // Back to selection mode after successful upload
+          setPrescriptionMode('selection');
+        } else {
+          setSnackbar({
+            open: true,
+            message: response.message || "Failed to upload document",
+            severity: "error"
+          });
+        }
+      } catch (error) {
+        console.error('Error uploading document:', error);
+        setSnackbar({
+          open: true,
+          message: "Error uploading document. Please try again.",
+          severity: "error"
+        });
+      }
     }
   };
 
@@ -366,110 +556,143 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
       <Box
         sx={{ mb: 3, p: 2, bgcolor: "#ffffff", borderRadius: 4, boxShadow: 1 }}
       >
+        {/* Compact Pet Info Section */}
         <Box
           sx={{
             display: "flex",
-            flexDirection: "column",
             alignItems: "center",
+            gap: 2,
+            p: 2,
+            bgcolor: "#f8fafc",
+            borderRadius: 2,
+            border: "1px solid #e5e7eb"
           }}
         >
-          <Box
-            component="img"
-            src={petImage || "/placeholder-pet-image.jpg"}
-            alt="Pet"
+          <Avatar
             sx={{
-              width: "100%",
-              height: 200,
-              objectFit: "cover",
-              borderRadius: 2,
+              width: 60,
+              height: 60,
+              bgcolor: "#174a7c",
+              border: "2px solid #fff",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
             }}
-          />
-          <Box
-            component="img"
-            src={petImage || "/placeholder-pet-image.jpg"}
-            alt="Pet Avatar"
-            sx={{
-              width: 80,
-              height: 80,
-              borderRadius: "50%",
-              objectFit: "cover",
-              mt: -4,
-              border: "3px solid #fff",
-            }}
-          />
-          <Typography variant="h6" sx={{ mt: 1, fontWeight: 700 }}>
-            {consultation.petName}{" "}
-            <Typography component="span" variant="body2">
-              of {consultation.ownerName}
+          >
+            <PetsIcon sx={{ fontSize: 32, color: "#fff" }} />
+          </Avatar>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#174a7c" }}>
+              {consultation.petName}
             </Typography>
+            <Typography variant="body2" sx={{ color: "#617d98", fontSize: '0.8rem' }}>
+              Owner: {consultation.ownerName}
           </Typography>
+          </Box>
         </Box>
 
-        <Box sx={{ mt: 2, textAlign: "center" }}>
-          <Typography variant="body2">CURRENT CONSULTATION :</Typography>
+        {/* Compact Consultation Info */}
+        <Box sx={{ mt: 2 }}>
           <Box
-            sx={{ mt: 1, p: 1.5, border: "2px solid #9e9e9e", borderRadius: 2 }}
+            sx={{
+              p: 1.5,
+              bgcolor: "#e8f0f7",
+              borderRadius: 2,
+              border: "1px solid #b3d9ff"
+            }}
           >
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+              <Typography variant="caption" sx={{ color: "#617d98", fontWeight: 600, fontSize: '0.7rem' }}>
+                CONSULTATION
+              </Typography>
             <Typography
-              variant="body2"
-              sx={{ fontWeight: 500, color: "#174a7c", mb: 0.5 }}
-            >
-              IN ONLINE
+                variant="caption"
+                sx={{
+                  fontWeight: 700,
+                  color: "#2196F3",
+                  bgcolor: "#e3f2fd",
+                  px: 1.5,
+                  py: 0.5,
+                  borderRadius: 1,
+                  fontSize: '0.7rem'
+                }}
+              >
+                ONLINE
             </Typography>
-            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-              <Typography variant="body2">{formattedDate}</Typography>
-              <Typography variant="body2">SLOT 2</Typography>
             </Box>
-            <Typography variant="body2" sx={{ mt: 0.5 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Typography variant="caption" sx={{ color: "#174a7c", fontWeight: 600, fontSize: '0.75rem' }}>
+                {formattedDate}
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#617d98", fontSize: '0.75rem' }}>
               {consultation.timeRange}
             </Typography>
-            <Box
-              sx={{
-                display: "flex",
-                flexWrap: "wrap",
-                justifyContent: "center",
-                mt: 2,
-                gap: 1,
-              }}
-            >
+            </Box>
+          </Box>
+          
+          {/* Action Buttons - Single Row */}
+          <Box sx={{ mt: 2, display: "flex", gap: 1.5, flexWrap: 'nowrap' }}>
               <Button 
                 variant="contained" 
                 sx={{ 
-                  bgcolor: "#174a7c",
+                bgcolor: "#2196F3",
+                color: '#fff',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                py: 1,
+                flex: 1,
+                borderRadius: 1.5,
+                textTransform: 'none',
                   '&:hover': {
-                    bgcolor: '#0d3a5f',
+                  bgcolor: '#1976D2',
                   },
                 }}
               >
-                ONLINE CONSULTATION
+              CONSULT
               </Button>
               <Button 
                 variant="outlined" 
-                onClick={handleOpenPrescriptionModal}
+              onClick={handleTogglePrescriptionSection}
                 sx={{
                   borderColor: '#174a7c',
                   color: '#174a7c',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                py: 1,
+                flex: 1,
+                borderRadius: 1.5,
+                textTransform: 'none',
+                bgcolor: showPrescriptionSection ? '#e8f0f7' : 'transparent',
                   '&:hover': {
                     borderColor: '#0d3a5f',
                     bgcolor: '#e8f0f7',
                   },
                 }}
               >
-                Add Prescription
+              {showPrescriptionSection ? 'HIDE PRESCRIPTION' : 'PRESCRIPTION'}
               </Button>
               <Button
                 variant="outlined"
-                onClick={() => addDocRef.current?.click()}
+                onClick={() => {
+                  const documentsSection = document.getElementById('shared-documents-section');
+                  if (documentsSection) {
+                    documentsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }}
                 sx={{
-                  borderColor: '#174a7c',
-                  color: '#174a7c',
+                borderColor: '#FF9800',
+                color: '#FF9800',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                py: 1,
+                flex: 1,
+                borderRadius: 1.5,
+                textTransform: 'none',
                   '&:hover': {
-                    borderColor: '#0d3a5f',
-                    bgcolor: '#e8f0f7',
+                  borderColor: '#F57C00',
+                  bgcolor: '#fff3e0',
                   },
                 }}
               >
-                Add Documents
+              DOCUMENTS
               </Button>
               <Button
                 variant="contained"
@@ -477,120 +700,582 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
                 sx={{
                   bgcolor: '#4CAF50',
                   color: '#fff',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                py: 1,
+                flex: 1,
+                borderRadius: 1.5,
+                textTransform: 'none',
                   '&:hover': {
                     bgcolor: '#45a049',
                   },
                 }}
               >
-                Complete Consultation
+              COMPLETE
               </Button>
               <input
                 type="file"
                 hidden
                 ref={addDocRef}
-                onChange={handleFileChange("Add Documents")}
+                onChange={handleFileUpload("Add Documents")}
               />
-            </Box>
           </Box>
         </Box>
       </Box>
 
-      {/* About Rocky */}
-      <Box sx={{ mb: 3, p: 2, bgcolor: "#fff", borderRadius: 4, boxShadow: 1 }}>
-        <Typography
-          variant="h6"
-          sx={{ fontWeight: 700, color: "#174a7c" }}
-          gutterBottom
+      {/* Prescription Section - Expandable */}
+      {showPrescriptionSection && (
+        <Box sx={{ mb: 2, p: 1.5, bgcolor: "#fff", borderRadius: 2, border: "1px solid #e5e7eb" }}>
+          {/* Mode Selection Screen */}
+          {prescriptionMode === 'selection' && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#174a7c", mb: 0.5, fontSize: '0.8rem' }}>
+                PRESCRIPTION OPTIONS
+              </Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1 }}>
+                <Button
+                  variant="contained"
+                  onClick={() => handleModeSelect('textToSpeech')}
+                  startIcon={<MicIcon />}
+                  sx={{
+                    bgcolor: '#2196F3',
+                    color: 'white',
+                    py: 1.25,
+                    fontSize: '0.75rem',
+                    borderRadius: 1.5,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    '&:hover': {
+                      bgcolor: '#1976D2',
+                    },
+                  }}
+                >
+                  Voice Notes
+                </Button>
+                
+                <Button
+                  variant="contained"
+                  onClick={() => handleModeSelect('attachDocument')}
+                  startIcon={<AttachFileIcon />}
+                  sx={{
+                    bgcolor: '#4CAF50',
+                    color: 'white',
+                    py: 1.25,
+                    fontSize: '0.75rem',
+                    borderRadius: 1.5,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    '&:hover': {
+                      bgcolor: '#45a049',
+                    },
+                  }}
+                >
+                  Attach
+                </Button>
+                
+                <Button
+                  variant="contained"
+                  onClick={() => handleModeSelect('addManually')}
+                  startIcon={<CloudUploadIcon />}
+                  sx={{
+                    bgcolor: '#FF9800',
+                    color: 'white',
+                    py: 1.25,
+                    fontSize: '0.75rem',
+                    borderRadius: 1.5,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    '&:hover': {
+                      bgcolor: '#F57C00',
+                    },
+                  }}
+                >
+                  Manual
+                </Button>
+              </Box>
+            </Box>
+          )}
+
+          {/* Voice Notes Mode */}
+          {prescriptionMode === 'textToSpeech' && (
+            <Box>
+              {/* Header with title on left, close button on right */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#174a7c' }}>
+                  Voice Notes
+                </Typography>
+                <IconButton onClick={handleBackToSelection} size="small" sx={{ color: '#617d98' }}>
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Box>
+              
+              {/* Comment Input Section */}
+              <Box sx={{ bgcolor: '#f8fafc', p: 1.5, borderRadius: 2, mb: 2, border: '1px solid #e5e7eb' }}>
+                <Typography variant="caption" sx={{ color: '#174a7c', fontWeight: 600, fontSize: '0.7rem', mb: 1, display: 'block' }}>
+                  Add Comment
+                </Typography>
+                
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Type your prescription notes or use voice recording..."
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 1.5,
+                        bgcolor: '#ffffff',
+                        fontSize: '0.8rem',
+                      },
+                    }}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            onClick={handleToggleRecording}
+                            size="small"
+                            sx={{
+                              color: isRecording ? '#ff1744' : '#174a7c',
+                              bgcolor: isRecording ? '#ffebee' : '#e8f0f7',
+                              '&:hover': {
+                                bgcolor: isRecording ? '#ffcdd2' : '#d1e7f7',
+                              },
+                            }}
+                          >
+                            <MicIcon fontSize="small" />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={handleAddComment}
+                    disabled={!comment.trim() || isSubmitting}
+                    sx={{
+                      bgcolor: '#174a7c',
+                      color: 'white',
+                      px: 2.5,
+                      py: 1,
+                      borderRadius: 1.5,
+                      textTransform: 'none',
+                      fontSize: '0.75rem',
+                      minWidth: '80px',
+                      '&:hover': {
+                        bgcolor: '#0d3a5f',
+                      },
+                      '&:disabled': {
+                        bgcolor: '#e0e0e0',
+                        color: '#9e9e9e',
+                      },
+                    }}
+                  >
+                    {isSubmitting ? <CircularProgress size={16} color="inherit" /> : 'SEND'}
+                  </Button>
+                </Box>
+              </Box>
+              
+              {/* Previous Comments List */}
+              <Box sx={{ maxHeight: '300px', overflowY: 'auto', mt: 2 }}>
+                <Typography variant="subtitle2" sx={{ color: '#174a7c', fontWeight: 600, fontSize: '0.75rem', mb: 1.5, display: 'block' }}>
+                  Consultation History
+                </Typography>
+                
+                {isLoadingComments ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
+                    <CircularProgress size={24} sx={{ color: '#174a7c' }} />
+                  </Box>
+                ) : comments.length === 0 ? (
+                  <Typography variant="body2" sx={{ color: '#999', fontStyle: 'italic', fontSize: '0.75rem', textAlign: 'center', py: 3 }}>
+                    No consultation history available.
+                    </Typography>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {comments.map((commentItem) => (
+                      <Box
+                        key={commentItem.id}
+                        sx={{
+                          bgcolor: '#f8f9fa',
+                          p: 1.5,
+                          borderRadius: 1,
+                          border: '1px solid #e0e0e0',
+                          '&:hover': {
+                            bgcolor: '#f0f2f5',
+                            borderColor: '#174a7c'
+                          }
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          <Typography variant="caption" sx={{ color: '#174a7c', fontWeight: 600, fontSize: '0.7rem' }}>
+                            {commentItem.date}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#999', fontSize: '0.7rem' }}>
+                            {commentItem.time}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body2" sx={{ color: '#333', fontSize: '0.75rem', lineHeight: 1.6 }}>
+                          {commentItem.text}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          )}
+
+          {/* Attach Document Mode */}
+          {prescriptionMode === 'attachDocument' && (
+            <Box>
+              {/* Header with title on left, close button on right */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#174a7c' }}>
+                  Attach Document
+                </Typography>
+                <IconButton onClick={handleBackToSelection} size="small" sx={{ color: '#617d98' }}>
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Box>
+              
+              <Box sx={{ bgcolor: '#f8fafc', p: 3, borderRadius: 2, border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                <AttachFileIcon sx={{ fontSize: 48, color: '#174a7c', opacity: 0.6 }} />
+                <Typography variant="body2" sx={{ color: '#666', textAlign: 'center' }}>
+                  Upload prescription documents
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<AttachFileIcon />}
+                  onClick={() => chatFileRef.current?.click()}
+                  sx={{
+                    bgcolor: '#174a7c',
+                    color: 'white',
+                    px: 3,
+                    py: 1,
+                    borderRadius: 1.5,
+                    textTransform: 'none',
+                    fontSize: '0.875rem',
+                    '&:hover': {
+                      bgcolor: '#0d3a5f',
+                    },
+                  }}
+                >
+                  Choose File
+                </Button>
+                <input
+                  type="file"
+                  hidden
+                  ref={chatFileRef}
+                  onChange={handleChatFileChange}
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                />
+                <Typography variant="caption" sx={{ color: '#666', textAlign: 'center' }}>
+                  Supported formats: PDF, DOC, DOCX, JPG, PNG
+                </Typography>
+              </Box>
+            </Box>
+          )}
+        </Box>
+      )}
+              
+      {/* About Rocky - Compact Section */}
+      <Box sx={{ mb: 2, p: 1.5, bgcolor: "#fff", borderRadius: 2, border: "1px solid #e5e7eb" }}>
+                <Typography 
+          variant="subtitle2"
+          sx={{ fontWeight: 700, color: "#174a7c", mb: 1.5, fontSize: '0.85rem' }}
         >
-          About Rocky
-        </Typography>
-        <Typography variant="body2">DOB : 19.01.2020</Typography>
-        <Typography variant="body2">Dog | Dog | Male</Typography>
-        <Typography variant="body2" sx={{ mt: 1 }}>
-          Diet : Rice, Kibble, Meat, Fish, Vegetables, Grains, Hay, Leafy
-          Greens, Pellets, Seeds, Nuts, Fruits, Insects, Fish Flakes
-        </Typography>
-        <Typography variant="body2">Living Environment : Houserr</Typography>
-        <Typography variant="body2">Training : Yes</Typography>
-        <Typography variant="body2" sx={{ mt: 1 }}>
-          Gooddog Rocky
-        </Typography>
+          PET INFORMATION
+                </Typography>
+                
+        {isLoadingProfile ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+            <CircularProgress size={24} sx={{ color: '#174a7c' }} />
+                  </Box>
+        ) : (
+          <>
+            {/* Grid Layout for Pet Info - All in 2x2 Grid */}
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+              <Box>
+                <Typography variant="caption" sx={{ color: "#617d98", fontSize: '0.7rem', fontWeight: 600 }}>
+                  Date of Birth
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#174a7c", fontWeight: 600, fontSize: '0.75rem', mt: 0.5 }}>
+                  {petProfile?.birthDt || 'N/A'}
+                    </Typography>
+                  </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: "#617d98", fontSize: '0.7rem', fontWeight: 600 }}>
+                  Gender
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#174a7c", fontWeight: 600, fontSize: '0.75rem', mt: 0.5 }}>
+                  {petProfile?.gender || 'N/A'}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: "#617d98", fontSize: '0.7rem', fontWeight: 600 }}>
+                  Breed & Type
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#174a7c", fontWeight: 600, fontSize: '0.75rem', mt: 0.5 }}>
+                  {petProfile?.petBreed || 'N/A'}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: "#617d98", fontSize: '0.7rem', fontWeight: 600 }}>
+                  Living Environment
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#174a7c", fontWeight: 600, fontSize: '0.75rem', mt: 0.5 }}>
+                  {petProfile?.livingEnvironment || 'N/A'}
+                </Typography>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5, pt: 1, borderTop: '1px solid #e5e7eb' }}>
+              <Box>
+                <Typography variant="caption" sx={{ color: "#617d98", fontSize: '0.7rem', fontWeight: 600 }}>
+                  Category
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#174a7c", fontWeight: 600, fontSize: '0.75rem', mt: 0.5 }}>
+                  {petProfile?.petCategory || 'N/A'}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: "#617d98", fontSize: '0.7rem', fontWeight: 600 }}>
+                  Pet Type
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#174a7c", fontWeight: 600, fontSize: '0.75rem', mt: 0.5 }}>
+                  {petProfile?.petType || 'N/A'}
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Second Row - Training Status and Diet */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5, pt: 1, borderTop: '1px solid #e5e7eb' }}>
+              <Box>
+                <Typography variant="caption" sx={{ color: "#617d98", fontSize: '0.7rem', fontWeight: 600 }}>
+                  Diet
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#4CAF50", fontWeight: 600, fontSize: '0.75rem', mt: 0.5 }}>
+                  {petProfile?.petsDiet || 'N/A'}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: "#617d98", fontSize: '0.7rem', fontWeight: 600 }}>
+                  Training
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#4CAF50", fontWeight: 700, fontSize: '0.75rem', mt: 0.5 }}>
+                  {petProfile?.trainingDone === 'true' ? 'Yes ✓' : 'No'}
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Special Notes Row */}
+            {petProfile?.petDetails && (
+              <Box sx={{ mt: 1.5, pt: 1, borderTop: '1px solid #e5e7eb' }}>
+                <Typography variant="caption" sx={{ color: "#617d98", fontSize: '0.7rem', fontWeight: 600 }}>
+                  Special Notes
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#174a7c", fontWeight: 600, fontSize: '0.75rem', mt: 0.5 }}>
+                  {petProfile.petDetails}
+                </Typography>
+              </Box>
+            )}
+          </>
+        )}
       </Box>
 
-      {/* Address and History */}
-      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-        <Box
-          sx={{ flex: 1, p: 2, bgcolor: "#fff", borderRadius: 4, boxShadow: 1 }}
-        >
-          <Typography
-            variant="h6"
-            sx={{ fontWeight: 700, color: "#174a7c" }}
-            gutterBottom
+      {/* Owner Information Section */}
+      {petProfile && !isLoadingProfile && (
+        <Box sx={{ mb: 2, p: 1.5, bgcolor: "#fff", borderRadius: 2, border: "1px solid #e5e7eb" }}>
+                          <Typography 
+            variant="subtitle2"
+            sx={{ fontWeight: 700, color: "#174a7c", mb: 1.5, fontSize: '0.85rem' }}
           >
-            Address
-          </Typography>
-          <Typography variant="body2">
-            New Town, Kolkata, Cornaredo, Milan, 10125, West Bengal 2
-          </Typography>
+            OWNER INFORMATION
+                          </Typography>
+          
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+            <Box>
+              <Typography variant="caption" sx={{ color: "#617d98", fontSize: '0.7rem', fontWeight: 600 }}>
+                Owner Name
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#174a7c", fontWeight: 600, fontSize: '0.75rem', mt: 0.5 }}>
+                {petProfile.firstName && petProfile.lastName ? `${petProfile.firstName} ${petProfile.lastName}` : 'N/A'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" sx={{ color: "#617d98", fontSize: '0.7rem', fontWeight: 600 }}>
+                Gender
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#174a7c", fontWeight: 600, fontSize: '0.75rem', mt: 0.5 }}>
+                {petProfile.ownerGender || 'N/A'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" sx={{ color: "#617d98", fontSize: '0.7rem', fontWeight: 600 }}>
+                Contact Number
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#174a7c", fontWeight: 600, fontSize: '0.75rem', mt: 0.5 }}>
+                {petProfile.cellNumber || 'N/A'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" sx={{ color: "#617d98", fontSize: '0.7rem', fontWeight: 600 }}>
+                Email
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#174a7c", fontWeight: 600, fontSize: '0.75rem', mt: 0.5 }}>
+                {petProfile.email || 'N/A'}
+              </Typography>
+            </Box>
+          </Box>
         </Box>
-        <Box
-          sx={{ flex: 1, p: 2, bgcolor: "#fff", borderRadius: 4, boxShadow: 1 }}
-        >
-          <Typography
-            variant="h6"
-            sx={{ fontWeight: 700, color: "#174a7c" }}
-            gutterBottom
-          >
-            History
-          </Typography>
-          <Typography variant="body2">
-            Injury, Eye, Leg, Diabetes, Cardiac Arrest, Ear, Allergy, Asthma,
-            Flu, Arthritis, Heart Disease, Pneumonia
-          </Typography>
-        </Box>
-      </Box>
+      )}
 
-      {/* Shared Documents */}
-      <Box sx={{ mt: 3 }}>
-        <Typography
-          variant="h6"
-          sx={{ fontWeight: 700, color: "#174a7c", mb: 1 }}
+      {/* Address and History - Compact Sections */}
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5, mb: 2 }}>
+        {/* Address */}
+        <Box
+          sx={{ p: 1.5, bgcolor: "#f8fafc", borderRadius: 2, border: "1px solid #e5e7eb" }}
         >
-          Shared Documents
+                          <Typography 
+            variant="subtitle2"
+            sx={{ fontWeight: 700, color: "#174a7c", mb: 1, fontSize: '0.85rem' }}
+                          >
+            ADDRESS
+                          </Typography>
+          {isLoadingProfile ? (
+            <CircularProgress size={20} sx={{ color: '#174a7c' }} />
+          ) : petProfile ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              {(petProfile.address1 || petProfile.address2) && (
+                <Typography variant="body2" sx={{ fontSize: '0.75rem', lineHeight: 1.6, color: "#617d98" }}>
+                  {[petProfile.address1, petProfile.address2].filter(Boolean).join(', ')}
+                </Typography>
+              )}
+              {(petProfile.areaName || petProfile.city) && (
+                <Typography variant="body2" sx={{ fontSize: '0.75rem', lineHeight: 1.6, color: "#617d98" }}>
+                  {[petProfile.areaName, petProfile.city].filter(Boolean).join(', ')}
+                </Typography>
+              )}
+              {(petProfile.state || petProfile.pin) && (
+                <Typography variant="body2" sx={{ fontSize: '0.75rem', lineHeight: 1.6, color: "#617d98" }}>
+                  {[petProfile.state, petProfile.pin].filter(Boolean).join(', ')}
+                </Typography>
+              )}
+              {petProfile.country && (
+                <Typography variant="body2" sx={{ fontSize: '0.75rem', lineHeight: 1.6, color: "#617d98" }}>
+                  {petProfile.country}
+                </Typography>
+              )}
+                        </Box>
+          ) : (
+            <Typography variant="body2" sx={{ fontSize: '0.75rem', lineHeight: 1.6, color: "#617d98" }}>
+              N/A
+            </Typography>
+          )}
+                        </Box>
+        
+        {/* History */}
+        <Box
+          sx={{ p: 1.5, bgcolor: "#fff3e0", borderRadius: 2, border: "1px solid #ffe0b2" }}
+        >
+                        <Typography 
+            variant="subtitle2"
+            sx={{ fontWeight: 700, color: "#FF9800", mb: 1, fontSize: '0.85rem' }}
+          >
+            MEDICAL HISTORY
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {petProfile?.petHistory ? (
+              petProfile.petHistory.split(',').filter(Boolean).map((condition: string, idx: number) => (
+                <Box
+                  key={idx}
+                          sx={{ 
+                    bgcolor: "#fff",
+                    color: "#FF9800",
+                    px: 1,
+                    py: 0.25,
+                    borderRadius: 1,
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    border: '1px solid #ffe0b2'
+                  }}
+                >
+                  {condition.trim()}
+                </Box>
+              ))
+            ) : isLoadingProfile ? (
+              <CircularProgress size={20} sx={{ color: '#FF9800' }} />
+            ) : (
+              <Typography variant="caption" sx={{ color: '#999', fontSize: '0.7rem' }}>
+                No medical history available
+                        </Typography>
+            )}
+                      </Box>
+                  </Box>
+              </Box>
+
+      {/* Shared Documents - Compact Section */}
+      <Box id="shared-documents-section" sx={{ mt: 2 }}>
+        <Typography
+          variant="subtitle2"
+          sx={{ fontWeight: 700, color: "#174a7c", mb: 1.5, fontSize: '0.85rem' }}
+        >
+          SHARED DOCUMENTS
         </Typography>
         <Box
           sx={{
-            display: "flex",
+            display: "grid",
+            gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
             gap: 1,
-            flexWrap: "wrap",
-            p: 2,
-            borderRadius: 4,
-            boxShadow: 1,
+            p: 1.5,
+            bgcolor: "#f8fafc",
+            borderRadius: 2,
+            border: "1px solid #e5e7eb",
           }}
         >
-          {[
-            "12.05.2025",
-            "03.05.2025",
-            "03.05.2025",
-            "29.04.2025",
-            "28.04.2025",
-          ].map((date, idx) => (
-            <Button
-              key={idx}
-              variant="outlined"
-              sx={{ width: 112 }}
-              startIcon={<CloudDownloadIcon />}
-            >
-              {date}
-            </Button>
-          ))}
-          <Button
-            variant="contained"
-            startIcon={<CloudUploadIcon />}
+          {isLoadingProfile ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', gridColumn: '1 / -1', py: 2 }}>
+              <CircularProgress size={24} sx={{ color: '#174a7c' }} />
+            </Box>
+          ) : petProfile?.uploadedDocumentsList && petProfile.uploadedDocumentsList.length > 0 ? (
+            petProfile.uploadedDocumentsList.map((doc: any, idx: number) => (
+              <Tooltip key={idx} title={doc.documentName || doc.documentDate} arrow>
+                <Button 
+                  variant="outlined" 
+                  onClick={() => handleDocumentClick(doc.savedFileName)}
+                  sx={{
+                    minWidth: 100,
+                    py: 0.75,
+                    fontSize: '0.7rem',
+                    borderRadius: 1.5,
+                    borderColor: '#174a7c',
+                    color: '#174a7c',
+                    '&:hover': {
+                      borderColor: '#0d3a5f',
+                      bgcolor: '#e8f0f7',
+                    },
+                  }}
+                  startIcon={<CloudDownloadIcon sx={{ fontSize: 14 }} />}
+                >
+                  {doc.documentDate}
+                </Button>
+              </Tooltip>
+            ))
+          ) : null}
+          <Button 
+            variant="contained" 
+            startIcon={<CloudUploadIcon sx={{ fontSize: 14 }} />}
             onClick={() => docUploadRef.current?.click()}
             sx={{
               bgcolor: '#174a7c',
               color: 'white',
+              minWidth: 100,
+              py: 0.75,
+              fontSize: '0.7rem',
+              borderRadius: 1.5,
               '&:hover': {
                 bgcolor: '#0d3a5f',
               },
@@ -602,52 +1287,71 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
             type="file"
             hidden
             ref={docUploadRef}
-            onChange={handleFileChange("Shared Documents Upload")}
+            onChange={handleFileUpload("Shared Documents Upload")}
           />
         </Box>
 
-        {/* My Prescriptions */}
+        {/* My Prescriptions - Compact Section */}
         <Typography
-          variant="h6"
-          sx={{ fontWeight: 700, color: "#174a7c", mt: 3, mb: 1 }}
+          variant="subtitle2"
+          sx={{ fontWeight: 700, color: "#174a7c", mt: 2, mb: 1.5, fontSize: '0.85rem' }}
         >
-          My Prescriptions
+          MY PRESCRIPTIONS
         </Typography>
         <Box
           sx={{
-            display: "flex",
+            display: "grid",
+            gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
             gap: 1,
-            flexWrap: "wrap",
-            p: 2,
-            borderRadius: 4,
-            boxShadow: 1,
+            p: 1.5,
+            bgcolor: "#fff3e0",
+            borderRadius: 2,
+            border: "1px solid #ffe0b2",
           }}
         >
-          {[
-            "16.05.2025",
-            "12.05.2025",
-            "12.05.2025",
-            "03.05.2025",
-            "03.05.2025",
-          ].map((date, idx) => (
-            <Button
-              key={idx}
-              variant="outlined"
-              sx={{ width: 112 }}
-              startIcon={<CloudDownloadIcon />}
-            >
-              {date}
-            </Button>
-          ))}
+          {isLoadingProfile ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', gridColumn: '1 / -1', py: 2 }}>
+              <CircularProgress size={24} sx={{ color: '#FF9800' }} />
+            </Box>
+          ) : petProfile?.uploadedPrescriptionsList && petProfile.uploadedPrescriptionsList.length > 0 ? (
+            petProfile.uploadedPrescriptionsList.map((prescription: any, idx: number) => (
+              <Tooltip key={idx} title={prescription.documentName || prescription.documentDate} arrow>
+                <Button
+                  variant="outlined"
+                  onClick={() => handleDocumentClick(prescription.savedFileName)}
+                  sx={{
+                    minWidth: 100,
+                    py: 0.75,
+                    fontSize: '0.7rem',
+                    borderRadius: 1.5,
+                    borderColor: '#FF9800',
+                    color: '#FF9800',
+                    bgcolor: '#fff',
+                    '&:hover': {
+                      borderColor: '#F57C00',
+                      bgcolor: '#fff9e6',
+                    },
+                  }}
+                  startIcon={<CloudDownloadIcon sx={{ fontSize: 14 }} />}
+                >
+                  {prescription.documentDate}
+                </Button>
+              </Tooltip>
+            ))
+          ) : null}
           <Button
             variant="contained"
-            startIcon={<CloudUploadIcon />}
+            startIcon={<CloudUploadIcon sx={{ fontSize: 14 }} />}
             onClick={() => docUploadRef.current?.click()}
             sx={{
-              bgcolor: '#174a7c',
+              bgcolor: '#FF9800',
               color: 'white',
+              minWidth: 100,
+              py: 0.75,
+              fontSize: '0.7rem',
+              borderRadius: 1.5,
               '&:hover': {
-                bgcolor: '#0d3a5f',
+                bgcolor: '#F57C00',
               },
             }}
           >
@@ -657,7 +1361,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
             type="file"
             hidden
             ref={docUploadRef}
-            onChange={handleFileChange("Prescription Upload")}
+            onChange={handleFileUpload("Prescription Upload")}
           />
         </Box>
       </Box>
@@ -716,501 +1420,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
         </DialogActions>
       </Dialog>
 
-      {/* Prescription Comments Modal */}
-      <Dialog
-        open={openPrescriptionModal}
-        onClose={handleClosePrescriptionModal}
-        maxWidth="md"
-        fullWidth
-        sx={{
-          '& .MuiDialog-paper': {
-            height: '85vh',
-            maxHeight: '800px',
-            borderRadius: 3,
-            display: 'flex',
-            flexDirection: 'column',
-          },
-        }}
-      >
-        <DialogTitle 
-          sx={{
-            background: 'linear-gradient(135deg, #174a7c 0%, #0d2d4a 100%)',
-            color: 'white',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 1,
-            py: 2,
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              Prescription Comments - {consultation.petName}
-            </Typography>
-          </Box>
-          {isRecording && (
-            <Box 
-              sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1,
-                bgcolor: 'rgba(255, 255, 255, 0.2)',
-                px: 2,
-                py: 1,
-                borderRadius: 2,
-              }}
-            >
-              <FiberManualRecordIcon 
-                sx={{ 
-                  color: '#ff1744', 
-                  fontSize: 20,
-                  animation: 'pulse 1.5s ease-in-out infinite',
-                  '@keyframes pulse': {
-                    '0%, 100%': { opacity: 1 },
-                    '50%': { opacity: 0.3 },
-                  },
-                }} 
-              />
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                Recording in progress... Speak now
-              </Typography>
-            </Box>
-          )}
-        </DialogTitle>
-        
-        <DialogContent 
-          sx={{ 
-            p: 3, 
-            display: 'flex', 
-            flexDirection: 'column',
-            bgcolor: '#f5f5f5',
-            gap: 3,
-          }}
-        >
-          {/* Mode Selection Screen */}
-          {prescriptionMode === 'selection' && (
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              minHeight: '400px',
-              gap: 3,
-            }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, color: '#174a7c', mb: 2 }}>
-                Choose how to add prescription notes
-              </Typography>
-              
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%', maxWidth: '400px' }}>
-                <Button
-                  variant="contained"
-                  onClick={() => handleModeSelect('textToSpeech')}
-                  startIcon={<MicIcon />}
-                  sx={{
-                    bgcolor: '#174a7c',
-                    color: 'white',
-                    py: 2,
-                    fontSize: '1.1rem',
-                    borderRadius: 2,
-                    '&:hover': {
-                      bgcolor: '#0d3a5f',
-                    },
-                  }}
-                >
-                  Voice Notes
-                </Button>
-                
-                <Button
-                  variant="contained"
-                  onClick={() => handleModeSelect('attachDocument')}
-                  startIcon={<AttachFileIcon />}
-                  sx={{
-                    bgcolor: '#174a7c',
-                    color: 'white',
-                    py: 2,
-                    fontSize: '1.1rem',
-                    borderRadius: 2,
-                    '&:hover': {
-                      bgcolor: '#0d3a5f',
-                    },
-                  }}
-                >
-                  Attach Document
-                </Button>
-                
-                <Button
-                  variant="contained"
-                  onClick={() => handleModeSelect('addManually')}
-                  startIcon={<CloudUploadIcon />}
-                  sx={{
-                    bgcolor: '#174a7c',
-                    color: 'white',
-                    py: 2,
-                    fontSize: '1.1rem',
-                    borderRadius: 2,
-                    '&:hover': {
-                      bgcolor: '#0d3a5f',
-                    },
-                  }}
-                >
-                  Add Manually
-                </Button>
-              </Box>
-            </Box>
-          )}
-
-          {/* Voice Notes Mode */}
-          {prescriptionMode === 'textToSpeech' && (
-            <>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <IconButton onClick={handleBackToSelection} sx={{ mr: 1 }}>
-                  <CloseIcon />
-                </IconButton>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: '#174a7c' }}>
-                  Voice Notes
-                </Typography>
-              </Box>
-              
-              {/* Comment Input Section */}
-              <Box 
-                sx={{ 
-                  bgcolor: '#ffffff',
-                  p: 3,
-                  borderRadius: 3,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                }}
-              >
-                <Typography 
-                  variant="subtitle1" 
-                  sx={{ 
-                    fontWeight: 600, 
-                    color: '#174a7c',
-                    mb: 2,
-                  }}
-                >
-                  Add Comment
-                </Typography>
-                
-                {/* Text Input with Mic and Send */}
-                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-end', mb: 2 }}>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={4}
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="Type your prescription notes or use voice recording..."
-                    variant="outlined"
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 2,
-                        bgcolor: '#fafafa',
-                        fontSize: '1rem',
-                      },
-                    }}
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end" sx={{ alignSelf: 'flex-end', mb: 1 }}>
-                          <IconButton
-                            onClick={handleToggleRecording}
-                            sx={{
-                              color: isRecording ? '#ff1744' : '#174a7c',
-                              bgcolor: isRecording ? '#ffebee' : '#e8f0f7',
-                              '&:hover': {
-                                bgcolor: isRecording ? '#ffcdd2' : '#d1e7f7',
-                              },
-                            }}
-                          >
-                            <MicIcon />
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                  <Button
-                    variant="contained"
-                    onClick={handleAddComment}
-                    disabled={!comment.trim() || isSubmitting}
-                    endIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
-                    sx={{
-                      bgcolor: '#174a7c',
-                      color: 'white',
-                      px: 3,
-                      py: 1.5,
-                      borderRadius: 2,
-                      textTransform: 'none',
-                      fontSize: '1rem',
-                      minWidth: '120px',
-                      '&:hover': {
-                        bgcolor: '#0d3a5f',
-                      },
-                      '&:disabled': {
-                        bgcolor: '#e0e0e0',
-                        color: '#9e9e9e',
-                      },
-                    }}
-                  >
-                    {isSubmitting ? 'Adding...' : 'Add'}
-                  </Button>
-                </Box>
-              </Box>
-              
-              {/* Previous Comments List */}
-              <Box sx={{ flex: 1, overflowY: 'auto' }}>
-                <Typography 
-                  variant="subtitle1" 
-                  sx={{ 
-                    fontWeight: 600, 
-                    color: '#174a7c',
-                    mb: 2,
-                    px: 1,
-                  }}
-                >
-                  Consultation History
-                </Typography>
-                
-                {isLoadingComments ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
-                    <CircularProgress size={40} sx={{ color: '#174a7c' }} />
-                  </Box>
-                ) : comments.length === 0 ? (
-                  <Box sx={{ textAlign: 'center', py: 4 }}>
-                    <Typography variant="body2" sx={{ color: '#999', fontStyle: 'italic' }}>
-                      No consultation history available. Add your first comment above.
-                    </Typography>
-                  </Box>
-                ) : (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {comments.map((commentItem) => (
-                      <Box
-                        key={commentItem.id}
-                        sx={{
-                          bgcolor: '#ffffff',
-                          p: 2.5,
-                          borderRadius: 2,
-                          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-                          borderLeft: '4px solid #174a7c',
-                          transition: 'transform 0.2s, box-shadow 0.2s',
-                          '&:hover': {
-                            transform: 'translateX(4px)',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-                          },
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                          <Typography 
-                            variant="caption" 
-                            sx={{ 
-                              color: '#174a7c',
-                              fontWeight: 600,
-                              bgcolor: '#e8f0f7',
-                              px: 1.5,
-                              py: 0.5,
-                              borderRadius: 1,
-                            }}
-                          >
-                            {commentItem.date}
-                          </Typography>
-                          <Typography 
-                            variant="caption" 
-                            sx={{ color: '#999' }}
-                          >
-                            {commentItem.time}
-                          </Typography>
-                        </Box>
-                        <Typography 
-                          variant="body1" 
-                          sx={{ 
-                            color: '#333',
-                            lineHeight: 1.6,
-                          }}
-                        >
-                          {commentItem.text}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              </Box>
-            </>
-          )}
-
-          {/* Attach Document Mode */}
-          {prescriptionMode === 'attachDocument' && (
-            <>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <IconButton onClick={handleBackToSelection} sx={{ mr: 1 }}>
-                  <CloseIcon />
-                </IconButton>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: '#174a7c' }}>
-                  Attach Document
-                </Typography>
-              </Box>
-              
-              <Box 
-                sx={{ 
-                  bgcolor: '#ffffff',
-                  p: 4,
-                  borderRadius: 3,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 3,
-                  minHeight: '300px',
-                  justifyContent: 'center',
-                }}
-              >
-                <CloudUploadIcon sx={{ fontSize: 80, color: '#174a7c', opacity: 0.6 }} />
-                <Typography variant="h6" sx={{ color: '#666', textAlign: 'center' }}>
-                  Upload prescription documents
-                </Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<AttachFileIcon />}
-                  onClick={() => chatFileRef.current?.click()}
-                  sx={{
-                    bgcolor: '#174a7c',
-                    color: 'white',
-                    px: 4,
-                    py: 1.5,
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontSize: '1rem',
-                    '&:hover': {
-                      bgcolor: '#0d3a5f',
-                    },
-                  }}
-                >
-                  Choose File
-                </Button>
-                <input
-                  type="file"
-                  hidden
-                  ref={chatFileRef}
-                  onChange={handleChatFileChange}
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                />
-                <Typography variant="caption" sx={{ color: '#666', textAlign: 'center' }}>
-                  Supported formats: PDF, DOC, DOCX, JPG, PNG
-                </Typography>
-              </Box>
-              
-              {/* Show uploaded documents in history */}
-              <Box sx={{ flex: 1, overflowY: 'auto' }}>
-                <Typography 
-                  variant="subtitle1" 
-                  sx={{ 
-                    fontWeight: 600, 
-                    color: '#174a7c',
-                    mb: 2,
-                    px: 1,
-                  }}
-                >
-                  Uploaded Documents
-                </Typography>
-                
-                {isLoadingComments ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
-                    <CircularProgress size={40} sx={{ color: '#174a7c' }} />
-                  </Box>
-                ) : comments.filter(c => c.text.includes('📎')).length === 0 ? (
-                  <Box sx={{ textAlign: 'center', py: 4 }}>
-                    <Typography variant="body2" sx={{ color: '#999', fontStyle: 'italic' }}>
-                      No documents uploaded yet.
-                    </Typography>
-                  </Box>
-                ) : (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {comments.filter(c => c.text.includes('📎')).map((commentItem) => (
-                      <Box
-                        key={commentItem.id}
-                        sx={{
-                          bgcolor: '#ffffff',
-                          p: 2.5,
-                          borderRadius: 2,
-                          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-                          borderLeft: '4px solid #174a7c',
-                          transition: 'transform 0.2s, box-shadow 0.2s',
-                          '&:hover': {
-                            transform: 'translateX(4px)',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-                          },
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                          <Typography 
-                            variant="caption" 
-                            sx={{ 
-                              color: '#174a7c',
-                              fontWeight: 600,
-                              bgcolor: '#e8f0f7',
-                              px: 1.5,
-                              py: 0.5,
-                              borderRadius: 1,
-                            }}
-                          >
-                            {commentItem.date}
-                          </Typography>
-                          <Typography 
-                            variant="caption" 
-                            sx={{ color: '#999' }}
-                          >
-                            {commentItem.time}
-                          </Typography>
-                        </Box>
-                        <Typography 
-                          variant="body1" 
-                          sx={{ 
-                            color: '#333',
-                            lineHeight: 1.6,
-                          }}
-                        >
-                          {commentItem.text}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              </Box>
-            </>
-          )}
-        </DialogContent>
-
-        <DialogActions 
-          sx={{
-            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-            px: 3,
-            py: 2,
-          }}
-        >
-          <Button 
-            variant="outlined" 
-            onClick={handleClosePrescriptionModal}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              px: 3,
-            }}
-          >
-            Close
-          </Button>
-          <Button 
-            variant="contained" 
-            onClick={handleClosePrescriptionModal}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              px: 3,
-              bgcolor: '#174a7c',
-              '&:hover': {
-                bgcolor: '#0d3a5f',
-              },
-            }}
-          >
-            Save & Close
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Old Prescription Modal - REMOVED, Now using inline expandable section above */}
 
       {/* Snackbar for notifications */}
       <Snackbar

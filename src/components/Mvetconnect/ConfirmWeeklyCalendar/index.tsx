@@ -137,9 +137,10 @@ interface ConfirmWeeklyCalendarProps {
   endDate: string;
   prefill?: any;
   slotId?: string; // Add slotId for editing
+  onEditSuccess?: () => void; // Callback to refresh calendar list after successful edit
 }
 
-const ConfirmWeeklyCalendar: React.FC<ConfirmWeeklyCalendarProps> = ({ open, onCancel, onConfirm, onBack, facility, startDate, endDate, prefill, slotId }) => {
+const ConfirmWeeklyCalendar: React.FC<ConfirmWeeklyCalendarProps> = ({ open, onCancel, onConfirm, onBack, facility, startDate, endDate, prefill, slotId, onEditSuccess }) => {
 
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [showCreateNew, setShowCreateNew] = useState(false);
@@ -279,8 +280,15 @@ const ConfirmWeeklyCalendar: React.FC<ConfirmWeeklyCalendarProps> = ({ open, onC
       console.log('Available slots:', slotData.slots);
       
       if (slotData.selectedDays.length > 0 && slotData.slots.length > 0) {
-        // Create the time slot string
-        const timeSlotString = slotData.slots.map(slot => {
+        // Filter out incomplete slots (only keep slots with all time fields filled)
+        const completeSlots = slotData.slots.filter(slot => 
+          slot.fromHour && slot.fromMin && slot.toHour && slot.toMin
+        );
+        
+        console.log('Complete slots:', completeSlots);
+        
+        // Create the time slot string only from complete slots
+        const timeSlotString = completeSlots.map(slot => {
           const fromTime = `${slot.fromHour}-${slot.fromMin}`;
           const toTime = `${slot.toHour}-${slot.toMin}`;
           return `${fromTime}-${toTime}`;
@@ -425,22 +433,31 @@ const ConfirmWeeklyCalendar: React.FC<ConfirmWeeklyCalendarProps> = ({ open, onC
     if (prefill && open) {
       console.log('Prefill data received:', prefill);
       
+      // Get the original API data - it's nested in originalData if transformed
+      const originalData = prefill.originalData || prefill;
+      console.log('Original API data:', originalData);
+      
       // Parse the prefill data to extract selected days and slots
-      const startDate = prefill.scheduleStartDt || prefill.startDate;
-      const endDate = prefill.scheduleStopDt || prefill.endDate;
+      const startDate = originalData.scheduleStartDt || originalData.startDate || prefill.scheduleStartDt || prefill.startDate;
+      const endDate = originalData.scheduleStopDt || originalData.endDate || prefill.scheduleStopDt || prefill.endDate;
       
       // Set the editable dates
       setEditableStartDate(startDate);
       setEditableEndDate(endDate);
       
       // Set other form fields based on bookAppType
-      const appointmentType = prefill.bookAppType?.toLowerCase() || 'timeslot';
+      const appointmentType = originalData.bookAppType?.toLowerCase() || 'timeslot';
       setAppointmentType(appointmentType === 'timeslot' ? 'TIMESLOT' : 'SEQUENCE');
-      setSlotDuration(prefill.slotDuration || prefill.slotDurationMinutes || '');
       
-      console.log('Setting slot duration:', prefill.slotDuration || prefill.slotDurationMinutes || '');
+      // Set slot duration - convert to string for consistency
+      const durationValue = originalData.slotDuration || originalData.slotDurationMinutes || '';
+      setSlotDuration(durationValue.toString());
+      
+      console.log('Prefill data:', prefill);
+      console.log('Original API data:', originalData);
+      console.log('Setting slot duration:', originalData.slotDuration, '|', durationValue);
       console.log('Setting appointment type:', appointmentType === 'timeslot' ? 'TIMESLOT' : 'SEQUENCE');
-      console.log('Original bookAppType from API:', prefill.bookAppType);
+      console.log('Original bookAppType from API:', originalData.bookAppType);
       
       // Set editable dates for editing mode - ensure they are properly formatted
       setEditableStartDate(startDate);
@@ -456,7 +473,7 @@ const ConfirmWeeklyCalendar: React.FC<ConfirmWeeklyCalendarProps> = ({ open, onC
       } else if (prefill.selectedDays && typeof prefill.selectedDays === 'string') {
         availableDays = prefill.selectedDays.split(',').map((day: string) => day.trim());
       } else {
-        // Fallback to original logic for raw API response
+        // Fallback to original logic for raw API response - use originalData
         const dayMapping: { [key: string]: string } = {
           'sundayAvailable': 'Sun',
           'mondayAvailable': 'Mon',
@@ -467,12 +484,14 @@ const ConfirmWeeklyCalendar: React.FC<ConfirmWeeklyCalendarProps> = ({ open, onC
           'saturdayAvailable': 'Sat'
         };
         
-        Object.entries(prefill).forEach(([key, value]) => {
+        Object.entries(originalData).forEach(([key, value]) => {
           if (dayMapping[key] && value === 1) {
             availableDays.push(dayMapping[key]);
           }
         });
       }
+      
+      console.log('Available days extracted:', availableDays);
       
       if (availableDays.length > 0) {
         setSelectedDays(availableDays);
@@ -481,7 +500,7 @@ const ConfirmWeeklyCalendar: React.FC<ConfirmWeeklyCalendarProps> = ({ open, onC
         // Parse time slots from individual day time fields
         const parsedSlots: Slot[] = [];
         
-        // Check each day for time slots
+        // Collect all available time slots from the selected days
         const dayTimeMapping: { [key: string]: { start1: string, start2: string, stop1: string, stop2: string } } = {
           'sunday': { start1: 'sundayStartTime1', start2: 'sundayStartTime2', stop1: 'sundayStopTime1', stop2: 'sundayStopTime2' },
           'monday': { start1: 'mondayStartTime1', start2: 'mondayStartTime2', stop1: 'mondayStopTime1', stop2: 'mondayStopTime2' },
@@ -492,53 +511,213 @@ const ConfirmWeeklyCalendar: React.FC<ConfirmWeeklyCalendarProps> = ({ open, onC
           'saturday': { start1: 'saturdayStartTime1', start2: 'saturdayStartTime2', stop1: 'saturdayStopTime1', stop2: 'saturdayStopTime2' }
         };
         
-        Object.entries(dayTimeMapping).forEach(([day, timeFields]) => {
-          const start1 = prefill[timeFields.start1];
-          const start2 = prefill[timeFields.start2];
-          const stop1 = prefill[timeFields.stop1];
-          const stop2 = prefill[timeFields.stop2];
-          
-          // Only add slots if there are valid times (not "00:00")
-          if (start1 && start1 !== "00:00" && stop1 && stop1 !== "00:00") {
-            const [startHour, startMin] = start1.split(':').map(Number);
-            const [stopHour, stopMin] = stop1.split(':').map(Number);
+        // Map short day names to full day names
+        const dayNameMapping: { [key: string]: string } = {
+          'Sun': 'sunday',
+          'Mon': 'monday',
+          'Tue': 'tuesday',
+          'Wed': 'wednesday',
+          'Thu': 'thursday',
+          'Fri': 'friday',
+          'Sat': 'saturday'
+        };
+        
+        // Get all unique time slots from the selected days
+        const allSlots: Slot[] = [];
+        
+        // Helper function to determine if a time belongs to slot 2 (afternoon/evening slots 13-23)
+        const isSlot2Time = (timeStr: string): boolean => {
+          if (!timeStr || timeStr === "00:00") return false;
+          const [hour, min] = timeStr.split(':').map(Number);
+          return hour >= 13; // 13:00 to 23:59 is slot 2 range
+        };
+
+        availableDays.forEach(shortDay => {
+          const fullDay = dayNameMapping[shortDay];
+          if (fullDay && dayTimeMapping[fullDay]) {
+            const timeFields = dayTimeMapping[fullDay];
+            const start1 = originalData[timeFields.start1];
+            const start2 = originalData[timeFields.start2];
+            const stop1 = originalData[timeFields.stop1];
+            const stop2 = originalData[timeFields.stop2];
             
-            parsedSlots.push({
-              fromHour: startHour.toString().padStart(2, '0'),
-              fromMin: startMin.toString().padStart(2, '0'),
-              toHour: stopHour.toString().padStart(2, '0'),
-              toMin: stopMin.toString().padStart(2, '0'),
-              patients: '1' // Default value
-            });
-          }
-          
-          if (start2 && start2 !== "00:00" && stop2 && stop2 !== "00:00") {
-            const [startHour, startMin] = start2.split(':').map(Number);
-            const [stopHour, stopMin] = stop2.split(':').map(Number);
+            console.log(`Processing ${fullDay}: start1=${start1}, stop1=${stop1}, start2=${start2}, stop2=${stop2}`);
+            console.log(`Is start1 slot2? ${isSlot2Time(start1)}`);
             
-            parsedSlots.push({
-              fromHour: startHour.toString().padStart(2, '0'),
-              fromMin: startMin.toString().padStart(2, '0'),
-              toHour: stopHour.toString().padStart(2, '0'),
-              toMin: stopMin.toString().padStart(2, '0'),
-              patients: '1' // Default value
-            });
+            // Check if start1 is in slot 2 range (13-23)
+            if (start1 && stop1 && isSlot2Time(start1)) {
+              console.log(`Adding slot2 data from start1: ${start1} - ${stop1}`);
+              const [startHour, startMin] = start1.split(':').map(Number);
+              const [stopHour, stopMin] = stop1.split(':').map(Number);
+              
+              const slot = {
+                fromHour: startHour.toString().padStart(2, '0'),
+                fromMin: startMin.toString().padStart(2, '0'),
+                toHour: stopHour.toString().padStart(2, '0'),
+                toMin: stopMin.toString().padStart(2, '0'),
+                patients: '1' // Default value
+              };
+              
+              // Only add if this slot doesn't already exist (avoid duplicates)
+              const exists = allSlots.some(s => 
+                s.fromHour === slot.fromHour && 
+                s.fromMin === slot.fromMin && 
+                s.toHour === slot.toHour && 
+                s.toMin === slot.toMin
+              );
+              
+              if (!exists) {
+                allSlots.push(slot);
+              }
+            }
+            
+            // Check if start1 is in slot 1 range (00-12)
+            if (start1 && stop1 && !isSlot2Time(start1) && (start1 !== "00:00" || stop1 !== "00:00")) {
+              const [startHour, startMin] = start1.split(':').map(Number);
+              const [stopHour, stopMin] = stop1.split(':').map(Number);
+              
+              const slot = {
+                fromHour: startHour.toString().padStart(2, '0'),
+                fromMin: startMin.toString().padStart(2, '0'),
+                toHour: stopHour.toString().padStart(2, '0'),
+                toMin: stopMin.toString().padStart(2, '0'),
+                patients: '1' // Default value
+              };
+              
+              // Only add if this slot doesn't already exist (avoid duplicates)
+              const exists = allSlots.some(s => 
+                s.fromHour === slot.fromHour && 
+                s.fromMin === slot.fromMin && 
+                s.toHour === slot.toHour && 
+                s.toMin === slot.toMin
+              );
+              
+              if (!exists) {
+                allSlots.push(slot);
+              }
+            }
+            
+            // Check if start2 is in slot 2 range (13-23) or any valid time
+            if (start2 && stop2 && isSlot2Time(start2)) {
+              const [startHour, startMin] = start2.split(':').map(Number);
+              const [stopHour, stopMin] = stop2.split(':').map(Number);
+              
+              const slot = {
+                fromHour: startHour.toString().padStart(2, '0'),
+                fromMin: startMin.toString().padStart(2, '0'),
+                toHour: stopHour.toString().padStart(2, '0'),
+                toMin: stopMin.toString().padStart(2, '0'),
+                patients: '1' // Default value
+              };
+              
+              // Only add if this slot doesn't already exist (avoid duplicates)
+              const exists = allSlots.some(s => 
+                s.fromHour === slot.fromHour && 
+                s.fromMin === slot.fromMin && 
+                s.toHour === slot.toHour && 
+                s.toMin === slot.toMin
+              );
+              
+              if (!exists) {
+                allSlots.push(slot);
+              }
+            }
+            
+            // Check if start2 is in slot 1 range (00-12)
+            if (start2 && stop2 && !isSlot2Time(start2) && (start2 !== "00:00" || stop2 !== "00:00")) {
+              const [startHour, startMin] = start2.split(':').map(Number);
+              const [stopHour, stopMin] = stop2.split(':').map(Number);
+              
+              const slot = {
+                fromHour: startHour.toString().padStart(2, '0'),
+                fromMin: startMin.toString().padStart(2, '0'),
+                toHour: stopHour.toString().padStart(2, '0'),
+                toMin: stopMin.toString().padStart(2, '0'),
+                patients: '1' // Default value
+              };
+              
+              // Only add if this slot doesn't already exist (avoid duplicates)
+              const exists = allSlots.some(s => 
+                s.fromHour === slot.fromHour && 
+                s.fromMin === slot.fromMin && 
+                s.toHour === slot.toHour && 
+                s.toMin === slot.toMin
+              );
+              
+              if (!exists) {
+                allSlots.push(slot);
+              }
+            }
           }
         });
         
-        console.log('Parsed slots:', parsedSlots);
+        // Sort slots by start time
+        allSlots.sort((a, b) => {
+          const aStart = parseInt(a.fromHour) * 60 + parseInt(a.fromMin);
+          const bStart = parseInt(b.fromHour) * 60 + parseInt(b.fromMin);
+          return aStart - bStart;
+        });
         
-        if (parsedSlots.length > 0) {
-          setSlots(parsedSlots);
+        console.log('=== SLOT PARSING DEBUG ===');
+        console.log('Available days:', availableDays);
+        console.log('All slots before sorting:', allSlots);
+        console.log('Number of slots parsed:', allSlots.length);
+        
+        // Determine if we have slot 2 data (13-23 range)
+        const hasSlot2Data = allSlots.some(slot => parseInt(slot.fromHour) >= 13);
+        console.log('Has slot 2 data (13-23 range):', hasSlot2Data);
+        console.log('=== END SLOT DEBUG ===');
+        
+        if (allSlots.length > 0) {
+          console.log('Setting slots with data:', allSlots);
+          
+          // If we have slot 2 data (hour >= 13), ensure we show both slot inputs
+          // Create final slots array with proper ordering
+          const finalSlots: Slot[] = [];
+          
+          // If we have slot 2 data, add it as the second slot
+          if (hasSlot2Data) {
+            // Find slot 2 data (hour >= 13)
+            const slot2Data = allSlots.find(slot => parseInt(slot.fromHour) >= 13);
+            if (slot2Data) {
+              // Slot 1 (empty or earlier time)
+              const slot1Data = allSlots.find(slot => parseInt(slot.fromHour) < 13);
+              if (slot1Data) {
+                finalSlots.push(slot1Data);
+              } else {
+                finalSlots.push({ fromHour: '', fromMin: '', toHour: '', toMin: '', patients: '' });
+              }
+              // Slot 2 (with data)
+              finalSlots.push(slot2Data);
+            } else {
+              finalSlots.push(...allSlots);
+            }
+          } else {
+            // No slot 2 data, just use the parsed slots
+            finalSlots.push(...allSlots);
+            // If we only have 1 slot, add an empty slot to show both inputs
+            if (finalSlots.length === 1) {
+              finalSlots.push({ fromHour: '', fromMin: '', toHour: '', toMin: '', patients: '' });
+            }
+          }
+          
+          console.log('Final slots to set:', finalSlots);
+          setSlots(finalSlots);
         } else {
-          // If no slots parsed, create a default empty slot
-          // For sequence appointments, we might need to handle patient counts differently
+          console.log('No slots parsed, creating default empty slots');
+          // If no slots parsed, create default empty slots
           if (appointmentType === 'sequence') {
             // Check if there are patient count fields in the API response
             const patientCount = prefill.noOfPatients || 1;
-            setSlots([{ fromHour: '', fromMin: '', toHour: '', toMin: '', patients: patientCount.toString() }]);
+            setSlots([
+              { fromHour: '', fromMin: '', toHour: '', toMin: '', patients: patientCount.toString() },
+              { fromHour: '', fromMin: '', toHour: '', toMin: '', patients: '' }
+            ]);
           } else {
-            setSlots([{ fromHour: '', fromMin: '', toHour: '', toMin: '', patients: '1' }]);
+            setSlots([
+              { fromHour: '', fromMin: '', toHour: '', toMin: '', patients: '1' },
+              { fromHour: '', fromMin: '', toHour: '', toMin: '', patients: '' }
+            ]);
           }
         }
       } else {
@@ -670,40 +849,73 @@ const ConfirmWeeklyCalendar: React.FC<ConfirmWeeklyCalendarProps> = ({ open, onC
       return;
     }
 
-    const errors = slots.map(slot => {
+    // New validation logic: At least one complete slot is mandatory
+    let hasCompleteSlot = false;
+    const errors = slots.map((slot, idx) => {
       const { fromHour, fromMin, toHour, toMin } = slot;
-      if (!fromHour || !fromMin || !toHour || !toMin) {
-        return 'All time fields must be filled.';
+      
+      // Check if this slot is complete
+      if (fromHour && fromMin && toHour && toMin) {
+        hasCompleteSlot = true;
       }
-      const fromTotalMinutes = parseInt(fromHour, 10) * 60 + parseInt(fromMin, 10);
-      const toTotalMinutes = parseInt(toHour, 10) * 60 + parseInt(toMin, 10);
-      if (fromTotalMinutes >= toTotalMinutes) {
-        return "'To Time' must be after 'From Time'.";
+      
+      // Check if this slot has any partial data (some fields filled but not all)
+      const hasPartialData = !!(fromHour || fromMin || toHour || toMin);
+      const isEmpty = !fromHour && !fromMin && !toHour && !toMin;
+      
+      if (!isEmpty && hasPartialData && !(fromHour && fromMin && toHour && toMin)) {
+        return 'All time fields must be filled for this slot.';
       }
+      
+      if (fromHour && fromMin && toHour && toMin) {
+        const fromTotalMinutes = parseInt(fromHour, 10) * 60 + parseInt(fromMin, 10);
+        const toTotalMinutes = parseInt(toHour, 10) * 60 + parseInt(toMin, 10);
+        if (fromTotalMinutes >= toTotalMinutes) {
+          return "'To Time' must be after 'From Time'.";
+        }
+      }
+      
       return '';
     });
+    
+    // Check if we have at least one complete slot
+    if (!hasCompleteSlot) {
+      setSnackbar({
+        open: true,
+        message: "At least one complete slot is required. Please fill in all time fields for at least one slot.",
+        severity: "error"
+      });
+      return;
+    }
     
     setSlotErrors(errors);
     const hasErrors = errors.some(error => !!error);
 
-    // Check for overlapping time slots
+    // Check for overlapping time slots (only for complete slots)
     if (slots.length > 1) {
       for (let i = 0; i < slots.length; i++) {
         for (let j = i + 1; j < slots.length; j++) {
           const slot1 = slots[i];
           const slot2 = slots[j];
-          const slot1Start = parseInt(slot1.fromHour, 10) * 60 + parseInt(slot1.fromMin, 10);
-          const slot1End = parseInt(slot1.toHour, 10) * 60 + parseInt(slot1.toMin, 10);
-          const slot2Start = parseInt(slot2.fromHour, 10) * 60 + parseInt(slot2.fromMin, 10);
-          const slot2End = parseInt(slot2.toHour, 10) * 60 + parseInt(slot2.toMin, 10);
           
-          if ((slot1Start < slot2End && slot1End > slot2Start)) {
-            setSnackbar({
-              open: true,
-              message: `Time slots ${i + 1} and ${j + 1} overlap. Please adjust the times.`,
-              severity: "error"
-            });
-            return;
+          // Only check overlap if both slots are complete
+          const slot1Complete = slot1.fromHour && slot1.fromMin && slot1.toHour && slot1.toMin;
+          const slot2Complete = slot2.fromHour && slot2.fromMin && slot2.toHour && slot2.toMin;
+          
+          if (slot1Complete && slot2Complete) {
+            const slot1Start = parseInt(slot1.fromHour, 10) * 60 + parseInt(slot1.fromMin, 10);
+            const slot1End = parseInt(slot1.toHour, 10) * 60 + parseInt(slot1.toMin, 10);
+            const slot2Start = parseInt(slot2.fromHour, 10) * 60 + parseInt(slot2.fromMin, 10);
+            const slot2End = parseInt(slot2.toHour, 10) * 60 + parseInt(slot2.toMin, 10);
+            
+            if ((slot1Start < slot2End && slot1End > slot2Start)) {
+              setSnackbar({
+                open: true,
+                message: `Time slots ${i + 1} and ${j + 1} overlap. Please adjust the times.`,
+                severity: "error"
+              });
+              return;
+            }
           }
         }
       }
@@ -751,6 +963,10 @@ const ConfirmWeeklyCalendar: React.FC<ConfirmWeeklyCalendarProps> = ({ open, onC
           });
           
           if (success) {
+            // Call the refresh callback to update the calendar list
+            if (onEditSuccess) {
+              onEditSuccess();
+            }
             // Close the dialog or show success message
             onCancel();
           }

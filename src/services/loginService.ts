@@ -126,6 +126,7 @@ export const login = async (credentials: LoginCredentials): Promise<LoginRespons
     if (data && credentials.userName && credentials.userPwd) {
       localStorage.setItem('userName', credentials.userName);
       localStorage.setItem('userPwd', credentials.userPwd);
+      localStorage.setItem('loggedinFacilityId', data.loggedinFacilityId.toString())
     }
     
     return data;

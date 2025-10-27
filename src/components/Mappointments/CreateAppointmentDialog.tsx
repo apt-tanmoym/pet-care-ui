@@ -31,13 +31,17 @@ interface CreateAppointmentDialogProps {
     facilityId: number;
     facilityName: string;
   } | null;
+  onAppointmentSuccess?: () => void;
 }
 
-const CreateAppointmentDialog: React.FC<CreateAppointmentDialogProps> = ({ open, onClose, selectedDate, patientSlots = [], onBook, selectedFacility }) => {
+const CreateAppointmentDialog: React.FC<CreateAppointmentDialogProps> = ({ open, onClose, selectedDate, patientSlots = [], onBook, selectedFacility, onAppointmentSuccess }) => {
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [showPatientSearch, setShowPatientSearch] = useState(false);
+
+  // Debug log
+  console.log('CreateAppointmentDialog - onAppointmentSuccess exists:', !!onAppointmentSuccess);
 
   const handleToggleSlot = (timeSlot: string) => {
     setSelectedSlots(prev =>
@@ -325,6 +329,7 @@ const CreateAppointmentDialog: React.FC<CreateAppointmentDialogProps> = ({ open,
         } : null}
         selectedFacility={selectedFacility}
         selectedDate={selectedDate}
+        onAppointmentSuccess={onAppointmentSuccess}
       />
     </>
   );

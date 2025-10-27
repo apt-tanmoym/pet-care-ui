@@ -21,12 +21,14 @@ interface AppointmentDetailsProps {
     facilityId: number;
     facilityName: string;
   } | null;
+  onAppointmentSuccess?: () => void;
 }
 
 const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({
   selectedDate,
   patientSlots = [],
   selectedFacility,
+  onAppointmentSuccess,
 }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -181,25 +183,30 @@ const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({
                     </TableCell>
                     <TableCell>
                       {isBooked ? (
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          sx={{
-                            color: '#174a7c',
-                            borderColor: '#b0c4de',
-                            fontWeight: 600,
-                            borderRadius: '8px',
-                            textTransform: 'none',
-                            fontSize: '0.8rem',
-                            px: 2,
-                            '&:hover': {
-                              bgcolor: 'rgba(23, 74, 124, 0.04)',
-                              borderColor: '#174a7c'
-                            },
-                          }}
-                        >
-                          View Details
-                        </Button>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography 
+                            sx={{ 
+                              color: '#2e7d32', 
+                              fontWeight: 600,
+                              fontSize: '0.875rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.5
+                            }}
+                          >
+                            <Box 
+                              component="span" 
+                              sx={{ 
+                                width: 8, 
+                                height: 8, 
+                                borderRadius: '50%', 
+                                bgcolor: '#2e7d32',
+                                display: 'inline-block'
+                              }} 
+                            />
+                            Booked
+                          </Typography>
+                        </Box>
                       ) : (
                         <Button
                           variant="contained"
@@ -294,6 +301,7 @@ const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({
         } : null}
         selectedFacility={selectedFacility}
         selectedDate={selectedDate}
+        onAppointmentSuccess={onAppointmentSuccess}
       />
     </>
   );

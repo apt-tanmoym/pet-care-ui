@@ -159,7 +159,13 @@ const Calendar: React.FC = () => {
       const checkedDay = selectedDays.map(day => dayTimeMapping[day] || day).join(',');
 
       // Format time slots for API (HH-MM-HH-MM format)
-      const dayTime = slots.map(slot => {
+      // Filter out incomplete slots (only keep slots with all time fields filled)
+      const completeSlots = slots.filter(slot => 
+        slot.fromHour && slot.fromMin && slot.toHour && slot.toMin
+      );
+      
+      // Format time slots for API (HH-MM-HH-MM format)
+      const dayTime = completeSlots.map(slot => {
         const fromTime = `${slot.fromHour}-${slot.fromMin}`;
         const toTime = `${slot.toHour}-${slot.toMin}`;
         return `${fromTime}-${toTime}`;
@@ -648,6 +654,12 @@ const Calendar: React.FC = () => {
           endDate={dateRange.end}
           prefill={editPrefill}
           slotId={editPrefill?.originalData?.slotId}
+          onEditSuccess={() => {
+            // Refresh the calendar list after successful edit
+            if (selectedFacility) {
+              fetchExistingCalendars(selectedFacility.facilityId.toString());
+            }
+          }}
         />
         
         <TempAdjustment
@@ -658,6 +670,12 @@ const Calendar: React.FC = () => {
           }}
           calendarData={tempAdjustmentData}
           facility={selectedFacility}
+          onSuccess={() => {
+            // Refresh the calendar list after successful temp adjustment
+            if (selectedFacility) {
+              fetchExistingCalendars(selectedFacility.facilityId.toString());
+            }
+          }}
         />
         <Snackbar
           open={snackbar.open}

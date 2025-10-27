@@ -99,9 +99,9 @@ const AddRecordsDialog: React.FC<AddRecordsDialogProps> = ({ open, onClose, sele
     }
 
     const userName = localStorage.getItem('userName');
-    const userPwd = localStorage.getItem('userPwd');
+    const userPass = localStorage.getItem('userPwd');
     
-    if (!userName || !userPwd) {
+    if (!userName || !userPass) {
       alert('User credentials not found. Please login again.');
       return;
     }
@@ -116,7 +116,7 @@ const AddRecordsDialog: React.FC<AddRecordsDialogProps> = ({ open, onClose, sele
       
       const payload = {
         userName,
-        userPwd,
+        userPass,
         deviceStat: 'M',
         docname: docName,
         docdate: formattedDate,

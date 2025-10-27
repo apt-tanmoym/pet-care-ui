@@ -4,10 +4,8 @@ import AuthenticatedLayout from "@/components/AuthenticatedLayout";
 import { FaclityServiceResponse } from '@/interfaces/facilityInterface';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import dayjs, { Dayjs } from 'dayjs';
 import ConsultationFacilitySelector from "@/components/vetconnect/Consultation/ConsultationFacilitySelector";
-import ConsultationDetails from "@/components/vetconnect/Consultation/ConsultationDetails";
 import AlertPopup from "@/components/vetconnect/Consultation/AlertPopup";
 import ListOfConsultation from "@/components/vetconnect/Consultation/ListOfConsultation";
 
@@ -22,13 +20,13 @@ interface ConsultationItem {
   patientUid?: number;
   appointmentId?: number;
   facilityId?: number;
+  appointmentStatus?: string;
 }
 
 const Consultation: React.FC = () => {
   const [selectedFacility, setSelectedFacility] = useState<FaclityServiceResponse | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [patientSlots, setPatientSlots] = useState<any[]>([]);
-  const [showConsultationDetails, setShowConsultationDetails] = useState(false);
   const [showListOfConsultation, setShowListOfConsultation] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   
@@ -55,7 +53,8 @@ const Consultation: React.FC = () => {
         petOwnerUid: slot.petOwnerUid?.toString() || '4',
         patientUid: parseInt(slot.patientUid) || 125,
         appointmentId: parseInt(slot.appointmentId) || 1174,
-        facilityId: selectedFacility?.facilityId || 1
+        facilityId: selectedFacility?.facilityId || 1,
+        appointmentStatus: slot.appointmentStatus || 'Scheduled'
       }));
   };
 
@@ -95,18 +94,11 @@ const Consultation: React.FC = () => {
     setSelectedDate(dateObj);
     setPatientSlots(slots || []);
     if (isToday(dateObj)) {
-      setShowConsultationDetails(true);
-      setShowListOfConsultation(false);
+      setShowListOfConsultation(true);
     } else {
-      setShowConsultationDetails(false);
       setShowListOfConsultation(false);
       setShowAlert(true);
     }
-  };
-
-  const handleStartConsultation = () => {
-    setShowConsultationDetails(false);
-    setShowListOfConsultation(true);
   };
 
   const handleArriveClick = (consultation: ConsultationItem) => {
@@ -147,17 +139,6 @@ const Consultation: React.FC = () => {
             selectedPatient={selectedPatient}
             onAppointmentSaved={handleAppointmentSaved}
           />
-
-         
-
-
-          {showConsultationDetails && selectedDate && isToday(selectedDate) && (
-            <ConsultationDetails
-              selectedDate={selectedDate}
-              onStartConsultation={handleStartConsultation}
-            />
-          )}
-
           {showListOfConsultation && selectedDate && isToday(selectedDate) && (
             <ListOfConsultation
               selectedDate={selectedDate}

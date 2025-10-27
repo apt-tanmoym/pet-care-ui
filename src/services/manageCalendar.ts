@@ -752,6 +752,130 @@ export const getVoicePrescriptions = async (payload: GetVoicePrescriptionsPayloa
   }
 };
 
+// Get Pet Profile API interfaces and function
+interface GetPetProfilePayload {
+  userName: string;
+  userPwd: string;
+  deviceStat: string;
+  patientUid: number;
+}
+
+interface PetDocument {
+  userName: string | null;
+  userPass: string | null;
+  deviceStat: string | null;
+  savedFileName: string;
+  documentName: string;
+  documentDate: string;
+  patientName: string | null;
+  documentType: string;
+  documentId: number;
+  orgId: number;
+  patientId: number;
+  patientUid: number;
+  appointmentId: number;
+}
+
+interface GetPetProfileResponse {
+  ageOrDob: string | null;
+  address1: string;
+  address2: string;
+  appointmentExist: string | null;
+  birthDt: string;
+  bloodGrp: string | null;
+  cellNumber: string;
+  city: string;
+  country: string;
+  contactNo: string | null;
+  createdOn: string | null;
+  creationDt: string;
+  corporateExpDate: string | null;
+  deviceStat: string | null;
+  dob: string | null;
+  ethnicity: string | null;
+  email: string;
+  firstName: string;
+  fullName: string | null;
+  gender: string;
+  ownerGender: string;
+  hasDocument: string | null;
+  hasEncounterHistory: string | null;
+  idProofType: string | null;
+  idProofValue: string | null;
+  imageFilePath: string | null;
+  imageFileName: string;
+  ownerImageFileName: string | null;
+  image: string | null;
+  insurerExpDate1: string | null;
+  insurerExpDate2: string | null;
+  insurerExpDate3: string | null;
+  lastName: string;
+  lastActivityOn: string | null;
+  lastUpdatedOn: string | null;
+  middleName: string | null;
+  nationality: string | null;
+  occupation: string | null;
+  patientTitle: string;
+  pin: string;
+  patEmail: string | null;
+  pendingChargeMessages: string;
+  religion: string | null;
+  regStatus: string | null;
+  state: string;
+  searchValue1: string | null;
+  searchValue2: string | null;
+  title: string | null;
+  userName: string;
+  userPwd: string | null;
+  updateDt: string;
+  verificationLink: string | null;
+  petName: string;
+  linkedInId: string;
+  petType: string;
+  petsDiet: string;
+  livingEnvironment: string;
+  trainingDone: string;
+  petCategory: string;
+  petCategoryOther: string | null;
+  petDetails: string;
+  petHistory: string;
+  areaName: string;
+  clinicJoiningDate: string;
+  petBreed: string;
+  petCoverImageFileName: string;
+  trainingSchool: string;
+  trainer: string;
+  trainingDetails: string;
+  activeInd: number;
+  age: number;
+  cityPincodeMappingId: number;
+  createdByUserId: number;
+  corpId: number;
+  insurerId1: number;
+  insurerId2: number;
+  insurerId3: number;
+  lastUpdatedByUserId: number;
+  mrn: number;
+  orgId: number;
+  orgUserId: number;
+  patientUid: number;
+  updateByUserId: number;
+  petOwnerUid: number;
+  cityId: number;
+  loggedInFacilityId: number;
+  uploadedDocumentsList: PetDocument[];
+  uploadedPrescriptionsList: any[];
+}
+
+export const getPetProfile = async (payload: GetPetProfilePayload): Promise<GetPetProfileResponse> => {
+  try {
+    const { data } = await http.post<GetPetProfileResponse>('/getpetprofile', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Update Status Arrive API
 interface UpdateStatusArrivePayload {
   userName: string;
@@ -788,8 +912,8 @@ interface UpdateConsultationStartedPayload {
   userName: string;
   userPass: string;
   deviceStat: string;
-  orgId: number;
-  facilityId: number;
+  orgId: string;
+  facilityId: string;
   patientMrn: string;
   petOwnerUid: string;
   patientUid: string;
@@ -987,7 +1111,7 @@ export const getDocumentTypeList = async (payload: GetDocumentTypeListPayload): 
 // Upload Document API
 export interface UploadDocumentPayload {
   userName: string;
-  userPwd: string;
+  userPass: string;
   deviceStat: string;
   docname: string;
   docdate: string; // DD/MM/YYYY format
@@ -1006,7 +1130,7 @@ export const uploadDocument = async (payload: UploadDocumentPayload): Promise<Up
   try {
     const formData = new FormData();
     formData.append('userName', payload.userName);
-    formData.append('userPwd', payload.userPwd);
+    formData.append('userPass', payload.userPass);
     formData.append('deviceStat', payload.deviceStat);
     formData.append('docname', payload.docname);
     formData.append('docdate', payload.docdate);
@@ -1067,6 +1191,128 @@ export interface ShareWithDocResponse {
 export const shareWithDoc = async (payload: ShareWithDocPayload): Promise<ShareWithDocResponse> => {
   try {
     const { data } = await http.post<ShareWithDocResponse>('/sharewithdoc', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get Selected Day Slots API (for temp adjustment prefill)
+export interface GetSelectedDaySlotsPayload {
+  userName: string;
+  userPass: string;
+  deviceStat: string;
+  startDate: string; // Format: DD/MM/YYYY - selected date from calendar
+  orgId: string;
+  facilityId: number;
+}
+
+export interface GetSelectedDaySlotsResponse {
+  slotDuration: string;
+  slotDuration2: string;
+  userName: string | null;
+  userPass: string | null;
+  deviceStat: string | null;
+  checkedDay: string | null;
+  dayTime: string | null;
+  startDate: string | null;
+  stopDate: string | null;
+  orgStrDtTmStr: string | null;
+  orgStpDtTmStr: string | null;
+  facilityName: string | null;
+  docName: string | null;
+  patientName: string | null;
+  gender: string | null;
+  appointmentStatus: string | null;
+  changeStatus: string | null;
+  regStatus: string | null;
+  eventDates: string | null;
+  eventIds: string | null;
+  scheduleStartDt: string | null;
+  scheduleStopDt: string | null;
+  orgStartDate: string | null;
+  orgStopDate: string | null;
+  isTodaysAppointment: string | null;
+  sundayStartTime1: string | null;
+  sundayStartTime2: string | null;
+  mondayStartTime1: string | null;
+  mondayStartTime2: string | null;
+  tuesdayStartTime1: string | null;
+  tuesdayStartTime2: string | null;
+  saturdayStartTime1: string | null;
+  wednesdayStartTime1: string | null;
+  wednesdayStartTime2: string | null;
+  thursdayStartTime1: string | null;
+  thursdayStartTime2: string | null;
+  fridayStartTime1: string | null;
+  fridayStartTime2: string | null;
+  saturdayStartTime2: string | null;
+  sundayStopTime1: string | null;
+  sundayStopTime2: string | null;
+  mondayStopTime1: string | null;
+  mondayStopTime2: string | null;
+  tuesdayStopTime1: string | null;
+  tuesdayStopTime2: string | null;
+  saturdayStopTime1: string | null;
+  wednesdayStopTime1: string | null;
+  wednesdayStopTime2: string | null;
+  thursdayStopTime1: string | null;
+  thursdayStopTime2: string | null;
+  fridayStopTime1: string | null;
+  fridayStopTime2: string | null;
+  saturdayStopTime2: string | null;
+  bookAppType: string;
+  startTime: string | null;
+  stopTime: string | null;
+  appStartDateTime: string | null;
+  appStopDateTime: string | null;
+  slotDurationMinutes: string | null;
+  noteMessage: string | null;
+  noteType: string | null;
+  zoomMeetingUrl: string | null;
+  petName: string | null;
+  meetingUrl: string | null;
+  patientEmail: string | null;
+  doctorEmail: string | null;
+  consultationType: string | null;
+  facilityType: string | null;
+  slotSequence: number;
+  retVal: number;
+  slotIndex: number;
+  sundayAvailable: number;
+  mondayAvailable: number;
+  tuesdayAvailable: number;
+  wednesdayAvailable: number;
+  thursdayAvailable: number;
+  fridayAvailable: number;
+  saturdayAvailable: number;
+  age: number;
+  activeInd: number;
+  prescriptionCount: number;
+  documentCount: number;
+  teleConsultationStartByVetInd: number;
+  patientUid: number;
+  patientMrn: string | null;
+  appointmentId: string | null;
+  encounterId: string | null;
+  doctorUId: string | null;
+  slotId: number;
+  facilityId: number | null;
+  orgId: number | null;
+  orgUserId: number | null;
+  insertUserId: string | null;
+  updateUserId: string | null;
+  summaryId: string | null;
+  noOfPatients: number;
+  appCount: string | null;
+  petOwnerUid: string | null;
+  uploadedDocumentsList: string | null;
+  uploadedPrescriptionsList: string | null;
+}
+
+export const getSelectedDaySlots = async (payload: GetSelectedDaySlotsPayload): Promise<GetSelectedDaySlotsResponse> => {
+  try {
+    const { data } = await http.post<GetSelectedDaySlotsResponse>('/getselecteddayslots', payload);
     return data;
   } catch (error) {
     throw error;

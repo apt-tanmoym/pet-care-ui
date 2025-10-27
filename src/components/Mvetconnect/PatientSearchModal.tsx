@@ -40,11 +40,12 @@ interface PatientSearchModalProps {
     facilityName: string;
   } | null;
   selectedDate?: Date | null;
+  onAppointmentSuccess?: () => void; // Callback to refresh appointments list
 }
 
 type SearchOption = 'mrn' | 'name' | 'idProof' | 'mobile';
 
-const PatientSearchModal: React.FC<PatientSearchModalProps> = ({ open, onClose, onSearch, selectedTimeSlot, selectedFacility, selectedDate }) => {
+const PatientSearchModal: React.FC<PatientSearchModalProps> = ({ open, onClose, onSearch, selectedTimeSlot, selectedFacility, selectedDate, onAppointmentSuccess }) => {
   const [searchBy, setSearchBy] = useState<SearchOption>('mrn');
   const [searchValue, setSearchValue] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -55,6 +56,7 @@ const PatientSearchModal: React.FC<PatientSearchModalProps> = ({ open, onClose, 
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleSearch = async () => {
     setIsLoading(true);
@@ -160,8 +162,15 @@ const PatientSearchModal: React.FC<PatientSearchModalProps> = ({ open, onClose, 
       console.log('Appointment API response:', response);
       
       if (response.status === 'success') {
-        setShowSuccessModal(true);
         console.log('Appointment saved successfully:', response.message);
+        console.log('onAppointmentSuccess at save time:', onAppointmentSuccess);
+        console.log('onAppointmentSuccess exists at save time:', !!onAppointmentSuccess);
+        
+        // Close the search modal first
+        handleClose();
+        
+        // Show success modal
+        setShowSuccessModal(true);
       } else {
         console.error('Failed to save appointment:', response.message);
         alert('Failed to save appointment: ' + response.message);
@@ -172,8 +181,34 @@ const PatientSearchModal: React.FC<PatientSearchModalProps> = ({ open, onClose, 
     }
   };
 
-  const handleSuccessModalClose = () => {
+  const handleSuccessModalClose = async () => {
+    console.log('=== Success modal closing ===');
+    console.log('onAppointmentSuccess exists:', !!onAppointmentSuccess);
+    console.log('onAppointmentSuccess value:', onAppointmentSuccess);
+    
+    setIsRefreshing(true);
+    
+    // Wait 1 second before calling the refresh
+    console.log('Waiting 1 second...');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log('Wait complete!');
+    
+    // Call the refresh callback
+    if (onAppointmentSuccess) {
+      console.log('About to call onAppointmentSuccess...');
+      try {
+        onAppointmentSuccess();
+        console.log('onAppointmentSuccess called successfully!');
+      } catch (error) {
+        console.error('Error calling onAppointmentSuccess:', error);
+      }
+    } else {
+      console.error('onAppointmentSuccess is undefined or null!');
+    }
+    
+    setIsRefreshing(false);
     setShowSuccessModal(false);
+    console.log('=== Success modal closed ===');
   };
 
   const isSearchDisabled = () => {
@@ -673,30 +708,44 @@ const PatientSearchModal: React.FC<PatientSearchModalProps> = ({ open, onClose, 
       >
         <DialogContent sx={{ p: 3, textAlign: 'center' }}>
           <Box sx={{ py: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c3e50', mb: 2 }}>
-              Appointment Created Successfully
-            </Typography>
-            <Typography variant="body1" sx={{ color: '#7f8c8d', mb: 3 }}>
-              The appointment has been successfully created for the selected patient.
-            </Typography>
-            <Button
-              variant="contained"
-              onClick={handleSuccessModalClose}
-              sx={{
-                bgcolor: '#174a7c',
-                color: 'white',
-                px: 4,
-                py: 1.5,
-                fontWeight: 600,
-                textTransform: 'none',
-                borderRadius: '8px',
-                '&:hover': {
-                  bgcolor: '#103a61',
-                },
-              }}
-            >
-              OK
-            </Button>
+            {isRefreshing ? (
+              <>
+                <CircularProgress size={48} sx={{ color: '#174a7c', mb: 2 }} />
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c3e50', mb: 2 }}>
+                  Refreshing Appointments...
+                </Typography>
+                <Typography variant="body1" sx={{ color: '#7f8c8d' }}>
+                  Please wait while we update the appointments list.
+                </Typography>
+              </>
+            ) : (
+              <>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c3e50', mb: 2 }}>
+                  Appointment Created Successfully
+                </Typography>
+                <Typography variant="body1" sx={{ color: '#7f8c8d', mb: 3 }}>
+                  The appointment has been successfully created for the selected patient.
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={handleSuccessModalClose}
+                  sx={{
+                    bgcolor: '#174a7c',
+                    color: 'white',
+                    px: 4,
+                    py: 1.5,
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    borderRadius: '8px',
+                    '&:hover': {
+                      bgcolor: '#103a61',
+                    },
+                  }}
+                >
+                  OK
+                </Button>
+              </>
+            )}
           </Box>
         </DialogContent>
       </Dialog>

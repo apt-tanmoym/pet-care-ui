@@ -27,13 +27,19 @@ import EpisodeConfirmationDialog from './EpisodeConfirmationDialog';
 interface PatientSearchDialogProps {
   open: boolean;
   onClose: () => void;
+  onAppointmentSuccess?: () => void;
+  selectedFacility?: {
+    facilityId: number;
+    facilityName: string;
+  } | null;
+  selectedDate?: Date | null;
 }
 
 type View = 'initial' | 'searchPlatform' | 'searchFacility' | 'register';
 type PlatformSearchOption = 'name' | 'email' | 'petName' | 'mobile';
 type FacilitySearchOption = 'mrn' | 'name' | 'idProof' | 'mobile';
 
-const PatientSearchDialog: React.FC<PatientSearchDialogProps> = ({ open, onClose }) => {
+const PatientSearchDialog: React.FC<PatientSearchDialogProps> = ({ open, onClose, onAppointmentSuccess, selectedFacility, selectedDate }) => {
   const [view, setView] = useState<View>('initial');
   const [platformSearchBy, setPlatformSearchBy] = useState<PlatformSearchOption>('name');
   const [facilitySearchBy, setFacilitySearchBy] = useState<FacilitySearchOption>('name');

@@ -101,8 +101,8 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
 
 	const fecthPetDetails = async (id: any) => {
 		const petListObj = {
-			userName: "dasdebashisindia",
-			userPwd: "P@ssw0rd",
+			userName: localStorage.getItem("userName") || "",
+			userPwd: localStorage.getItem("userPwd") || "",
 			deviceStat: "D",
 			patientUid: id,
 		};
@@ -302,11 +302,11 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
 		};
 
 		const newPayload = {
-			userName: "dasdebashisindia",
-			userPwd: "P@ssw0rd",
+			userName: localStorage.getItem("userName") || "",
+			userPwd: localStorage.getItem("userPwd") || "",
 			deviceStat: "M",
-			orgId: "2",
-			loggedInFacilityId: "1",
+			orgId: localStorage.getItem("orgId") || "",
+			loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
 			petOwnerUid: selectedPet?.petOwnerUid,
 			patientUid: selectedPet?.patientUid,
 			mrn: "5",
@@ -366,8 +366,8 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
 
 		// 👇 Example payload based on your earlier message
 		const payload = {
-			userName: "dasdebashisindia",
-			userPwd: "P@ssw0rd",
+			userName: localStorage.getItem("userName") || "",
+			userPwd: localStorage.getItem("userPwd") || "",
 			deviceStat: "M",
 			patientUid: selectedPet?.patientUid,
 			docname: formData.documentName,
@@ -378,8 +378,8 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
 		};
 
 		const formDataUpload = new FormData();
-		formDataUpload.append("userName", "dasdebashisindia");
-		formDataUpload.append("userPass", "P@ssw0rd"); // 🔹 you can replace with actual login pwd
+		formDataUpload.append("userName", localStorage.getItem("userName") || "");
+		formDataUpload.append("userPass", localStorage.getItem("userPwd") || ""); // 🔹 you can replace with actual login pwd
 		formDataUpload.append("deviceStat", "M");
 		formDataUpload.append("patientUid", selectedPet?.patientUid);
 		formDataUpload.append("docname", formData.documentName);
@@ -414,10 +414,10 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
 		if (!data) return; // Form validation failed
 
 		const payload = {
-			userName: "dasdebashisindia",
-			userPwd: "P@ssw0rd",
+			userName: localStorage.getItem("userName") || "",
+			userPwd: localStorage.getItem("userPwd") || "",
 			deviceStat: "M",
-			orgId: "2",
+			orgId: localStorage.getItem("orgId") || "",
 			petOwnerUid: selectedPet?.petOwnerUid,
 			petName: data.petName,
 			dob: data.dob?.format("DD/MM/YYYY") || "",

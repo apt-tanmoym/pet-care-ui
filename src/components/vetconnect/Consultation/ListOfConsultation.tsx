@@ -30,6 +30,7 @@ interface ConsultationItem {
   appointmentId?: number;
   facilityId?: number;
   encounterId?: string;
+  appointmentStatus?: string; // 'Scheduled' or 'Arrived'
 }
 
 interface ListOfConsultationProps {
@@ -160,8 +161,8 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
         userName: localStorage.getItem('userName') || '',
         userPass: localStorage.getItem('userPwd') || '',
         deviceStat: 'D',
-        orgId: parseInt(localStorage.getItem('orgId') || '39'),
-        facilityId: consultation.facilityId,
+        orgId: localStorage.getItem('orgId') || '39',
+        facilityId: consultation.facilityId?.toString() || '1',
         patientMrn: consultation.patientMrn?.toString(),
         petOwnerUid: consultation.petOwnerUid,
         patientUid: consultation.patientUid?.toString(),
@@ -327,61 +328,79 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
           List Of Consultation
         </Typography>
       </Box>
-      <CardContent sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+      <CardContent sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
         <Typography
           variant="h6"
           sx={{
-            color: "#1976d2",
+            color: "#174a7c",
             fontWeight: 700,
-            position: "absolute",
-            top: 16,
-            left: 16,
+            mb: 1.5,
+            fontSize: '0.95rem'
           }}
         >
           {formattedDate}
         </Typography>
-        {consultations.map((consultation, index) => (
+        {consultations.map((consultation, index) => {
+          // Normalize appointment status for comparison
+          const normalizedStatus = consultation.appointmentStatus?.toLowerCase();
+          const isArrived = 
+            normalizedStatus === 'arrived' || 
+            normalizedStatus === 'consultation started' || 
+            normalizedStatus === 'consultationstarted' || 
+            arrivedConsultations.has(index);
+          
+          return (
           <Box
             key={index}
             sx={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              bgcolor: "#e0f7fa",
-              p: 2,
-              borderRadius: 4,
-              mb: index < consultations.length - 1 ? 2 : 0,
+              bgcolor: isArrived ? "#f1f8ff" : "#e8f5e9",
+              p: 1.5,
+              borderRadius: 2,
+              border: isArrived ? "1px solid #2196F3" : "1px solid #4CAF50",
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                transform: 'translateY(-1px)'
+              }
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flex: 1 }}>
               {consultation.imageUrl && (
                 <Box
                   component="img"
                   src={consultation.imageUrl}
                   alt={`${consultation.petName} image`}
-                  sx={{ width: 60, height: 60, borderRadius: "50%", objectFit: "cover" }}
+                  sx={{ width: 45, height: 45, borderRadius: "50%", objectFit: "cover" }}
                 />
               )}
               <Box>
-                <Typography variant="h6" sx={{ color: "#174a7c", fontWeight: 600 }}>
+                <Typography variant="subtitle2" sx={{ color: "#174a7c", fontWeight: 600, fontSize: '0.875rem' }}>
                   {consultation.petName} of {consultation.ownerName}
                 </Typography>
-                <Typography variant="body2" sx={{ color: "#78909c", fontWeight: 500 }}>
+                <Typography variant="caption" sx={{ color: "#617d98", fontWeight: 500, fontSize: '0.75rem' }}>
                   TIME: {consultation.timeRange}
                 </Typography>
-                <Typography variant="caption" sx={{ color: "#4CAF50", fontWeight: 500 }}>
-                  SCHEDULED
+                <Typography variant="caption" sx={{ 
+                  color: isArrived ? "#2196F3" : "#4CAF50", 
+                  fontWeight: 600,
+                  fontSize: '0.7rem',
+                  display: 'block',
+                  mt: 0.5
+                }}>
+                  {consultation.appointmentStatus || 'SCHEDULED'}
                 </Typography>
               </Box>
             </Box>
-            <Box sx={{ ml: 2 }}>
-              {arrivedConsultations.has(index) ? (
+            <Box sx={{ ml: 1.5, flexShrink: 0 }}>
+              {isArrived ? (
                 <Box
                   sx={{
                     display: "flex",
-                    justifyContent: "center",
-                    gap: 1,
-                    flexWrap: "nowrap",
+                    gap: 0.75,
+                    flexDirection: { xs: 'column', sm: 'row' }
                   }}
                 >
                   <Button
@@ -392,16 +411,20 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
                       bgcolor: "#2196F3",
                       color: "#fff",
                       fontWeight: 600,
-                      borderRadius: 2,
+                      fontSize: '0.7rem',
+                      borderRadius: 1.5,
+                      py: 0.75,
+                      px: 1.5,
+                      minWidth: { xs: 120, sm: 115 },
                       whiteSpace: "nowrap",
                       "&:hover": { bgcolor: "#1976D2" },
                       "&:disabled": { bgcolor: "#ccc" },
                     }}
                   >
                     {loadingConsultation.has(index) ? (
-                      <CircularProgress size={16} sx={{ color: "#fff" }} />
+                      <CircularProgress size={14} sx={{ color: "#fff" }} />
                     ) : (
-                      "CONSULT ONLINE"
+                      "ONLINE"
                     )}
                   </Button>
                   <Button
@@ -409,19 +432,23 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
                     onClick={() => handleConsultOffline(index, consultation)}
                     disabled={loadingConsultation.has(index)}
                     sx={{
-                      bgcolor: "#FFCA28",
+                      bgcolor: "#FF9800",
                       color: "#fff",
                       fontWeight: 600,
-                      borderRadius: 2,
+                      fontSize: '0.7rem',
+                      borderRadius: 1.5,
+                      py: 0.75,
+                      px: 1.5,
+                      minWidth: { xs: 120, sm: 115 },
                       whiteSpace: "nowrap",
-                      "&:hover": { bgcolor: "#FFB300" },
+                      "&:hover": { bgcolor: "#F57C00" },
                       "&:disabled": { bgcolor: "#ccc" },
                     }}
                   >
                     {loadingConsultation.has(index) ? (
-                      <CircularProgress size={16} sx={{ color: "#fff" }} />
+                      <CircularProgress size={14} sx={{ color: "#fff" }} />
                     ) : (
-                      "CONSULT OFFLINE"
+                      "OFFLINE"
                     )}
                   </Button>
                 </Box>
@@ -434,8 +461,9 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
                     bgcolor: "#4CAF50",
                     color: "#fff",
                     fontWeight: 700,
-                    borderRadius: 3,
-                    py: 1,
+                    fontSize: '0.75rem',
+                    borderRadius: 1.5,
+                    py: 0.75,
                     px: 2,
                     whiteSpace: "nowrap",
                     "&:hover": {
@@ -447,7 +475,7 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
                   }}
                 >
                   {loadingArrive.has(index) ? (
-                    <CircularProgress size={20} sx={{ color: "#fff" }} />
+                    <CircularProgress size={16} sx={{ color: "#fff" }} />
                   ) : (
                     "ARRIVE"
                   )}
@@ -455,14 +483,15 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
               )}
             </Box>
           </Box>
-        ))}
+          );
+        })}
       </CardContent>
 
       {/* Online Consultation Dialog */}
-      <Dialog open={openOnlinePopup} onClose={() => setOpenOnlinePopup(false)} maxWidth="sm" fullWidth>
+      <Dialog open={openOnlinePopup} onClose={() => setOpenOnlinePopup(false)} maxWidth="lg" fullWidth>
         <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            Online Consultation
+            Online Consultation 
           </Typography>
           <IconButton onClick={() => setOpenOnlinePopup(false)}>
             <CloseIcon />
@@ -484,7 +513,7 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
       </Dialog>
 
       {/* Offline Consultation Dialog */}
-      <Dialog open={openOfflinePopup} onClose={() => setOpenOfflinePopup(false)} maxWidth="sm" fullWidth>
+      <Dialog open={openOfflinePopup} onClose={() => setOpenOfflinePopup(false)} maxWidth="lg" fullWidth>
         <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             Offline Consultation

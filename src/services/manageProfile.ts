@@ -27,3 +27,16 @@ export const saveDoctorExperience = async (payload: any): Promise<any[]> => {
   }
 };
 
+export const saveProfileApi = async (payload: any): Promise<any[]> => {
+  try {
+    const { data } = await http.post('/editaccountdetails', payload, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+

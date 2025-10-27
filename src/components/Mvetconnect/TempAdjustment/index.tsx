@@ -27,13 +27,14 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import dayjs, { Dayjs } from 'dayjs';
 import { FaclityServiceResponse } from '@/interfaces/facilityInterface';
-import { temporaryAdjustCalendar, getSlotDates } from '@/services/manageCalendar';
+import { temporaryAdjustCalendar, getSlotDates, getSelectedDaySlots } from '@/services/manageCalendar';
 
 interface TempAdjustmentProps {
   open: boolean;
   onClose: () => void;
   calendarData: any;
   facility: FaclityServiceResponse | null;
+  onSuccess?: () => void; // Callback to refresh calendar list after successful adjustment
 }
 
 interface TimeSlot {
@@ -48,7 +49,8 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
   open,
   onClose,
   calendarData,
-  facility
+  facility,
+  onSuccess
 }) => {
   const [currentMonth, setCurrentMonth] = useState<Dayjs>(dayjs());
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
@@ -64,6 +66,7 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
     fullavailable: []
   });
   const [isLoadingSlotDates, setIsLoadingSlotDates] = useState(false);
+  const [isLoadingDaySlots, setIsLoadingDaySlots] = useState(false);
 
   const slotDurations = ['10', '15', '20', '30', '45', '60'];
 
@@ -72,6 +75,73 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
       fetchSlotDates();
     }
   }, [open, facility?.facilityId]);
+
+  // Prefill time slots from calendarData when modal opens
+  useEffect(() => {
+    if (open && calendarData) {
+      console.log('Prefilling temp adjustment with calendar data:', calendarData);
+      
+      // Parse time slots from calendarData
+      // The calendarData has fields like mondayStartTime1, mondayStopTime1, etc.
+      // We need to extract the time slots that are available
+      const slots: TimeSlot[] = [];
+      
+      // Helper function to parse time string (HH:MM format)
+      const parseTimeSlot = (startTime: string | null, stopTime: string | null): TimeSlot | null => {
+        if (!startTime || !stopTime || startTime === '00:00' || stopTime === '00:00') {
+          return null;
+        }
+        
+        const [startHour, startMin] = startTime.split(':');
+        const [stopHour, stopMin] = stopTime.split(':');
+        
+        return {
+          fromHour: startHour.padStart(2, '0'),
+          fromMin: startMin.padStart(2, '0'),
+          toHour: stopHour.padStart(2, '0'),
+          toMin: stopMin.padStart(2, '0'),
+          notAvailable: false
+        };
+      };
+      
+      // Check all possible time slots from the calendar data
+      // We'll look for any day's time slots as a reference
+      const dayFields = [
+        { start1: 'mondayStartTime1', stop1: 'mondayStopTime1', start2: 'mondayStartTime2', stop2: 'mondayStopTime2' },
+        { start1: 'tuesdayStartTime1', stop1: 'tuesdayStopTime1', start2: 'tuesdayStartTime2', stop2: 'tuesdayStopTime2' },
+        { start1: 'wednesdayStartTime1', stop1: 'wednesdayStopTime1', start2: 'wednesdayStartTime2', stop2: 'wednesdayStopTime2' },
+        { start1: 'thursdayStartTime1', stop1: 'thursdayStopTime1', start2: 'thursdayStartTime2', stop2: 'thursdayStopTime2' },
+        { start1: 'fridayStartTime1', stop1: 'fridayStopTime1', start2: 'fridayStartTime2', stop2: 'fridayStopTime2' },
+        { start1: 'saturdayStartTime1', stop1: 'saturdayStopTime1', start2: 'saturdayStartTime2', stop2: 'saturdayStopTime2' },
+        { start1: 'sundayStartTime1', stop1: 'sundayStopTime1', start2: 'sundayStartTime2', stop2: 'sundayStopTime2' }
+      ];
+      
+      // Find the first day that has time slots defined
+      for (const dayField of dayFields) {
+        const slot1 = parseTimeSlot(calendarData[dayField.start1], calendarData[dayField.stop1]);
+        const slot2 = parseTimeSlot(calendarData[dayField.start2], calendarData[dayField.stop2]);
+        
+        if (slot1) slots.push(slot1);
+        if (slot2) slots.push(slot2);
+        
+        // If we found slots, break (we only need one day's slots as a template)
+        if (slots.length > 0) break;
+      }
+      
+      // If we found slots, use them; otherwise, keep the default
+      if (slots.length > 0) {
+        setTimeSlots(slots);
+      }
+      
+      // Prefill slot duration if available
+      if (calendarData.slotDuration || calendarData.slotDurationMinutes) {
+        const duration = (calendarData.slotDuration || calendarData.slotDurationMinutes).toString();
+        setSlotDuration(duration);
+      }
+      
+      console.log('Prefilled time slots:', slots);
+    }
+  }, [open, calendarData]);
 
   const fetchSlotDates = async () => {
     if (!facility?.facilityId) return;
@@ -126,8 +196,100 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
     setTimeSlots(newSlots);
   };
 
-  const handleDateClick = (date: Dayjs) => {
+  const handleDateClick = async (date: Dayjs) => {
     setSelectedDate(date);
+    
+    // Fetch the selected day slots for prefilling
+    if (facility?.facilityId) {
+      setIsLoadingDaySlots(true);
+      try {
+        const formattedDate = date.format('DD/MM/YYYY');
+        const response = await getSelectedDaySlots({
+          userName: localStorage.getItem('userName') || '',
+          userPass: localStorage.getItem('userPwd') || '',
+          deviceStat: 'M',
+          startDate: formattedDate,
+          orgId: localStorage.getItem('orgId') || '2',
+          facilityId: facility.facilityId
+        });
+
+        console.log('Selected day slots response:', response);
+
+        // Determine which day of the week the selected date is
+        const dayOfWeek = date.day(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const dayName = dayNames[dayOfWeek];
+        
+        // Get the time fields for this day
+        const startTime1Field = `${dayName}StartTime1` as keyof typeof response;
+        const stopTime1Field = `${dayName}StopTime1` as keyof typeof response;
+        const startTime2Field = `${dayName}StartTime2` as keyof typeof response;
+        const stopTime2Field = `${dayName}StopTime2` as keyof typeof response;
+        
+        const startTime1 = response[startTime1Field] as string | null;
+        const stopTime1 = response[stopTime1Field] as string | null;
+        const startTime2 = response[startTime2Field] as string | null;
+        const stopTime2 = response[stopTime2Field] as string | null;
+        
+        console.log(`Day: ${dayName}, Slot1: ${startTime1}-${stopTime1}, Slot2: ${startTime2}-${stopTime2}`);
+        
+        // Parse and set time slots
+        const parsedSlots: TimeSlot[] = [];
+        
+        // Helper function to parse time slot
+        const parseTimeSlot = (start: string | null, stop: string | null): TimeSlot | null => {
+          if (!start || !stop || start === '00:00' && stop === '00:00') {
+            return null;
+          }
+          
+          const [startHour, startMin] = start.split(':');
+          const [stopHour, stopMin] = stop.split(':');
+          
+          return {
+            fromHour: startHour.padStart(2, '0'),
+            fromMin: startMin.padStart(2, '0'),
+            toHour: stopHour.padStart(2, '0'),
+            toMin: stopMin.padStart(2, '0'),
+            notAvailable: false
+          };
+        };
+        
+        // Add Slot 1 if it exists
+        const slot1 = parseTimeSlot(startTime1, stopTime1);
+        if (slot1) {
+          parsedSlots.push(slot1);
+        }
+        
+        // Add Slot 2 if it exists
+        const slot2 = parseTimeSlot(startTime2, stopTime2);
+        if (slot2) {
+          parsedSlots.push(slot2);
+        }
+        
+        // If we have parsed slots, use them; otherwise, keep default
+        if (parsedSlots.length > 0) {
+          setTimeSlots(parsedSlots);
+        } else {
+          // No slots found for this date - set default empty slot
+          setTimeSlots([{ fromHour: '01', fromMin: '00', toHour: '05', toMin: '00', notAvailable: false }]);
+        }
+        
+        // Prefill slot duration if available
+        if (response.slotDuration) {
+          setSlotDuration(response.slotDuration);
+        }
+        
+      } catch (error) {
+        console.error('Error fetching selected day slots:', error);
+        setSnackbar({
+          open: true,
+          message: 'Failed to fetch slot details for selected date',
+          severity: 'error'
+        });
+      } finally {
+        setIsLoadingDaySlots(false);
+      }
+    }
   };
 
   const handleMonthChange = (direction: 'prev' | 'next') => {
@@ -193,17 +355,28 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
       // Format the selected date to DD/MM/YYYY
       const formattedDate = selectedDate.format('DD/MM/YYYY');
       
+      // Check if all slots are marked as "Not Available"
+      const allNotAvailable = timeSlots.every(slot => slot.notAvailable);
+      
       // Build dayTime string from time slots
-      const dayTime = timeSlots
-        .filter(slot => !slot.notAvailable)
-        .map(slot => {
-          const fromTime = `${slot.fromHour}-${slot.fromMin}`;
-          const toTime = `${slot.toHour}-${slot.toMin}`;
-          return `${fromTime}-${toTime}`;
-        })
-        .join('~');
+      let dayTime = '';
+      
+      if (allNotAvailable) {
+        // If all slots are "Not Available", send "notavailable" as dayTime
+        dayTime = 'notavailable';
+      } else {
+        // Build dayTime from available slots only
+        dayTime = timeSlots
+          .filter(slot => !slot.notAvailable)
+          .map(slot => {
+            const fromTime = `${slot.fromHour}-${slot.fromMin}`;
+            const toTime = `${slot.toHour}-${slot.toMin}`;
+            return `${fromTime}-${toTime}`;
+          })
+          .join('~');
+      }
 
-      // If no valid time slots, show warning
+      // If no valid time slots and not marked as "Not Available", show warning
       if (!dayTime) {
         setSnackbar({
           open: true,
@@ -240,6 +413,11 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
           message: response.message || "Temporary adjustment applied successfully!",
           severity: "success"
         });
+        
+        // Call the success callback to refresh calendar list
+        if (onSuccess) {
+          onSuccess();
+        }
         
         // Close modal after showing success message
         setTimeout(() => {
@@ -518,6 +696,22 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
                 Time Configuration
               </Typography>
               
+              {isLoadingDaySlots ? (
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  height: '200px',
+                  bgcolor: '#f8f9fa',
+                  borderRadius: '8px',
+                  border: '1px solid #e0e0e0'
+                }}>
+                  <Typography variant="body1" sx={{ color: '#666' }}>
+                    Loading slot details...
+                  </Typography>
+                </Box>
+              ) : (
+                <>
               {timeSlots.map((slot, index) => (
                 <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: '8px' }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -676,6 +870,8 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
                   </Select>
                 </FormControl>
               </Box>
+              </>
+              )}
             </Box>
           ) : (
             <Box sx={{ 

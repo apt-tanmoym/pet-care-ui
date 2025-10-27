@@ -177,6 +177,20 @@ const Appointments: React.FC = () => {
     setOpenPatientSearchDialog(false);
   };
 
+  const handleAppointmentSuccess = () => {
+    console.log('handleAppointmentSuccess called!');
+    console.log('selectedDate:', selectedDate);
+    console.log('selectedFacility:', selectedFacility);
+    
+    // Refresh the patient slots for the selected date
+    if (selectedDate && selectedFacility?.facilityId) {
+      console.log('Fetching patient slots for refresh...');
+      fetchPatientSlots(selectedFacility.facilityId, selectedDate);
+    } else {
+      console.log('Cannot refresh - missing selectedDate or selectedFacility');
+    }
+  };
+
   const handleViewAll = () => {
     if(!selectedDate) {
       setShowDateHelper(true);
@@ -280,13 +294,14 @@ const Appointments: React.FC = () => {
                          Loading appointments...
                        </Typography>
                      </Box>
-                   ) : appointmentsAvailable ? (
-                     <AppointmentDetails 
-                       selectedDate={selectedDate} 
-                       patientSlots={patientSlots} 
-                       selectedFacility={selectedFacility}
-                     />
-                   ) : (
+                  ) : appointmentsAvailable ? (
+                    <AppointmentDetails 
+                      selectedDate={selectedDate} 
+                      patientSlots={patientSlots} 
+                      selectedFacility={selectedFacility}
+                      onAppointmentSuccess={handleAppointmentSuccess}
+                    />
+                  ) : (
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, bgcolor: '#f7f9fc', borderRadius: '12px' }}>
                       <Typography sx={{ color: '#7f8c8d', fontStyle: 'italic' }}>
                         {selectedDate ? "No appointments scheduled for this date." : "Appointments will be shown here once you select a date."}
@@ -358,11 +373,15 @@ const Appointments: React.FC = () => {
              patientSlots={patientSlots}
              onBook={handleProceedToPatientSearch}
              selectedFacility={selectedFacility}
+             onAppointmentSuccess={handleAppointmentSuccess}
            />
 
           <PatientSearchDialog 
             open={openPatientSearchDialog}
             onClose={handleClosePatientSearch}
+            onAppointmentSuccess={handleAppointmentSuccess}
+            selectedFacility={selectedFacility}
+            selectedDate={selectedDate}
           />
         </Box>
       </AuthenticatedLayout>

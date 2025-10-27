@@ -30,6 +30,7 @@ import {
 	getDoctorDetails,
 	saveDoctorEducation,
 	saveDoctorExperience,
+	saveProfileApi,
 } from "@/services/manageProfile";
 import styles from "./styles.module.scss";
 import { debounce } from "lodash";
@@ -78,6 +79,8 @@ function VetConnectUserProfile() {
 	const [cityLoading, setCityLoading] = useState(false);
 	const [areaLoading, setAreaLoading] = useState(false);
 	const [selectedCity, setSelectedCity] = useState<any>(null);
+	const [file, setFile] = useState<any>(null);
+	const [filename, setFileName] = useState("");
 
 	const [openSnackbar, setOpenSnackbar] = useState(false);
 	const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -104,6 +107,33 @@ function VetConnectUserProfile() {
 		{ id: "endDate", label: "End Date" },
 		{ id: "action", label: "Action" },
 	];
+
+	const handleFileChange = (selectedFile: File, name: string) => {
+		if (selectedFile) {
+			const reader = new FileReader();
+			reader.onloadend = () => {
+				setFile(reader.result as string);
+				setFileName(name); // Set filename inside reader.onload
+			};
+			reader.readAsDataURL(selectedFile); // You forgot this in your original
+		}
+	};
+
+	const base64ToFile = (base64String: string): File | null => {
+		if (!base64String) return null;
+
+		const arr = base64String.split(",");
+		const mime = arr[0].match(/:(.*?);/)?.[1] || "image/png";
+		const bstr = atob(arr[1]);
+		let n = bstr.length;
+		const u8arr = new Uint8Array(n);
+
+		while (n--) {
+			u8arr[n] = bstr.charCodeAt(n);
+		}
+
+		return new File([u8arr], filename, { type: mime });
+	};
 
 	const fetchCities = debounce(async (searchText: string) => {
 		setCityLoading(true);
@@ -160,13 +190,13 @@ function VetConnectUserProfile() {
 	const fetchDoctorProfileDetails = async () => {
 		try {
 			const result: any = await getDoctorDetails({
-				userName: "dasdebashisindia",
-				userPwd: "P@ssw0rd",
+				userName: localStorage.getItem("userName") || "",
+				userPwd: localStorage.getItem("userPwd") || "",
 				deviceStat: "M",
 			});
 			setProfileData(result);
 			console.log("result");
-			console.log(result);
+			console.log(result.imageFileName);
 			setSelectedCity(result.city);
 			// populate form fields
 			reset({
@@ -264,8 +294,44 @@ function VetConnectUserProfile() {
 	const onSubmit: SubmitHandler<FormValues> = async (data) => {
 		// handle save logic
 		console.log("Form data to save:", data);
+
+		const sendObj = {
+			userName: localStorage.getItem("userName") || "",
+			userPass: localStorage.getItem("userPwd") || "",
+			deviceStat: "M",
+			searchcity: data.city,
+			state: data.state,
+			country: selectedCity.country,
+			pinCode: data.pin,
+			searcharea: data.areaName,
+			citypincodemappingid: data.cityPincodeMappingId,
+			specialty: data.speciality,
+			firstname: data.firstName,
+			lastname: data.lastName,
+			birthdate: data.birthDate,
+			address1: data.addressFirst,
+			address2: "",
+			email: data.email,
+			mobile: data.cellNumber,
+			language: data.languageKnown,
+			treatmentCategories: "",
+			practiceSpeciality: "",
+			backFile: null,
+			file: base64ToFile(file),
+		};
+		const formData = new FormData();
+
+		Object.entries(sendObj).forEach(([key, value]) => {
+			if (value !== null && value !== undefined) {
+				formData.append(key, value);
+			}
+		});
 		try {
-			const response = await fetch("/your/api/save-endpoint", {
+			await saveProfileApi(formData);
+			setOpenSnackbar(true);
+			setSnackbarSeverity("success");
+			setSnackbarMessage("Profile Saved Successfully");
+			/* const response = await fetch("/your/api/save-endpoint", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -273,10 +339,12 @@ function VetConnectUserProfile() {
 				body: JSON.stringify(data),
 			});
 			const result = await response.json();
-			console.log("Save result:", result);
+			console.log("Save result:", result); */
 			// optionally update UI/notify success
 		} catch (err) {
-			console.error("Save failed:", err);
+			setOpenSnackbar(true);
+			setSnackbarSeverity("error");
+			setSnackbarMessage("Face some issue");
 		}
 	};
 
@@ -314,8 +382,8 @@ function VetConnectUserProfile() {
 	const onSaveAddEdit = async () => {
 		console.log("hit");
 		const loginDetails = {
-			userName: "dasdebashisindia",
-			userPwd: "P@ssw0rd",
+			userName: localStorage.getItem("userName") || "",
+			userPwd: localStorage.getItem("userPwd") || "",
 			deviceStat: "M",
 		};
 		const formData: any = await formRef.current?.submit();
@@ -407,7 +475,15 @@ function VetConnectUserProfile() {
 					<CardContent>
 						<Grid container spacing={2}>
 							<Grid item xs={12} sm={1}>
-								<UploadBadge />
+								{profileData?.imageFileName && (
+									<UploadBadge
+										path={`https://www.aptcarepet.com/${profileData.imageFileName}`}
+										onFileChange={handleFileChange}
+									/>
+								)}
+								{!profileData?.imageFileName && (
+									<UploadBadge onFileChange={handleFileChange} />
+								)}
 							</Grid>
 							<Grid
 								item
