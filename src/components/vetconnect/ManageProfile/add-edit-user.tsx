@@ -4,6 +4,7 @@ import { useForm, Controller } from "react-hook-form";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import "dayjs/locale/en-gb";
 import dayjs from "dayjs";
 
 interface AddEditModelProps {
@@ -44,14 +45,21 @@ const AddEditModel = forwardRef<AddDocumentRef, AddEditModelProps>(
 		console.log(startDate);
 		console.log(endDate);
 
+		const parseDate = (value?: string) => {
+			if (!value) return null;
+			// Try both DD/MM/YYYY and DD-MM-YYYY just in case your backend varies
+			const parsed = dayjs(value, ["DD/MM/YYYY", "DD-MM-YYYY"], "en-gb", true);
+			return parsed.isValid() ? parsed : null;
+		};
+
 		const { control, handleSubmit, reset } = useForm({
 			defaultValues: {
 				institution: initialData?.docEducationInstitute || "",
 				degree: initialData?.docDegree || "",
 				fieldOfStudy: initialData?.docFieldOfStudy || "",
 				grade: initialData?.docGrade || "",
-				startDate: startDate ? dayjs(startDate) : null,
-				endDate: endDate ? dayjs(endDate) : null,
+				startDate: startDate ? parseDate(startDate) : null,
+				endDate: endDate ? parseDate(endDate) : null,
 				jobTitle: initialData?.docExperience || "",
 				employmentType: initialData?.employmentType || "",
 				companyName: initialData?.docExperienceInstitute || "",
@@ -165,12 +173,15 @@ const AddEditModel = forwardRef<AddDocumentRef, AddEditModelProps>(
 						)}
 
 						<Grid item xs={12} sm={6}>
-							<LocalizationProvider dateAdapter={AdapterDayjs}>
+							<LocalizationProvider
+								dateAdapter={AdapterDayjs}
+								adapterLocale='en-gb'>
 								<Controller
 									name='startDate'
 									control={control}
 									render={({ field }) => (
 										<DatePicker
+											format='DD/MM/YYYY'
 											label='Start Date'
 											value={field.value}
 											onChange={field.onChange}
@@ -181,12 +192,15 @@ const AddEditModel = forwardRef<AddDocumentRef, AddEditModelProps>(
 							</LocalizationProvider>
 						</Grid>
 						<Grid item xs={12} sm={6}>
-							<LocalizationProvider dateAdapter={AdapterDayjs}>
+							<LocalizationProvider
+								dateAdapter={AdapterDayjs}
+								adapterLocale='en-gb'>
 								<Controller
 									name='endDate'
 									control={control}
 									render={({ field }) => (
 										<DatePicker
+											format='DD/MM/YYYY'
 											label='End Date'
 											value={field.value}
 											onChange={field.onChange}

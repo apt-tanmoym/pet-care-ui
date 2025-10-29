@@ -280,6 +280,7 @@ function VetConnectUserProfile() {
 					),
 				})
 			);
+			setExperienceData([]);
 			setExperienceData(expRows);
 		} catch (error) {
 			console.error("Failed to fetch doctor profile details:", error);

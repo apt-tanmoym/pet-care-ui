@@ -378,7 +378,7 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
               )}
               <Box>
                 <Typography variant="subtitle2" sx={{ color: "#174a7c", fontWeight: 600, fontSize: '0.875rem' }}>
-                  {consultation.petName} of {consultation.ownerName}
+                  {consultation.petName} of {consultation.ownerName?.replace(/\s+of Owner\s+\d+/gi, '')?.trim()}
                 </Typography>
                 <Typography variant="caption" sx={{ color: "#617d98", fontWeight: 500, fontSize: '0.75rem' }}>
                   TIME: {consultation.timeRange}

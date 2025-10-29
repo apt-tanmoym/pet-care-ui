@@ -57,7 +57,7 @@ export default function LoyaltyDiscount() {
 			try {
 				const data = await getLoyalityDiscount(basePayload);
 				setDiscountData(data);
-				setDiscountType(data.discountId == 1 ? "byval" : "bypercent");
+				setDiscountType(data.discountValue > 0 ? "byval" : "bypercent");
 			} catch (error) {
 				console.log(error);
 				setSnackbarSeverity("error");
@@ -74,8 +74,9 @@ export default function LoyaltyDiscount() {
 			console.log(discountType);
 			const payload = {
 				...basePayload,
-				discountId: discountType == "byval" ? 0 : 1,
-				cuttoffage: discountData.cuttOffAge.toString(),
+				//discountId: discountType == "byval" ? 0 : 1,
+				discountId: discountData.discountId ? discountData.discountId : 0,
+				cuttOffAge: discountData.cuttOffAge.toString(),
 				discountByValue:
 					discountType == "byval" ? discountData.discountValue.toFixed(2) : 0.0,
 				discountByPercentage:
