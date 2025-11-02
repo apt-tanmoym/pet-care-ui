@@ -15,7 +15,10 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/system";
 import EditIcon from "@mui/icons-material/Edit";
-import { getCounsultationFees } from "@/services/feesAndCharges";
+import {
+	getCounsultationFees,
+	saveCounsultationFees,
+} from "@/services/feesAndCharges";
 import styles from "./styles.module.css";
 import CummonDialog from "../common/CummonDialog";
 import Message from "../common/Message";
@@ -42,18 +45,18 @@ const ConsultationFees: React.FC = () => {
 	const [openDialog, setOpenDialog] = useState(false);
 	const [modalMode, setModalMode] = useState<"add" | "edit">("add");
 
-	useEffect(() => {
-		const fetchConsultaionFees = async () => {
-			try {
-				const response = await getCounsultationFees(counsltationPayload);
-				const data: any = await response;
-				setRowData(data.doctorList);
-			} catch (error: any) {
-				setSnackbarMessage(error?.response?.data?.message || "Server Error");
-				setOpenSnackbar(true);
-			}
-		};
+	const fetchConsultaionFees = async () => {
+		try {
+			const response = await getCounsultationFees(counsltationPayload);
+			const data: any = await response;
+			setRowData(data.doctorList);
+		} catch (error: any) {
+			setSnackbarMessage(error?.response?.data?.message || "Server Error");
+			setOpenSnackbar(true);
+		}
+	};
 
+	useEffect(() => {
 		fetchConsultaionFees();
 	}, []);
 
@@ -102,27 +105,43 @@ const ConsultationFees: React.FC = () => {
 	};
 
 	const handleFeesSubmit = async () => {
-		/*  if (editFacilityRef.current && editFacilityRef.current.submitForm) {
-      const result = await editFacilityRef.current.submitForm({
-        onSuccess: () => {
-          setSnackbarMessage('Facility added successfully!');
-          setSnackbarSeverity('success');
-          setOpenSnackbar(true);
-        },
-        onError: () => {
-          setSnackbarMessage('Failed to add facility.');
-          setSnackbarSeverity('error');
-          setOpenSnackbar(true);
-        }
-      });
-      // If add was successful, close dialog and refresh list
-      if (modalMode === 'add' && result && onAddSuccess) {
-        setOpenDialog(false);
-        setSelectedFacility(null);
-        setModalMode('add');
-        onAddSuccess();
-      }
-    } */
+		/* const updatedData = rowData.map((data: any) => {
+			if (data.orgUserId === selectedFees.orgUserId) {
+				return { ...data, charge: newFee };
+			}
+			return data;
+		});
+
+		console.log(updatedData);
+		const payload = {
+			...counsltationPayload,
+			orgUserIds: updatedData.map((d: any) => d.orgUserId).join(","),
+			docCharges: updatedData.map((d: any) => d.charge).join(","),
+			docUserNames: updatedData.map((d: any) => d.userName).join(","),
+		}; */
+
+		const payload = {
+			...counsltationPayload,
+			orgUserIds: selectedFees.orgUserId,
+			docCharges: newFee,
+			docUserNames: selectedFees.userName,
+		};
+
+		console.log("hittt");
+		try {
+			const response: any = saveCounsultationFees(payload);
+			setSnackbarMessage(
+				response?.data?.message || "Fees updated successfully"
+			);
+			setSnackbarSeverity("success");
+			setOpenSnackbar(true);
+			fetchConsultaionFees();
+			setOpenDialog(false);
+		} catch (error: any) {
+			setSnackbarMessage(error?.data?.message || "Some error occured");
+			setSnackbarSeverity("error");
+			setOpenSnackbar(true);
+		}
 	};
 
 	const handleEditClick = async (row: any) => {

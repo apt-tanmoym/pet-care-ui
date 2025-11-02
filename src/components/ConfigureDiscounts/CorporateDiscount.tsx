@@ -58,6 +58,8 @@ export default function CorporateDiscount() {
 		[]
 	);
 
+	const [corporateName, setCorporateName] = useState("");
+
 	const [openSnackbar, setOpenSnackbar] = useState(false);
 	const [snackbarMessage, setSnackbarMessage] = useState("");
 	const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">(
@@ -98,7 +100,9 @@ export default function CorporateDiscount() {
 
 	const handleOpenDialog = (data: any) => {
 		if (data) {
+			console.log(data);
 			console.log(data.discountId);
+			setCorporateName(data.corporateName);
 			setDiscountID(data.discountId);
 			//	const data = corporateData[index];
 			const applicableList = [];
@@ -348,7 +352,7 @@ export default function CorporateDiscount() {
 	return (
 		<Box mt={3}>
 			<CommonTable
-				heading='Insurer Discount'
+				heading='Corporate Discount'
 				showSearch={true}
 				showAddButton={false}
 				showFilterButton={false}
@@ -369,7 +373,7 @@ export default function CorporateDiscount() {
 					<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
 						<Typography variant='body1'>Corporate Name :</Typography>
 						<Typography variant='body1' sx={{ fontWeight: "bold" }}>
-							{formData.name}
+							{corporateName}
 						</Typography>
 					</Box>
 					<TextField

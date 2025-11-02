@@ -47,6 +47,7 @@ interface FormState {
 export default function CorporateDiscount() {
 	const [open, setOpen] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
+	const [isureerName, setIsureerName] = useState(false);
 	const [discountId, setDiscountID] = useState(0);
 	const [editIndex, setEditIndex] = useState<any>();
 	const [formData, setFormData] = useState<FormState>({
@@ -101,6 +102,7 @@ export default function CorporateDiscount() {
 	const handleOpenDialog = (data: any) => {
 		if (data) {
 			console.log(data.discountId);
+			setIsureerName(data.insurerName);
 			setDiscountID(data.discountId);
 			//	const data = corporateData[index];
 			const applicableList = [];
@@ -360,7 +362,7 @@ export default function CorporateDiscount() {
 
 			<CummonDialog
 				open={open}
-				title='Corporate Discount Details'
+				title='Insurer Discount Details'
 				onClose={handleCloseDialog}
 				onSubmit={handleSubmit}
 				submitLabel={isEditing ? "Save" : "Submit"}
@@ -368,13 +370,13 @@ export default function CorporateDiscount() {
 				maxWidth='sm'>
 				<Box sx={{ display: "flex", flexDirection: "column", gap: 2, py: 2 }}>
 					<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-						<Typography variant='body1'>Corporate Name :</Typography>
+						<Typography variant='body1'>Insurer Name :</Typography>
 						<Typography variant='body1' sx={{ fontWeight: "bold" }}>
-							{formData.name}
+							{isureerName}
 						</Typography>
 					</Box>
 					<TextField
-						label='Discount Category Name'
+						label='Discount Insurer Name'
 						value={formData.discountCategory}
 						onChange={(e) =>
 							setFormData({ ...formData, discountCategory: e.target.value })

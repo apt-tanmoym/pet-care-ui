@@ -83,6 +83,9 @@ const LocalProcedure: React.FC = () => {
 	const [brandLoading, setBrandLoading] = useState(false);
 	const [selectedBrand, setSelectedBrand] = useState<any>(null);
 
+	const [selectedNewProcedure, setSelectedNewProcedure] = useState<any>(null);
+	const [selectedNewBrand, setSelectedNewBrand] = useState<any>(null);
+
 	const [brandName, setBrandName] = useState("");
 
 	const counsltationPayload = {
@@ -117,7 +120,8 @@ const LocalProcedure: React.FC = () => {
 				...counsltationPayload,
 				medicineName: searchText,
 				medicineType: "brand",
-				selectedMedicine: selectedProcedure.medicineGenericName,
+				//selectedMedicine: selectedProcedure.medicineGenericName,
+				selectedMedicine: selectedNewProcedure,
 				medicineReference: "byGenerice",
 			};
 			const data = await getMedicineList(payload);
@@ -244,9 +248,10 @@ const LocalProcedure: React.FC = () => {
 			if (modalMode === "add") {
 				const checkDuplicateObj = {
 					...counsltationPayload,
-					medicineName: selectedBrand?.medicineBrandName
+					/* medicineName: selectedBrand?.medicineBrandName
 						? selectedBrand.medicineBrandName
-						: brandName,
+						: brandName, */
+					medicineName: selectedNewBrand ? selectedNewBrand : brandName,
 					medicineUnit: packageSize,
 					medicineId: 0,
 				};
@@ -270,8 +275,10 @@ const LocalProcedure: React.FC = () => {
 						const addProcudureObj = {
 							...counsltationPayload,
 							medicineId: 0,
-							genericName: selectedProcedure.medicineGenericName,
-							brandName: selectedBrand.medicineBrandName,
+							//genericName: selectedProcedure.medicineGenericName,
+							genericName: selectedNewProcedure,
+							//brandName: selectedBrand.medicineBrandName,
+							brandName: selectedNewBrand,
 							charge: price,
 							medicineUnit: packageSize,
 						};
@@ -327,6 +334,8 @@ const LocalProcedure: React.FC = () => {
 		setModalTitle("Add Pharmecy");
 		setSelectedProcedure(null);
 		setSelectedBrand(null);
+		setSelectedNewProcedure("");
+		setSelectedNewBrand("");
 		setPrice("0.0");
 		setPackage("0.0");
 	};
@@ -547,6 +556,22 @@ const LocalProcedure: React.FC = () => {
 									/>
 								)}
 								disabled={!selectedProcedure?.medicineGenericName}
+							/>
+
+							<TextField
+								label='New Genereic Name'
+								type='text'
+								value={selectedNewProcedure}
+								onChange={(e) => setSelectedNewProcedure(e.target.value)}
+								fullWidth
+							/>
+
+							<TextField
+								label='New Brand Name'
+								type='text'
+								value={selectedNewBrand}
+								onChange={(e) => setSelectedNewBrand(e.target.value)}
+								fullWidth
 							/>
 
 							<TextField

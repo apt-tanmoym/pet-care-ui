@@ -48,6 +48,8 @@ const ManageUsersPage = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loggedInUserIsDoctor, setLoggedInUserIsDoctor] = useState<boolean>(false);
+  const [doctorUserDetails, setDoctorUserDetails] = useState<User | null>(null);
 
   // Dropdown data states
   const [councilList, setCouncilList] = useState<{ councilId: string; councilName: string }[]>([]);
@@ -68,6 +70,32 @@ const ManageUsersPage = () => {
     try {
       const usersData = await getOrgUsers(statusId);
       setUsers(usersData);
+      
+      // Check if any user in the response has isDoctor: 1
+      if (usersData.length > 0) {
+        const hasDoctor = usersData.some(user => user.isDoctor === 1);
+        setLoggedInUserIsDoctor(hasDoctor);
+        
+        // If doctor exists, fetch doctor user details for logged-in user
+        if (hasDoctor) {
+          const orgUserId = localStorage.getItem('orgUserId');
+          if (orgUserId) {
+            try {
+              const doctorDetails = await fetchUserDetails(parseInt(orgUserId, 10));
+              if (doctorDetails) {
+                setDoctorUserDetails(doctorDetails);
+              }
+            } catch (error) {
+              console.error('Error fetching doctor user details:', error);
+            }
+          }
+        } else {
+          // Clear doctor details if no doctor exists
+          setDoctorUserDetails(null);
+        }
+      } else {
+        setLoggedInUserIsDoctor(false);
+      }
     } catch (error) {
       setUsers([]);
     } finally {
@@ -206,7 +234,10 @@ const ManageUsersPage = () => {
 
   const handleAddDoctorClick = () => {
     setDetailsOpen(true);
-    setSelfConfirmOpen(true);
+    // Only show "Are you yourself a doctor" modal if no user has isDoctor: 1
+    if (!loggedInUserIsDoctor) {
+      setSelfConfirmOpen(true);
+    }
   };
 
   const handleClose = () => {
@@ -510,17 +541,40 @@ const ManageUsersPage = () => {
           open={detailsOpen}
           onClose={() => setDetailsOpen(false)}
           councilList={councilList}
+          initialData={doctorUserDetails || undefined}
           onSubmit={handleEditSubmit}
           onProceed={(doctorData) => {
-            setPendingDoctor({
-              orgUserId: 0,
-              activeInd: 1,
+            // Merge doctor details from API with form data
+            const mergedData = {
+              orgUserId: doctorUserDetails?.orgUserId || 0,
+              activeInd: doctorUserDetails?.activeInd || 1,
               isDoctor: 1,
-              councilId: doctorData.councilId,
-              yearOfReg: parseInt(doctorData.yearOfReg, 10) || 0,
-              regNo: doctorData.regNo,
-              userName: '', // Placeholder, filled in full form
-            });
+              councilId: doctorData.councilId || doctorUserDetails?.councilId || '',
+              yearOfReg: parseInt(doctorData.yearOfReg, 10) || doctorUserDetails?.yearOfReg || 0,
+              regNo: doctorData.regNo || doctorUserDetails?.registrationNumber || '',
+              registrationNumber: doctorData.regNo || doctorUserDetails?.registrationNumber || '',
+              // Prefill all fields from doctor details
+              firstName: doctorUserDetails?.firstName || '',
+              lastName: doctorUserDetails?.lastName || '',
+              email: doctorUserDetails?.email || '',
+              cellNumber: doctorUserDetails?.cellNumber || '',
+              addressLine1: doctorUserDetails?.addressLine1 || '',
+              addressLine2: doctorUserDetails?.addressLine2 || '',
+              city: doctorUserDetails?.city || '',
+              areaName: doctorUserDetails?.areaName || '',
+              state: doctorUserDetails?.state || '',
+              country: doctorUserDetails?.country || '',
+              pin: doctorUserDetails?.pin || '',
+              userTitle: doctorUserDetails?.userTitle || 'Dr.',
+              userName: doctorUserDetails?.userName || '',
+              orgUserQlfn: doctorUserDetails?.orgUserQlfn || '',
+              glbSpltyId: doctorUserDetails?.glbSpltyId || '',
+              profileDetails: doctorUserDetails?.profileDetails || '',
+              cityId: doctorUserDetails?.cityId || '',
+              cityMappingId: (doctorUserDetails as any)?.cityPincodeMappingId || doctorUserDetails?.cityMappingId || '',
+              imageFilePath: doctorUserDetails?.imageFilePath || undefined,
+            };
+            setPendingDoctor(mergedData);
             setShowConfirmDialog(true);
             setDetailsOpen(false);
           }}
@@ -528,7 +582,11 @@ const ManageUsersPage = () => {
         <DoctorSelfConfirmModal
           open={selfConfirmOpen}
           onYes={() => setSelfConfirmOpen(false)}
-          onNo={() => { setSelfConfirmOpen(false); setDetailsOpen(false); }}
+          onNo={() => {
+            // Only close the self-confirm modal, keep Doctor Details modal open
+            setSelfConfirmOpen(false);
+            // Don't call user details API when user clicks No (not a doctor)
+          }}
         />
         <Dialog open={showConfirmDialog} onClose={() => setShowConfirmDialog(false)}>
           <DialogTitle sx={{ bgcolor: '#174a7c', color: 'white', fontWeight: 'bold' }}>
@@ -543,7 +601,14 @@ const ManageUsersPage = () => {
             </Button>
             <Button variant="contained" sx={{ bgcolor: '#174a7c' }} onClick={() => {
               setShowConfirmDialog(false);
-              setFullDoctorData(pendingDoctor);
+              // Use pendingDoctor which already has all fields including registrationNumber
+              const fullData = pendingDoctor ? {
+                ...pendingDoctor,
+                // Ensure both regNo and registrationNumber are set
+                regNo: pendingDoctor.regNo || pendingDoctor.registrationNumber || '',
+                registrationNumber: pendingDoctor.registrationNumber || pendingDoctor.regNo || '',
+              } : null;
+              setFullDoctorData(fullData);
               setShowFullDoctorForm(true);
             }}>
               Proceed anyway

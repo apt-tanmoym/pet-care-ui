@@ -98,7 +98,7 @@ export const getUserDetails = async (orgUserId: string): Promise<User | null> =>
     userName: localStorage.getItem('userName') || '',
     userPwd: localStorage.getItem('userPwd') || '',
     orgId: localStorage.getItem('orgId') || '',
-    loggedinFacilityId: '1',
+    loggedinFacilityId: localStorage.getItem('loggedinFacilityId') || '1',
     orgUserId,
   };
 

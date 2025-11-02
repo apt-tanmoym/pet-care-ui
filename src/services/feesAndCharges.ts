@@ -9,6 +9,15 @@ export const getCounsultationFees = async (payload: any): Promise<any[]> => {
   }
 };
 
+export const saveCounsultationFees = async (payload: any): Promise<any[]> => {
+  try {
+    const { data } = await http.post<any>('/saveconsultationfeesconfiguration', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const saveProcedureList = async (payload: any): Promise<any> => {
   try {
     const { data } = await http.post<any>('/saveprocedure', payload);

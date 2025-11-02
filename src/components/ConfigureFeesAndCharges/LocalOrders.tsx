@@ -69,6 +69,7 @@ const LocalOrder: React.FC = () => {
 	const [orderOptions, setOrderOptions] = useState<any[]>([]);
 	const [orderLoading, setOrderLoading] = useState(false);
 	const [selectedOrder, setSelectedOrder] = useState<any>(null);
+	const [selectedNewOrder, setSelectedNewOrder] = useState<any>(null);
 
 	const counsltationPayload = {
 		callingFrom: "web",
@@ -198,13 +199,15 @@ const LocalOrder: React.FC = () => {
 			}
 			if (modalMode === "add") {
 				const isDuplicate = await checkIsDuplicate(
-					selectedOrder ? selectedOrder.orderTestName : orderName
+					//selectedOrder ? selectedOrder.orderTestName : orderName;
+					selectedNewOrder ? selectedNewOrder : orderName
 				);
 				if (isDuplicate) {
 					const addOrderObj = {
 						...counsltationPayload,
 						orderId: 0,
-						orderName: selectedOrder ? selectedOrder.orderTestName : orderName,
+						//orderName: selectedOrder ? selectedOrder.orderTestName : orderName,
+						orderName: selectedNewOrder ? selectedNewOrder : orderName,
 						charge: price,
 					};
 					await saveOrderName(addOrderObj);
@@ -254,6 +257,7 @@ const LocalOrder: React.FC = () => {
 		setModalMode("add");
 		setModalTitle("Add Order");
 		setSelectedOrder(null);
+		setSelectedNewOrder("");
 		setPrice("0.0");
 	};
 
@@ -412,7 +416,7 @@ const LocalOrder: React.FC = () => {
 								renderInput={(params: any) => (
 									<TextField
 										{...params}
-										label='Search for Order'
+										label='Search for existing order'
 										fullWidth
 										// error={!!errors.procedureName}
 										// helperText={errors.procedureName}
@@ -432,13 +436,23 @@ const LocalOrder: React.FC = () => {
 							/>
 
 							<TextField
+								label='Enter new order'
+								type='text'
+								value={selectedNewOrder}
+								onChange={(e) => setSelectedNewOrder(e.target.value)}
+								fullWidth
+								//error={!!errors.price}
+								//helperText={errors.price}
+							/>
+
+							<TextField
 								label='Price'
 								type='number'
 								value={price}
 								onChange={(e) => setPrice(e.target.value)}
 								fullWidth
-								error={!!errors.price}
-								helperText={errors.price}
+								//error={!!errors.price}
+								//helperText={errors.price}
 							/>
 						</>
 					)}
@@ -450,8 +464,8 @@ const LocalOrder: React.FC = () => {
 								value={orderName}
 								onChange={(e) => setOrderName(e.target.value)}
 								fullWidth
-								error={!!errors.orderName}
-								helperText={errors.orderName}
+								//error={!!errors.orderName}
+								//helperText={errors.orderName}
 							/>
 
 							<TextField
@@ -460,8 +474,8 @@ const LocalOrder: React.FC = () => {
 								value={price}
 								onChange={(e) => setPrice(e.target.value)}
 								fullWidth
-								error={!!errors.price}
-								helperText={errors.price}
+								//error={!!errors.price}
+								//helperText={errors.price}
 							/>
 						</>
 					)}
@@ -481,8 +495,8 @@ const LocalOrder: React.FC = () => {
 								value={price}
 								onChange={(e) => setPrice(e.target.value)}
 								fullWidth
-								error={!!errors.price}
-								helperText={errors.price}
+								//error={!!errors.price}
+								//helperText={errors.price}
 							/>
 						</>
 					)}

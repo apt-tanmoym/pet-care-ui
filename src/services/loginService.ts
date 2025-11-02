@@ -120,6 +120,7 @@ export const login = async (credentials: LoginCredentials): Promise<LoginRespons
     // Save orgId to localStorage on successful login
     if (data && data.orgId) {
       localStorage.setItem('orgId', data.orgId.toString());
+      localStorage.setItem('orgUserId', data.orgUserId.toString());
     }
     
     // Save username and password to localStorage on successful login

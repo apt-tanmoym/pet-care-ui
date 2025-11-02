@@ -86,13 +86,6 @@ interface FormValues {
 }
 
 const UserDetailsForm: React.FC<any> = ({ onSubmit, onCancel, open }) => {
-	const roleNamesOptions = [
-		"Admin Staff",
-		"Administrator",
-		"Biller",
-		"Doctor",
-		"Paramedic",
-	];
 	const [cityOptions, setCityOptions] = useState<any[]>([]);
 	const [areaOptions, setAreaOptions] = useState<any[]>([]);
 	const [cityLoading, setCityLoading] = useState(false);
@@ -143,7 +136,6 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit, onCancel, open }) => {
 	}, [open]);
 
 	const [formValues, setFormValues] = useState({
-		role: "",
 		title: "Mr.",
 		firstName: "",
 		lastName: "",
@@ -163,7 +155,6 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit, onCancel, open }) => {
 	const [imagePreview, setImagePreview] = useState<string | null>(null);
 
 	const [errors1, setErrors] = useState({
-		role: "",
 		title: "",
 		firstName: "",
 		email: "",
@@ -178,7 +169,6 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit, onCancel, open }) => {
 	});
 
 	const validationRules = {
-		role: (value: string) => (value ? "" : "Role is required"),
 		title: (value: string) => (value ? "" : "Title is required"),
 		firstName: (value: string) => (value ? "" : "First Name is required"),
 		email: (value: string) =>
@@ -342,40 +332,6 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit, onCancel, open }) => {
 			}}>
 			<form onSubmit={handleSubmit(handleFormSubmit)}>
 				<Grid container spacing={3}>
-					<Grid item xs={12}>
-						<FormControl fullWidth required error={!!errors1.role}>
-							<InputLabel sx={{ color: "#0288d1" }}>Choose Role</InputLabel>
-							<Select
-								name='role'
-								value={formValues.role}
-								onChange={handleChange}
-								displayEmpty
-								renderValue={(selected) => {
-									return selected;
-								}}
-								sx={{
-									bgcolor: "white",
-									borderRadius: 2,
-									"& .MuiOutlinedInput-notchedOutline": {
-										borderColor: "#0288d1",
-									},
-									"&:hover .MuiOutlinedInput-notchedOutline": {
-										borderColor: "#01579b",
-									},
-								}}>
-								{roleNamesOptions.map((role) => (
-									<MenuItem key={role} value={role}>
-										{role}
-									</MenuItem>
-								))}
-							</Select>
-							{errors1.role && (
-								<Typography variant='caption' color='error'>
-									{errors1.role}
-								</Typography>
-							)}
-						</FormControl>
-					</Grid>
 					<Grid item xs={12} sm={4} md={2}>
 						<FormControl fullWidth required error={!!errors1.title}>
 							<InputLabel sx={{ color: "#0288d1" }}>Title</InputLabel>
@@ -484,15 +440,27 @@ const UserDetailsForm: React.FC<any> = ({ onSubmit, onCancel, open }) => {
 										setSelectedCity(value || null);
 										field.onChange(value?.cityName || "");
 										setAreaOptions([]);
-										setFormValues((prev) => ({
-											...prev,
-											city: value.cityName,
-											cityId: value.cityId,
-											state: value.stateName || "",
-											country: value.country || "",
-											areaName: "",
-											cityPincodeMappingId: 0,
-										}));
+										if (value) {
+											setFormValues((prev) => ({
+												...prev,
+												city: value.cityName || "",
+												cityId: value.cityId || "",
+												state: value.stateName || "",
+												country: value.country || "",
+												areaName: "",
+												cityPincodeMappingId: 0,
+											}));
+										} else {
+											setFormValues((prev) => ({
+												...prev,
+												city: "",
+												cityId: "",
+												state: "",
+												country: "",
+												areaName: "",
+												cityPincodeMappingId: 0,
+											}));
+										}
 									}}
 									onInputChange={(_, value) => {
 										fetchCities(value);

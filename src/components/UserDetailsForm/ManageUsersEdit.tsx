@@ -71,7 +71,7 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({
 	user,
 	onSubmit,
 	onCancel,
-	roleGroupList,
+	roleGroupList = [],
 }) => {
 	const [formValues, setFormValues] = useState<User>({
 		orgUserId: user.orgUserId || 0,
@@ -364,11 +364,15 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({
 									borderColor: "#01579b",
 								},
 							}}>
-							{roleGroupList.map((role) => (
-								<MenuItem key={role.roleGroupId} value={role.roleGroupName}>
-									{role.roleGroupName}
-								</MenuItem>
-							))}
+							{Array.isArray(roleGroupList) && roleGroupList.length > 0 ? (
+								roleGroupList.map((role) => (
+									<MenuItem key={role.roleGroupId} value={role.roleGroupName}>
+										{role.roleGroupName}
+									</MenuItem>
+								))
+							) : (
+								<MenuItem disabled>No roles available</MenuItem>
+							)}
 						</Select>
 						{errors.roleName && (
 							<Typography variant='caption' color='error'>

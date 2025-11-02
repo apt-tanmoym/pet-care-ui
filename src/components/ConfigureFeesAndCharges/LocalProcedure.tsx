@@ -70,6 +70,7 @@ const LocalProcedure: React.FC = () => {
 	const [procedureOptions, setProcudureOptions] = useState<any[]>([]);
 	const [procudureLoading, setProcedureLoading] = useState(false);
 	const [selectedProcedure, setSelectedProcedure] = useState<any>(null);
+	const [selectedNewProcedure, setSelectedNewProcedure] = useState<any>(null);
 
 	const counsltationPayload = {
 		callingFrom: "web",
@@ -202,14 +203,18 @@ const LocalProcedure: React.FC = () => {
 				console.log(selectedProcedure);
 				console.log(price);
 				const isDuplicate = await checkIsDuplicate(
-					selectedProcedure ? selectedProcedure.procedureName : procedureName
+					//selectedProcedure ? selectedProcedure.procedureName : procedureName
+					selectedNewProcedure ? selectedNewProcedure : procedureName
 				);
 				if (isDuplicate) {
 					const addProcudureObj = {
 						...counsltationPayload,
 						procedureId: 0,
-						procedureName: selectedProcedure
+						/* procedureName: selectedProcedure
 							? selectedProcedure.procedureName
+							: procedureName, */
+						procedureName: selectedNewProcedure
+							? selectedNewProcedure
 							: procedureName,
 						charge: price,
 					};
@@ -260,6 +265,7 @@ const LocalProcedure: React.FC = () => {
 		setModalMode("add");
 		setModalTitle("Add Procedure");
 		setSelectedProcedure(null);
+		setSelectedNewProcedure("");
 		setPrice("0.0");
 	};
 
@@ -418,7 +424,7 @@ const LocalProcedure: React.FC = () => {
 								renderInput={(params: any) => (
 									<TextField
 										{...params}
-										label='Search for Procedure'
+										label='Search for existing Procedure'
 										fullWidth
 										// error={!!errors.procedureName}
 										// helperText={errors.procedureName}
@@ -438,13 +444,23 @@ const LocalProcedure: React.FC = () => {
 							/>
 
 							<TextField
+								label='Enter new procedure'
+								type='text'
+								value={selectedNewProcedure}
+								onChange={(e) => setSelectedNewProcedure(e.target.value)}
+								fullWidth
+								error={!!errors.price}
+								helperText={errors.price}
+							/>
+
+							<TextField
 								label='Price'
 								type='number'
 								value={price}
 								onChange={(e) => setPrice(e.target.value)}
 								fullWidth
-								error={!!errors.price}
-								helperText={errors.price}
+								//error={!!errors.price}
+								//helperText={errors.price}
 							/>
 						</>
 					)}
@@ -456,8 +472,8 @@ const LocalProcedure: React.FC = () => {
 								value={procedureName}
 								onChange={(e) => setProcedureName(e.target.value)}
 								fullWidth
-								error={!!errors.procedureName}
-								helperText={errors.procedureName}
+								//error={!!errors.procedureName}
+								//helperText={errors.procedureName}
 							/>
 
 							<TextField
@@ -466,8 +482,8 @@ const LocalProcedure: React.FC = () => {
 								value={price}
 								onChange={(e) => setPrice(e.target.value)}
 								fullWidth
-								error={!!errors.price}
-								helperText={errors.price}
+								//error={!!errors.price}
+								//helperText={errors.price}
 							/>
 						</>
 					)}
@@ -487,8 +503,8 @@ const LocalProcedure: React.FC = () => {
 								value={price}
 								onChange={(e) => setPrice(e.target.value)}
 								fullWidth
-								error={!!errors.price}
-								helperText={errors.price}
+								//error={!!errors.price}
+								//helperText={errors.price}
 							/>
 						</>
 					)}
