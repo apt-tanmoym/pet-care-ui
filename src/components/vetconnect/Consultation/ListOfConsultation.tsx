@@ -58,7 +58,7 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
   consultations,
   onArriveClick,
 }) => {
-  if (!selectedDate || consultations.length === 0) {
+  if (!selectedDate) {
     return null;
   }
 
@@ -248,13 +248,13 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
         deviceStat: 'D',
         orgId: parseInt(localStorage.getItem('orgId') || '39'),
         facilityId: consultation.facilityId,
-        patientMrn: consultation.patientMrn?.toString(),
-        petOwnerUid: consultation.petOwnerUid,
-        patientUid: consultation.patientUid?.toString(),
-        appointmentId: consultation.appointmentId?.toString(),
+        patientMrn: consultation.patientMrn?.toString() || '',
+        petOwnerUid: consultation.petOwnerUid || '',
+        patientUid: consultation.patientUid?.toString() || '',
+        appointmentId: consultation.appointmentId?.toString() || '',
         encounterId: encounterId,
         appointmentStatus: 'Scheduled',
-        changeStatus: 'Arrive'
+        changeStatus: 'Complete'
       });
 
       if (response.status === 'Success') {
@@ -340,33 +340,59 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
         >
           {formattedDate}
         </Typography>
-        {consultations.map((consultation, index) => {
-          // Normalize appointment status for comparison
-          const normalizedStatus = consultation.appointmentStatus?.toLowerCase();
-          const isArrived = 
-            normalizedStatus === 'arrived' || 
-            normalizedStatus === 'consultation started' || 
-            normalizedStatus === 'consultationstarted' || 
-            arrivedConsultations.has(index);
-          
-          return (
+        {consultations.length === 0 ? (
           <Box
-            key={index}
             sx={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
-              bgcolor: isArrived ? "#f1f8ff" : "#e8f5e9",
-              p: 1.5,
+              justifyContent: "center",
+              p: 4,
+              bgcolor: "#f8f9fa",
               borderRadius: 2,
-              border: isArrived ? "1px solid #2196F3" : "1px solid #4CAF50",
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                transform: 'translateY(-1px)'
-              }
+              border: "1px solid #e0e0e0",
             }}
           >
+            <Typography
+              variant="body1"
+              sx={{
+                color: "#617d98",
+                fontWeight: 500,
+                fontSize: '0.95rem'
+              }}
+            >
+              No appointments for this date
+            </Typography>
+          </Box>
+        ) : (
+          consultations.map((consultation, index) => {
+            // Normalize appointment status for comparison
+            const normalizedStatus = consultation.appointmentStatus?.toLowerCase();
+            const isArrived = 
+              normalizedStatus === 'arrived' || 
+              normalizedStatus === 'consultation started' || 
+              normalizedStatus === 'consultationstarted' || 
+              arrivedConsultations.has(index);
+            const isCompleted = normalizedStatus === 'completed' || normalizedStatus === 'complete';
+            
+            return (
+            <Box
+              key={index}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                bgcolor: isCompleted ? "#f5f5f5" : (isArrived ? "#f1f8ff" : "#e8f5e9"),
+                p: 1.5,
+                borderRadius: 2,
+                border: isCompleted ? "1px solid #9e9e9e" : (isArrived ? "1px solid #2196F3" : "1px solid #4CAF50"),
+                transition: 'all 0.2s ease',
+                opacity: isCompleted ? 0.8 : 1,
+                '&:hover': {
+                  boxShadow: isCompleted ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+                  transform: isCompleted ? 'none' : 'translateY(-1px)'
+                }
+              }}
+            >
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flex: 1 }}>
               {consultation.imageUrl && (
                 <Box
@@ -384,7 +410,7 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
                   TIME: {consultation.timeRange}
                 </Typography>
                 <Typography variant="caption" sx={{ 
-                  color: isArrived ? "#2196F3" : "#4CAF50", 
+                  color: isCompleted ? "#757575" : (isArrived ? "#2196F3" : "#4CAF50"), 
                   fontWeight: 600,
                   fontSize: '0.7rem',
                   display: 'block',
@@ -456,7 +482,7 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
                 <Button
                   variant="contained"
                   onClick={() => handleArrive(index, consultation)}
-                  disabled={loadingArrive.has(index)}
+                  disabled={loadingArrive.has(index) || isCompleted}
                   sx={{
                     bgcolor: "#4CAF50",
                     color: "#fff",
@@ -467,10 +493,11 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
                     px: 2,
                     whiteSpace: "nowrap",
                     "&:hover": {
-                      bgcolor: "#45a049",
+                      bgcolor: isCompleted ? "#ccc" : "#45a049",
                     },
                     "&:disabled": {
                       bgcolor: "#ccc",
+                      color: "#999",
                     },
                   }}
                 >
@@ -484,7 +511,8 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
             </Box>
           </Box>
           );
-        })}
+          })
+        )}
       </CardContent>
 
       {/* Online Consultation Dialog */}

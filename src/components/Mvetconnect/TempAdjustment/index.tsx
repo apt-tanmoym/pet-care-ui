@@ -55,7 +55,7 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
   const [currentMonth, setCurrentMonth] = useState<Dayjs>(dayjs());
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([
-    { fromHour: '01', fromMin: '00', toHour: '05', toMin: '00', notAvailable: false }
+    { fromHour: '00', fromMin: '00', toHour: '00', toMin: '00', notAvailable: false }
   ]);
   const [slotDuration, setSlotDuration] = useState('10');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,6 +69,11 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
   const [isLoadingDaySlots, setIsLoadingDaySlots] = useState(false);
 
   const slotDurations = ['10', '15', '20', '30', '45', '60'];
+  
+  // Hour ranges for different slots (matching ConfirmWeeklyCalendar)
+  const morningHours = Array.from({ length: 13 }, (_, i) => i.toString().padStart(2, '0')); // 00-12
+  const afternoonHours = Array.from({ length: 11 }, (_, i) => (i + 13).toString().padStart(2, '0')); // 13-23
+  const allMinutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
 
   useEffect(() => {
     if (open && facility?.facilityId) {
@@ -84,11 +89,18 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
       // Parse time slots from calendarData
       // The calendarData has fields like mondayStartTime1, mondayStopTime1, etc.
       // We need to extract the time slots that are available
-      const slots: TimeSlot[] = [];
+      const allSlots: TimeSlot[] = [];
+      
+      // Helper function to determine if a time belongs to slot 2 (afternoon/evening slots 13-23)
+      const isSlot2Time = (timeStr: string | null): boolean => {
+        if (!timeStr || timeStr === "00:00") return false;
+        const [hour] = timeStr.split(':').map(Number);
+        return hour >= 13; // 13:00 to 23:59 is slot 2 range
+      };
       
       // Helper function to parse time string (HH:MM format)
       const parseTimeSlot = (startTime: string | null, stopTime: string | null): TimeSlot | null => {
-        if (!startTime || !stopTime || startTime === '00:00' || stopTime === '00:00') {
+        if (!startTime || !stopTime || (startTime === '00:00' && stopTime === '00:00')) {
           return null;
         }
         
@@ -118,19 +130,95 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
       
       // Find the first day that has time slots defined
       for (const dayField of dayFields) {
-        const slot1 = parseTimeSlot(calendarData[dayField.start1], calendarData[dayField.stop1]);
-        const slot2 = parseTimeSlot(calendarData[dayField.start2], calendarData[dayField.stop2]);
+        const startTime1 = calendarData[dayField.start1];
+        const stopTime1 = calendarData[dayField.stop1];
+        const startTime2 = calendarData[dayField.start2];
+        const stopTime2 = calendarData[dayField.stop2];
         
-        if (slot1) slots.push(slot1);
-        if (slot2) slots.push(slot2);
+        // Check if startTime1 is in slot 2 range (13-23)
+        if (startTime1 && stopTime1 && isSlot2Time(startTime1)) {
+          const slot = parseTimeSlot(startTime1, stopTime1);
+          if (slot) allSlots.push(slot);
+        }
+        
+        // Check if startTime1 is in slot 1 range (00-12)
+        if (startTime1 && stopTime1 && !isSlot2Time(startTime1) && !(startTime1 === "00:00" && stopTime1 === "00:00")) {
+          const slot = parseTimeSlot(startTime1, stopTime1);
+          if (slot) allSlots.push(slot);
+        }
+        
+        // Check if startTime2 is in slot 2 range (13-23)
+        if (startTime2 && stopTime2 && isSlot2Time(startTime2)) {
+          const slot = parseTimeSlot(startTime2, stopTime2);
+          if (slot) {
+            // Only add if this slot doesn't already exist (avoid duplicates)
+            const exists = allSlots.some(s => 
+              s.fromHour === slot.fromHour && 
+              s.fromMin === slot.fromMin && 
+              s.toHour === slot.toHour && 
+              s.toMin === slot.toMin
+            );
+            if (!exists) allSlots.push(slot);
+          }
+        }
+        
+        // Check if startTime2 is in slot 1 range (00-12)
+        if (startTime2 && stopTime2 && !isSlot2Time(startTime2) && !(startTime2 === "00:00" && stopTime2 === "00:00")) {
+          const slot = parseTimeSlot(startTime2, stopTime2);
+          if (slot) {
+            // Only add if this slot doesn't already exist (avoid duplicates)
+            const exists = allSlots.some(s => 
+              s.fromHour === slot.fromHour && 
+              s.fromMin === slot.fromMin && 
+              s.toHour === slot.toHour && 
+              s.toMin === slot.toMin
+            );
+            if (!exists) allSlots.push(slot);
+          }
+        }
         
         // If we found slots, break (we only need one day's slots as a template)
-        if (slots.length > 0) break;
+        if (allSlots.length > 0) break;
+      }
+      
+      // Sort slots by start time
+      allSlots.sort((a, b) => {
+        const aStart = parseInt(a.fromHour) * 60 + parseInt(a.fromMin);
+        const bStart = parseInt(b.fromHour) * 60 + parseInt(b.fromMin);
+        return aStart - bStart;
+      });
+      
+      // Determine if we have slot 2 data (13-23 range)
+      const hasSlot2Data = allSlots.some(slot => parseInt(slot.fromHour) >= 13);
+      const hasSlot1Data = allSlots.some(slot => parseInt(slot.fromHour) < 13);
+      
+      // Build final slots array
+      const finalSlots: TimeSlot[] = [];
+      
+      if (hasSlot2Data) {
+        // If we have slot 2 data, ensure we show both slots
+        const slot1Data = allSlots.find(slot => parseInt(slot.fromHour) < 13);
+        const slot2Data = allSlots.find(slot => parseInt(slot.fromHour) >= 13);
+        
+        // Add slot 1 (if no data, use 00:00 - 00:00 as default)
+        if (slot1Data) {
+          finalSlots.push(slot1Data);
+        } else {
+          finalSlots.push({ fromHour: '00', fromMin: '00', toHour: '00', toMin: '00', notAvailable: false });
+        }
+        
+        // Add slot 2
+        if (slot2Data) {
+          finalSlots.push(slot2Data);
+        }
+      } else if (hasSlot1Data) {
+        // Only slot 1 data, just show slot 1
+        finalSlots.push(...allSlots);
       }
       
       // If we found slots, use them; otherwise, keep the default
-      if (slots.length > 0) {
-        setTimeSlots(slots);
+      if (finalSlots.length > 0) {
+        setTimeSlots(finalSlots);
       }
       
       // Prefill slot duration if available
@@ -139,7 +227,7 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
         setSlotDuration(duration);
       }
       
-      console.log('Prefilled time slots:', slots);
+      console.log('Prefilled time slots:', finalSlots);
     }
   }, [open, calendarData]);
 
@@ -180,7 +268,8 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
 
   const handleAddSlot = () => {
     if (timeSlots.length < 2) {
-      setTimeSlots([...timeSlots, { fromHour: '09', fromMin: '00', toHour: '10', toMin: '00', notAvailable: false }]);
+      // Add slot 2 with afternoon hours (13-23 range)
+      setTimeSlots([...timeSlots, { fromHour: '13', fromMin: '00', toHour: '14', toMin: '00', notAvailable: false }]);
     }
   };
 
@@ -233,12 +322,16 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
         
         console.log(`Day: ${dayName}, Slot1: ${startTime1}-${stopTime1}, Slot2: ${startTime2}-${stopTime2}`);
         
-        // Parse and set time slots
-        const parsedSlots: TimeSlot[] = [];
+        // Helper function to determine if a time belongs to slot 2 (afternoon/evening slots 13-23)
+        const isSlot2Time = (timeStr: string | null): boolean => {
+          if (!timeStr || timeStr === "00:00") return false;
+          const [hour] = timeStr.split(':').map(Number);
+          return hour >= 13; // 13:00 to 23:59 is slot 2 range
+        };
         
         // Helper function to parse time slot
         const parseTimeSlot = (start: string | null, stop: string | null): TimeSlot | null => {
-          if (!start || !stop || start === '00:00' && stop === '00:00') {
+          if (!start || !stop || (start === '00:00' && stop === '00:00')) {
             return null;
           }
           
@@ -254,25 +347,108 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
           };
         };
         
-        // Add Slot 1 if it exists
-        const slot1 = parseTimeSlot(startTime1, stopTime1);
-        if (slot1) {
-          parsedSlots.push(slot1);
+        // Parse and set time slots based on time ranges
+        const allSlots: TimeSlot[] = [];
+        
+        console.log('=== SLOT PARSING DEBUG ===');
+        console.log(`StartTime1: ${startTime1}, StopTime1: ${stopTime1}`);
+        console.log(`Is StartTime1 slot2? ${isSlot2Time(startTime1)}`);
+        console.log(`StartTime2: ${startTime2}, StopTime2: ${stopTime2}`);
+        console.log(`Is StartTime2 slot2? ${isSlot2Time(startTime2)}`);
+        
+        // Check if startTime1 is in slot 2 range (13-23)
+        if (startTime1 && stopTime1 && isSlot2Time(startTime1)) {
+          console.log(`Adding slot2 data from startTime1: ${startTime1} - ${stopTime1}`);
+          const slot = parseTimeSlot(startTime1, stopTime1);
+          if (slot) allSlots.push(slot);
         }
         
-        // Add Slot 2 if it exists
-        const slot2 = parseTimeSlot(startTime2, stopTime2);
-        if (slot2) {
-          parsedSlots.push(slot2);
+        // Check if startTime1 is in slot 1 range (00-12)
+        if (startTime1 && stopTime1 && !isSlot2Time(startTime1) && !(startTime1 === "00:00" && stopTime1 === "00:00")) {
+          console.log(`Adding slot1 data from startTime1: ${startTime1} - ${stopTime1}`);
+          const slot = parseTimeSlot(startTime1, stopTime1);
+          if (slot) allSlots.push(slot);
         }
         
-        // If we have parsed slots, use them; otherwise, keep default
-        if (parsedSlots.length > 0) {
-          setTimeSlots(parsedSlots);
+        // Check if startTime2 is in slot 2 range (13-23)
+        if (startTime2 && stopTime2 && isSlot2Time(startTime2)) {
+          console.log(`Adding slot2 data from startTime2: ${startTime2} - ${stopTime2}`);
+          const slot = parseTimeSlot(startTime2, stopTime2);
+          if (slot) {
+            // Only add if this slot doesn't already exist (avoid duplicates)
+            const exists = allSlots.some(s => 
+              s.fromHour === slot.fromHour && 
+              s.fromMin === slot.fromMin && 
+              s.toHour === slot.toHour && 
+              s.toMin === slot.toMin
+            );
+            if (!exists) allSlots.push(slot);
+          }
+        }
+        
+        // Check if startTime2 is in slot 1 range (00-12)
+        if (startTime2 && stopTime2 && !isSlot2Time(startTime2) && !(startTime2 === "00:00" && stopTime2 === "00:00")) {
+          console.log(`Adding slot1 data from startTime2: ${startTime2} - ${stopTime2}`);
+          const slot = parseTimeSlot(startTime2, stopTime2);
+          if (slot) {
+            // Only add if this slot doesn't already exist (avoid duplicates)
+            const exists = allSlots.some(s => 
+              s.fromHour === slot.fromHour && 
+              s.fromMin === slot.fromMin && 
+              s.toHour === slot.toHour && 
+              s.toMin === slot.toMin
+            );
+            if (!exists) allSlots.push(slot);
+          }
+        }
+        
+        // Sort slots by start time
+        allSlots.sort((a, b) => {
+          const aStart = parseInt(a.fromHour) * 60 + parseInt(a.fromMin);
+          const bStart = parseInt(b.fromHour) * 60 + parseInt(b.fromMin);
+          return aStart - bStart;
+        });
+        
+        console.log('All parsed slots:', allSlots);
+        console.log('Number of slots parsed:', allSlots.length);
+        console.log('=== END SLOT DEBUG ===');
+        
+        // Determine if we have slot 2 data (13-23 range)
+        const hasSlot2Data = allSlots.some(slot => parseInt(slot.fromHour) >= 13);
+        const hasSlot1Data = allSlots.some(slot => parseInt(slot.fromHour) < 13);
+        
+        console.log('Has slot 1 data (00-12 range):', hasSlot1Data);
+        console.log('Has slot 2 data (13-23 range):', hasSlot2Data);
+        
+        // Build final slots array
+        const finalSlots: TimeSlot[] = [];
+        
+        if (hasSlot2Data) {
+          // If we have slot 2 data, ensure we show both slots
+          const slot1Data = allSlots.find(slot => parseInt(slot.fromHour) < 13);
+          const slot2Data = allSlots.find(slot => parseInt(slot.fromHour) >= 13);
+          
+          // Add slot 1 (if no data, use 00:00 - 00:00 as default)
+          if (slot1Data) {
+            finalSlots.push(slot1Data);
+          } else {
+            finalSlots.push({ fromHour: '00', fromMin: '00', toHour: '00', toMin: '00', notAvailable: false });
+          }
+          
+          // Add slot 2
+          if (slot2Data) {
+            finalSlots.push(slot2Data);
+          }
+        } else if (hasSlot1Data) {
+          // Only slot 1 data, just show slot 1
+          finalSlots.push(...allSlots);
         } else {
-          // No slots found for this date - set default empty slot
-          setTimeSlots([{ fromHour: '01', fromMin: '00', toHour: '05', toMin: '00', notAvailable: false }]);
+          // No slots found for this date - set default empty slot with 00:00
+          finalSlots.push({ fromHour: '00', fromMin: '00', toHour: '00', toMin: '00', notAvailable: false });
         }
+        
+        console.log('Final slots to set:', finalSlots);
+        setTimeSlots(finalSlots);
         
         // Prefill slot duration if available
         if (response.slotDuration) {
@@ -355,37 +531,48 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
       // Format the selected date to DD/MM/YYYY
       const formattedDate = selectedDate.format('DD/MM/YYYY');
       
-      // Check if all slots are marked as "Not Available"
-      const allNotAvailable = timeSlots.every(slot => slot.notAvailable);
+      // Build dayTime string from ALL slots (including 00:00-00:00 and "Not Available" slots)
+      // The notAvailable flags are sent separately
+      // Only filter out completely empty/undefined slots
+      const completeSlots = timeSlots.filter(slot => 
+        slot.fromHour !== undefined && 
+        slot.fromMin !== undefined && 
+        slot.toHour !== undefined && 
+        slot.toMin !== undefined &&
+        slot.fromHour !== '' &&
+        slot.fromMin !== '' &&
+        slot.toHour !== '' &&
+        slot.toMin !== ''
+      );
       
-      // Build dayTime string from time slots
-      let dayTime = '';
+      console.log('=== DAYTIME GENERATION DEBUG ===');
+      console.log('All time slots:', timeSlots);
+      console.log('Complete slots (including 00:00-00:00):', completeSlots);
       
-      if (allNotAvailable) {
-        // If all slots are "Not Available", send "notavailable" as dayTime
-        dayTime = 'notavailable';
-      } else {
-        // Build dayTime from available slots only
-        dayTime = timeSlots
-          .filter(slot => !slot.notAvailable)
-          .map(slot => {
-            const fromTime = `${slot.fromHour}-${slot.fromMin}`;
-            const toTime = `${slot.toHour}-${slot.toMin}`;
-            return `${fromTime}-${toTime}`;
-          })
-          .join('~');
-      }
+      // Build dayTime from all slots (including 00:00-00:00 and "Not Available" ones)
+      const dayTime = completeSlots.map(slot => {
+        const fromTime = `${slot.fromHour}-${slot.fromMin}`;
+        const toTime = `${slot.toHour}-${slot.toMin}`;
+        return `${fromTime}-${toTime}`;
+      }).join('~');
+      
+      console.log('Generated dayTime:', dayTime);
+      console.log('=== END DAYTIME DEBUG ===');
 
-      // If no valid time slots and not marked as "Not Available", show warning
+      // If no valid time slots, show warning
       if (!dayTime) {
         setSnackbar({
           open: true,
-          message: "Please configure at least one time slot or mark slots as 'Not Available'",
+          message: "Please configure at least one time slot",
           severity: "warning"
         });
         setIsSubmitting(false);
         return;
       }
+
+      // Determine notAvailable flags for each slot
+      const notAvailableFirstSlot = timeSlots[0]?.notAvailable ? 'Yes' : '';
+      const notAvailableSecondSlot = timeSlots[1]?.notAvailable ? 'Yes' : '';
 
       // Prepare API payload
       const payload = {
@@ -393,13 +580,16 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
         userPass: localStorage.getItem('userPwd') || '',
         deviceStat: 'M',
         startDate: formattedDate,
+        stopDate: '', // Empty as per API requirement
         orgId: localStorage.getItem('orgId') || undefined,
-        facilityId: facility.facilityId,
+        facilityId: facility.facilityId || 0,
         dayTime: dayTime,
-        slotDuration: slotDuration,
+        slotDuration: slotDuration || '30',
         slotDuration2: '',
-        bookAppType: 'timeslot',
-        slotId: calendarData.slotId?.toString() || ''
+        bookAppType: calendarData.bookAppType || 'timeslot',
+        slotId: calendarData.slotId?.toString() || '',
+        notAvailableFirstSlot: notAvailableFirstSlot,
+        notAvailableSecondSlot: notAvailableSecondSlot
       };
 
       console.log('Temporary adjustment payload:', payload);
@@ -446,7 +636,7 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
     // Reset form
     setCurrentMonth(dayjs());
     setSelectedDate(null);
-    setTimeSlots([{ fromHour: '01', fromMin: '00', toHour: '05', toMin: '00', notAvailable: false }]);
+    setTimeSlots([{ fromHour: '00', fromMin: '00', toHour: '00', toMin: '00', notAvailable: false }]);
     setSlotDuration('10');
     setSlotDates({ available: [], notavailable: [], fullavailable: [] });
     onClose();
@@ -731,84 +921,86 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
                     )}
                   </Box>
                   
-                  {!slot.notAvailable ? (
-                    <>
-                      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                        <Box>
-                          <Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
-                            From Time *
-                          </Typography>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <FormControl size="small" fullWidth>
-                              <InputLabel>Hours(24)</InputLabel>
-                              <Select
-                                value={slot.fromHour}
-                                label="Hours(24)"
-                                onChange={(e) => handleSlotChange(index, 'fromHour', e.target.value)}
-                              >
-                                {Array.from({ length: 24 }, (_, i) => (
-                                  <MenuItem key={i} value={i.toString().padStart(2, '0')}>
-                                    {i.toString().padStart(2, '0')}
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
-                            <FormControl size="small" fullWidth>
-                              <InputLabel>Mins</InputLabel>
-                              <Select
-                                value={slot.fromMin}
-                                label="Mins"
-                                onChange={(e) => handleSlotChange(index, 'fromMin', e.target.value)}
-                              >
-                                {Array.from({ length: 60 }, (_, i) => (
-                                  <MenuItem key={i} value={i.toString().padStart(2, '0')}>
-                                    {i.toString().padStart(2, '0')}
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
-                          </Box>
-                        </Box>
-                        
-                        <Box>
-                          <Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
-                            To Time *
-                          </Typography>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <FormControl size="small" fullWidth>
-                              <InputLabel>Hours(24)</InputLabel>
-                              <Select
-                                value={slot.toHour}
-                                label="Hours(24)"
-                                onChange={(e) => handleSlotChange(index, 'toHour', e.target.value)}
-                              >
-                                {Array.from({ length: 24 }, (_, i) => (
-                                  <MenuItem key={i} value={i.toString().padStart(2, '0')}>
-                                    {i.toString().padStart(2, '0')}
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
-                            <FormControl size="small" fullWidth>
-                              <InputLabel>Mins</InputLabel>
-                              <Select
-                                value={slot.toMin}
-                                label="Mins"
-                                onChange={(e) => handleSlotChange(index, 'toMin', e.target.value)}
-                              >
-                                {Array.from({ length: 60 }, (_, i) => (
-                                  <MenuItem key={i} value={i.toString().padStart(2, '0')}>
-                                    {i.toString().padStart(2, '0')}
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
-                          </Box>
-                        </Box>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                    <Box>
+                      <Typography variant="body2" sx={{ color: slot.notAvailable ? '#999' : '#666', mb: 0.5 }}>
+                        From Time *
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <FormControl size="small" fullWidth disabled={slot.notAvailable}>
+                          <InputLabel>Hours(24)</InputLabel>
+                          <Select
+                            value={slot.fromHour}
+                            label="Hours(24)"
+                            onChange={(e) => handleSlotChange(index, 'fromHour', e.target.value)}
+                            disabled={slot.notAvailable}
+                          >
+                            {(index === 0 ? morningHours : afternoonHours).map(hour => (
+                              <MenuItem key={hour} value={hour}>
+                                {hour}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <FormControl size="small" fullWidth disabled={slot.notAvailable}>
+                          <InputLabel>Mins</InputLabel>
+                          <Select
+                            value={slot.fromMin}
+                            label="Mins"
+                            onChange={(e) => handleSlotChange(index, 'fromMin', e.target.value)}
+                            disabled={slot.notAvailable}
+                          >
+                            {allMinutes.map(min => (
+                              <MenuItem key={min} value={min}>
+                                {min}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
                       </Box>
-                    </>
-                  ) : (
-                    <Box sx={{ p: 2, textAlign: 'center', bgcolor: '#fff3e0', borderRadius: '8px', border: '1px solid #ff9800' }}>
+                    </Box>
+                    
+                    <Box>
+                      <Typography variant="body2" sx={{ color: slot.notAvailable ? '#999' : '#666', mb: 0.5 }}>
+                        To Time *
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <FormControl size="small" fullWidth disabled={slot.notAvailable}>
+                          <InputLabel>Hours(24)</InputLabel>
+                          <Select
+                            value={slot.toHour}
+                            label="Hours(24)"
+                            onChange={(e) => handleSlotChange(index, 'toHour', e.target.value)}
+                            disabled={slot.notAvailable}
+                          >
+                            {(index === 0 ? morningHours : afternoonHours).map(hour => (
+                              <MenuItem key={hour} value={hour}>
+                                {hour}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <FormControl size="small" fullWidth disabled={slot.notAvailable}>
+                          <InputLabel>Mins</InputLabel>
+                          <Select
+                            value={slot.toMin}
+                            label="Mins"
+                            onChange={(e) => handleSlotChange(index, 'toMin', e.target.value)}
+                            disabled={slot.notAvailable}
+                          >
+                            {allMinutes.map(min => (
+                              <MenuItem key={min} value={min}>
+                                {min}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    </Box>
+                  </Box>
+                  
+                  {slot.notAvailable && (
+                    <Box sx={{ mt: 2, p: 2, textAlign: 'center', bgcolor: '#fff3e0', borderRadius: '8px', border: '1px solid #ff9800' }}>
                       <Typography variant="body2" sx={{ color: '#e65100', fontWeight: 500 }}>
                         This slot is marked as "Not Available"
                       </Typography>

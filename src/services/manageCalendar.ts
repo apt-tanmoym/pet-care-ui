@@ -236,6 +236,7 @@ interface TemporaryAdjustCalendarPayload {
   userPass: string;
   deviceStat: string;
   startDate: string;
+  stopDate: string;
   orgId: string | undefined;
   facilityId: number;
   dayTime: string;
@@ -243,6 +244,8 @@ interface TemporaryAdjustCalendarPayload {
   slotDuration2: string;
   bookAppType: string;
   slotId: string;
+  notAvailableFirstSlot: string;
+  notAvailableSecondSlot: string;
 }
 
 interface TemporaryAdjustCalendarResponse {

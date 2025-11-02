@@ -58,31 +58,6 @@ const Consultation: React.FC = () => {
       }));
   };
 
-  // Fallback dummy data
-  const dummyConsultations: ConsultationItem[] = [
-    {
-      petName: "Buddy",
-      ownerName: "John Doe",
-      timeRange: "13:00 - 13:30",
-      imageUrl: "https://hips.hearstapps.com/hmg-prod/images/dog-puppy-on-garden-royalty-free-image-1586966191.jpg?crop=0.752xw:1.00xh;0.175xw,0&resize=1200:*",
-      patientMrn: 1,
-      petOwnerUid: "4",
-      patientUid: 125,
-      appointmentId: 1174,
-      facilityId: selectedFacility?.facilityId || 1
-    },
-    {
-      petName: "Luna",
-      ownerName: "Jane Smith",
-      timeRange: "14:00 - 14:30",
-      imageUrl: "https://cdn.thewirecutter.com/wp-content/media/2021/03/dogharnesses-2048px-6907.webp?auto=webp&quality=75&crop=1.91:1&width=1200",
-      patientMrn: 2,
-      petOwnerUid: "5",
-      patientUid: 126,
-      appointmentId: 1175,
-      facilityId: selectedFacility?.facilityId || 1
-    },
-  ];
 
   const isToday = (date: Date) => {
     const today = new Date();
@@ -112,16 +87,6 @@ const Consultation: React.FC = () => {
     alert(`Appointment booked successfully! ${response.message}`);
   };
 
-  // Sample function to set a patient for booking (you would get this from your patient selection component)
-  const handleSelectPatient = () => {
-    setSelectedPatient({
-      petOwnerUid: "1",
-      patientUid: "296", 
-      patientId: 6,
-      petName: "Buddy",
-      ownerName: "John Doe"
-    });
-  };
 
 
   return (
@@ -142,7 +107,7 @@ const Consultation: React.FC = () => {
           {showListOfConsultation && selectedDate && isToday(selectedDate) && (
             <ListOfConsultation
               selectedDate={selectedDate}
-             consultations={patientSlots.length > 0 ? mapPatientSlotsToConsultations(patientSlots) : dummyConsultations}
+              consultations={mapPatientSlotsToConsultations(patientSlots)}
               onArriveClick={handleArriveClick}
             />
           )}
