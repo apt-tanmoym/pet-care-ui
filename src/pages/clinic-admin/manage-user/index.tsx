@@ -233,10 +233,23 @@ const ManageUsersPage = () => {
   };
 
   const handleAddDoctorClick = () => {
+    // Clear any previous pending doctor data
+    setPendingDoctor(null);
     setDetailsOpen(true);
-    // Only show "Are you yourself a doctor" modal if no user has isDoctor: 1
-    if (!loggedInUserIsDoctor) {
+    
+    // Get values from localStorage
+    const clinicType = localStorage.getItem('clinicType');
+    const orgUserId = localStorage.getItem('orgUserId');
+    
+    // Show "Are you yourself a doctor" modal when ALL 3 conditions are met:
+    // 1. clinicType is "Clinic"
+    // 2. orgUserId is "1"
+    // 3. No user has isDoctor: 1 (i.e., !loggedInUserIsDoctor)
+    if (clinicType === 'Clinic' && orgUserId === '1' && !loggedInUserIsDoctor) {
       setSelfConfirmOpen(true);
+    } else {
+      // Default: admin is NOT adding themselves as a doctor
+      localStorage.setItem('adminIsADoctorConf', 'No');
     }
   };
 
@@ -539,11 +552,15 @@ const ManageUsersPage = () => {
         {/* Doctor Modals */}
         <DoctorDetailsModal
           open={detailsOpen}
-          onClose={() => setDetailsOpen(false)}
+          onClose={() => {
+            setDetailsOpen(false);
+            // Clear pending doctor data when closing
+            setPendingDoctor(null);
+          }}
           councilList={councilList}
-          initialData={doctorUserDetails || undefined}
+          initialData={pendingDoctor || doctorUserDetails || undefined}
           onSubmit={handleEditSubmit}
-          onProceed={(doctorData) => {
+          onProceed={(doctorData, registrationResponse) => {
             // Merge doctor details from API with form data
             const mergedData = {
               orgUserId: doctorUserDetails?.orgUserId || 0,
@@ -553,11 +570,13 @@ const ManageUsersPage = () => {
               yearOfReg: parseInt(doctorData.yearOfReg, 10) || doctorUserDetails?.yearOfReg || 0,
               regNo: doctorData.regNo || doctorUserDetails?.registrationNumber || '',
               registrationNumber: doctorData.regNo || doctorUserDetails?.registrationNumber || '',
-              // Prefill all fields from doctor details
-              firstName: doctorUserDetails?.firstName || '',
-              lastName: doctorUserDetails?.lastName || '',
-              email: doctorUserDetails?.email || '',
-              cellNumber: doctorUserDetails?.cellNumber || '',
+              // Add userUid if doctor exists in platform (from registrationdetails API)
+              userUid: registrationResponse?.userUid || undefined,
+              // Prefill all fields from doctor details or registration response
+              firstName: registrationResponse?.firstName || doctorUserDetails?.firstName || '',
+              lastName: registrationResponse?.lastName || doctorUserDetails?.lastName || '',
+              email: registrationResponse?.email || doctorUserDetails?.email || '',
+              cellNumber: registrationResponse?.cellNumber || doctorUserDetails?.cellNumber || '',
               addressLine1: doctorUserDetails?.addressLine1 || '',
               addressLine2: doctorUserDetails?.addressLine2 || '',
               city: doctorUserDetails?.city || '',
@@ -566,9 +585,9 @@ const ManageUsersPage = () => {
               country: doctorUserDetails?.country || '',
               pin: doctorUserDetails?.pin || '',
               userTitle: doctorUserDetails?.userTitle || 'Dr.',
-              userName: doctorUserDetails?.userName || '',
-              orgUserQlfn: doctorUserDetails?.orgUserQlfn || '',
-              glbSpltyId: doctorUserDetails?.glbSpltyId || '',
+              userName: registrationResponse?.userName || doctorUserDetails?.userName || '',
+              orgUserQlfn: registrationResponse?.orgUserQlfn || doctorUserDetails?.orgUserQlfn || '',
+              glbSpltyId: registrationResponse?.gblSpltyId || doctorUserDetails?.glbSpltyId || '',
               profileDetails: doctorUserDetails?.profileDetails || '',
               cityId: doctorUserDetails?.cityId || '',
               cityMappingId: (doctorUserDetails as any)?.cityPincodeMappingId || doctorUserDetails?.cityMappingId || '',
@@ -581,14 +600,22 @@ const ManageUsersPage = () => {
         />
         <DoctorSelfConfirmModal
           open={selfConfirmOpen}
-          onYes={() => setSelfConfirmOpen(false)}
-          onNo={() => {
-            // Only close the self-confirm modal, keep Doctor Details modal open
+          onYes={() => {
+            // User confirmed they are a doctor themselves
+            localStorage.setItem('adminIsADoctorConf', 'Yes');
             setSelfConfirmOpen(false);
-            // Don't call user details API when user clicks No (not a doctor)
+          }}
+          onNo={() => {
+            // User is NOT adding themselves as a doctor
+            localStorage.setItem('adminIsADoctorConf', 'No');
+            setSelfConfirmOpen(false);
           }}
         />
-        <Dialog open={showConfirmDialog} onClose={() => setShowConfirmDialog(false)}>
+        <Dialog open={showConfirmDialog} onClose={() => {
+          setShowConfirmDialog(false);
+          // If user closes without choosing, reopen the initial modal so they can change
+          setDetailsOpen(true);
+        }}>
           <DialogTitle sx={{ bgcolor: '#174a7c', color: 'white', fontWeight: 'bold' }}>
             Doctor Details
           </DialogTitle>
@@ -596,7 +623,12 @@ const ManageUsersPage = () => {
             <div>Hi! Your entered medical details are not found in our database. Do you want to change or proceed with it?</div>
           </DialogContent>
           <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
-            <Button variant="contained" sx={{ bgcolor: '#174a7c', mr: 2 }} onClick={() => setShowConfirmDialog(false)}>
+            <Button variant="contained" sx={{ bgcolor: '#174a7c', mr: 2 }} onClick={() => {
+              // Close confirmation dialog and reopen the initial Doctor Details modal
+              // Keep the pendingDoctor data so user can edit the values they entered
+              setShowConfirmDialog(false);
+              setDetailsOpen(true); // Reopen the initial modal with council/year/regNo fields
+            }}>
               Yes, Change
             </Button>
             <Button variant="contained" sx={{ bgcolor: '#174a7c' }} onClick={() => {
@@ -618,7 +650,12 @@ const ManageUsersPage = () => {
         {showFullDoctorForm && fullDoctorData && (
           <DoctorDetailsModal
             open={showFullDoctorForm}
-            onClose={() => setShowFullDoctorForm(false)}
+            onClose={() => {
+              setShowFullDoctorForm(false);
+              // Clear pending doctor data when closing
+              setPendingDoctor(null);
+              setFullDoctorData(null);
+            }}
             mode="full"
             initialData={fullDoctorData}
             councilList={councilList}

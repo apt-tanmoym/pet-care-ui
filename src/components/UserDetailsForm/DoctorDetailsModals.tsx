@@ -24,7 +24,7 @@ import {
 	getCityList,
 	getAreaListSearchText,
 } from "@/services/faclilityService";
-import { addUser, editUser, getSpecalityList } from "@/services/userService";
+import { addUser, editUser, getSpecalityList, checkDoctorRegistration } from "@/services/userService";
 import { InputAdornment } from "@mui/material";
 
 const specialties = [
@@ -79,7 +79,7 @@ interface Props {
 		councilId: string;
 		yearOfReg: string;
 		regNo: string;
-	}) => void;
+	}, registrationResponse?: any) => void;
 	onSubmit: (data: (any & { image?: File | null }) | null | string) => void;
 }
 
@@ -131,7 +131,9 @@ const DoctorDetailsModal: React.FC<Props> = ({
 	const [cityLoading, setCityLoading] = useState(false);
 	const [areaLoading, setAreaLoading] = useState(false);
 	const [selectedCity, setSelectedCity] = useState<any>(null);
-	const [apiError, setApiError] = useState<string>("");
+	const [apiError, setApiError] = useState<string>(""); // Main error for registration check
+	const [cityAreaError, setCityAreaError] = useState<string>(""); // Separate error for city/area autocomplete
+	const [registrationData, setRegistrationData] = useState<any>(null);
 
 	// Debounced city search
 	const fetchCities = debounce(async (searchText: string) => {
@@ -139,9 +141,9 @@ const DoctorDetailsModal: React.FC<Props> = ({
 		try {
 			const data = await getCityList(searchText);
 			setCityOptions(data || []);
-			setApiError("");
+			setCityAreaError("");
 		} catch (error) {
-			setApiError("Failed to load city suggestions");
+			setCityAreaError("Failed to load city suggestions");
 			setCityOptions([]);
 		} finally {
 			setCityLoading(false);
@@ -154,9 +156,9 @@ const DoctorDetailsModal: React.FC<Props> = ({
 		try {
 			const data = await getAreaListSearchText(cityId, searchText);
 			setAreaOptions(data || []);
-			setApiError("");
+			setCityAreaError("");
 		} catch (error) {
-			setApiError("Failed to load area suggestions");
+			setCityAreaError("Failed to load area suggestions");
 			setAreaOptions([]);
 		} finally {
 			setAreaLoading(false);
@@ -247,9 +249,42 @@ const DoctorDetailsModal: React.FC<Props> = ({
 			return;
 		}
 		setError(false);
+		
+		// Call registration details API when in short mode
 		if (mode === "short" && onProceed) {
-			onProceed({ councilId, yearOfReg, regNo });
+			try {
+				setApiError(""); // Clear previous errors
+				
+				// Call the API to check doctor registration
+				const response = await checkDoctorRegistration({
+					councilId,
+					yearReg: yearOfReg,
+					registrationNumber: regNo
+				});
+
+				console.log('Registration check response:', response);
+				console.log('Status message:', response.statusMessage);
+
+				// Store registration response data
+				setRegistrationData(response);
+
+				// Check if doctor already exists on platform (check if firstName is not null)
+				if (response.firstName || response.lastName || response.email) {
+					// Doctor exists - show simple error message
+					setApiError(`Doctor already exists with Reg No: ${response.registrationNumber || regNo}`);
+					setError(true);
+					return;
+				}
+
+				// Doctor not found - proceed to next step with registration response
+				onProceed({ councilId, yearOfReg, regNo }, response);
+			} catch (error: any) {
+				console.error('Error checking doctor registration:', error);
+				setApiError("Failed to verify doctor registration. Please try again.");
+				setError(true);
+			}
 		}
+		
 		if (mode === "full") {
 			try {
 				const formData = new FormData();
@@ -265,12 +300,23 @@ const DoctorDetailsModal: React.FC<Props> = ({
 					formData.append("registrationNumber", regNo);
 				}
 				formData.append("userName", localStorage.getItem("userName") || "");
-				formData.append("userPwd", localStorage.getItem("userPwd") || ""); // 🔹 you can replace with actual login pwd
+				formData.append("userPwd", localStorage.getItem("userPwd") || "");
 				formData.append("orgId", localStorage.getItem("orgId") || "");
 				formData.append(
 					"loggedinFacilityId",
 					localStorage.getItem("loggedinFacilityId") || ""
 				);
+				
+				// Add adminIsADoctorConf field
+				// "Yes" if logged-in user is adding themselves as doctor, "No" otherwise
+				const adminIsDoctor = localStorage.getItem("adminIsADoctorConf") || "No";
+				formData.append("adminIsADoctorConf", adminIsDoctor);
+				
+				// Add userUid if doctor exists in platform (from registration check response)
+				if (initialData?.userUid) {
+					formData.append("userUid", initialData.userUid.toString());
+				}
+				
 				if (type == "add") {
 					formData.append("userLogin", userName || "");
 				} else {
@@ -335,14 +381,16 @@ const DoctorDetailsModal: React.FC<Props> = ({
 				onClose();
 			} catch (err: any) {
 				console.error("❌ Error updating doctor:", err);
-				setApiError("Failed to update doctor details");
-				onSubmit(err.response.data.message);
+				const errorMessage = err.response?.data?.message || "Failed to update doctor details";
+				onSubmit(errorMessage);
 			}
 		}
 	};
 
 	const handleCancel = () => {
 		setError(false);
+		setApiError("");
+		setCityAreaError("");
 		onClose();
 	};
 
@@ -354,9 +402,24 @@ const DoctorDetailsModal: React.FC<Props> = ({
 			classes={{ paper: styles.modalPaper }}>
 			<DialogTitle className={styles.title}>DOCTOR DETAILS</DialogTitle>
 			<DialogContent>
-				{error && (
+				{error && !apiError && (
 					<Typography color='error' sx={{ fontWeight: "bold", mb: 2 }}>
 						Please provide the following details!
+					</Typography>
+				)}
+				{apiError && (
+					<Typography 
+						color='error' 
+						sx={{ 
+							fontWeight: "bold", 
+							mb: 2, 
+							bgcolor: '#ffebee', 
+							p: 2, 
+							borderRadius: 1,
+							border: '1px solid #ef5350'
+						}}
+					>
+						{apiError}
 					</Typography>
 				)}
 				<Box sx={{ display: "flex", gap: 2, mb: 3, mt: 3 }}>
@@ -507,15 +570,15 @@ const DoctorDetailsModal: React.FC<Props> = ({
 											setAreaName("");
 											setAreaOptions([]);
 										}
-										setApiError("");
+										setCityAreaError("");
 									}}
 									renderInput={(params) => (
 										<TextField
 											{...params}
 											label='City'
 											required
-											error={!!apiError}
-											helperText={apiError}
+											error={!!cityAreaError}
+											helperText={cityAreaError}
 											InputProps={{
 												...params.InputProps,
 												endAdornment: (
@@ -561,7 +624,7 @@ const DoctorDetailsModal: React.FC<Props> = ({
 											setAreaMappingId(value.cityPincodeMappingId);
 											setPin(value?.pincode || "");
 										}
-										setApiError("");
+										setCityAreaError("");
 									}}
 									renderInput={(params) => (
 										<StyledTextField

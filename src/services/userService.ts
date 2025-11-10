@@ -177,3 +177,101 @@ export const getAllRoleGroupOfOrg = async (orgId: string = localStorage.getItem(
     return [];
   }
 };
+
+// Interface for registration details payload
+interface RegistrationDetailsPayload {
+  councilId: string;
+  yearReg: string;
+  registrationNumber: string;
+}
+
+// Interface for registration details response
+export interface RegistrationDetailsResponse {
+  councilId: string | null;
+  registrationNumber: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  statusMessage: string;
+  cellNumber: string | null;
+  orgUserQlfn: string | null;
+  userName: string | null;
+  createdBy: string | null;
+  gblSpltyId: number | null;
+  provUserUid: number | null;
+  userUid: number | null;
+  yearReg: number;
+}
+
+// Check doctor registration details
+export const checkDoctorRegistration = async (payload: RegistrationDetailsPayload): Promise<RegistrationDetailsResponse> => {
+  try {
+    const response = await http.post('/registrationdetails', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error checking doctor registration:', error);
+    throw error;
+  }
+};
+
+// Get doctor list interfaces
+export interface GetDoctorListPayload {
+  callingFrom: string;
+  userName: string;
+  userPass: string;
+  deviceStat: string;
+  orgId: string;
+}
+
+export interface DoctorListItem {
+  userName: string;
+  roleName: string | null;
+  imageFilePath: string | null;
+  roleGroup: string | null;
+  userNameWithTitle: string | null;
+  email: string | null;
+  userLoggedInAs: string | null;
+  clinicType: string | null;
+  userPassword: string | null;
+  userTitle: string | null;
+  firstName: string | null;
+  middleName: string | null;
+  lastName: string | null;
+  cellNumber: string | null;
+  imageFileName: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  pin: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  orgUserQlfn: string | null;
+  specialty: string;
+  areaName: string | null;
+  profileDetails: string | null;
+  councilId: string | null;
+  ownerUid: number;
+  orgUserId: number;
+  orgId: number;
+  userUid: number;
+  aptcarePUserId: number;
+  glbSpltyId: number;
+  cityPincodeMappingId: number;
+  cityId: number;
+  activeInd: number;
+  isDoctor: number;
+  yearOfReg: number;
+  charge: number;
+  registrationNumber: string | null;
+}
+
+// Get doctor list API
+export const getDoctorList = async (payload: GetDoctorListPayload): Promise<DoctorListItem[]> => {
+  try {
+    const response = await http.post('/getdoctorlist', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching doctor list:', error);
+    throw error;
+  }
+};

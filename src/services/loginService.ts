@@ -15,6 +15,7 @@ interface LoginResponse {
   userLoggedInAs: string;
   orgId: number;
   orgUserId: number;
+  clinicType: string;
   loggedinFacilityId: number;
   messages: string;
   facilities: Array<{
@@ -121,6 +122,7 @@ export const login = async (credentials: LoginCredentials): Promise<LoginRespons
     if (data && data.orgId) {
       localStorage.setItem('orgId', data.orgId.toString());
       localStorage.setItem('orgUserId', data.orgUserId.toString());
+      localStorage.setItem('clinicType', data.clinicType.toString());
     }
     
     // Save username and password to localStorage on successful login

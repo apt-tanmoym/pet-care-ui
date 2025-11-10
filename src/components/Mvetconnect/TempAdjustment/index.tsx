@@ -81,14 +81,34 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
     }
   }, [open, facility?.facilityId]);
 
-  // Prefill time slots from calendarData when modal opens
+  // Reset and prefill time slots when modal opens - THIS MUST RUN EVERY TIME
   useEffect(() => {
+    if (!open) {
+      // Reset when closing
+      setTimeSlots([{ fromHour: '00', fromMin: '00', toHour: '00', toMin: '00', notAvailable: false }]);
+      return;
+    }
+    
     if (open && calendarData) {
-      console.log('Prefilling temp adjustment with calendar data:', calendarData);
+      console.log('=== MODAL OPENED - PREFILL STARTING ===');
+      console.log('Calendar data received:', calendarData);
+      
+      // First, check if ANY day has slot 2 time (13:00-23:00 range)
+      const hasAnySlot2Time = [
+        calendarData.sundayStartTime1, calendarData.mondayStartTime1, calendarData.tuesdayStartTime1,
+        calendarData.wednesdayStartTime1, calendarData.thursdayStartTime1, calendarData.fridayStartTime1,
+        calendarData.saturdayStartTime1, calendarData.sundayStartTime2, calendarData.mondayStartTime2,
+        calendarData.tuesdayStartTime2, calendarData.wednesdayStartTime2, calendarData.thursdayStartTime2,
+        calendarData.fridayStartTime2, calendarData.saturdayStartTime2
+      ].some(time => {
+        if (!time || time === "00:00") return false;
+        const hour = parseInt(time.split(':')[0]);
+        return hour >= 13;
+      });
+      
+      console.log('Has any slot 2 time (>= 13:00)?', hasAnySlot2Time);
       
       // Parse time slots from calendarData
-      // The calendarData has fields like mondayStartTime1, mondayStopTime1, etc.
-      // We need to extract the time slots that are available
       const allSlots: TimeSlot[] = [];
       
       // Helper function to determine if a time belongs to slot 2 (afternoon/evening slots 13-23)
@@ -135,22 +155,35 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
         const startTime2 = calendarData[dayField.start2];
         const stopTime2 = calendarData[dayField.stop2];
         
+        console.log(`Checking ${dayField.start1}:`, startTime1, '-', stopTime1);
+        console.log(`Checking ${dayField.start2}:`, startTime2, '-', stopTime2);
+        
         // Check if startTime1 is in slot 2 range (13-23)
         if (startTime1 && stopTime1 && isSlot2Time(startTime1)) {
+          console.log(`${dayField.start1} is slot 2 time (>=13):`, startTime1);
           const slot = parseTimeSlot(startTime1, stopTime1);
-          if (slot) allSlots.push(slot);
+          if (slot) {
+            console.log('Parsed slot 2 from startTime1:', slot);
+            allSlots.push(slot);
+          }
         }
         
         // Check if startTime1 is in slot 1 range (00-12)
         if (startTime1 && stopTime1 && !isSlot2Time(startTime1) && !(startTime1 === "00:00" && stopTime1 === "00:00")) {
+          console.log(`${dayField.start1} is slot 1 time (<13):`, startTime1);
           const slot = parseTimeSlot(startTime1, stopTime1);
-          if (slot) allSlots.push(slot);
+          if (slot) {
+            console.log('Parsed slot 1 from startTime1:', slot);
+            allSlots.push(slot);
+          }
         }
         
         // Check if startTime2 is in slot 2 range (13-23)
         if (startTime2 && stopTime2 && isSlot2Time(startTime2)) {
+          console.log(`${dayField.start2} is slot 2 time (>=13):`, startTime2);
           const slot = parseTimeSlot(startTime2, stopTime2);
           if (slot) {
+            console.log('Parsed slot 2 from startTime2:', slot);
             // Only add if this slot doesn't already exist (avoid duplicates)
             const exists = allSlots.some(s => 
               s.fromHour === slot.fromHour && 
@@ -164,8 +197,10 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
         
         // Check if startTime2 is in slot 1 range (00-12)
         if (startTime2 && stopTime2 && !isSlot2Time(startTime2) && !(startTime2 === "00:00" && stopTime2 === "00:00")) {
+          console.log(`${dayField.start2} is slot 1 time (<13):`, startTime2);
           const slot = parseTimeSlot(startTime2, stopTime2);
           if (slot) {
+            console.log('Parsed slot 1 from startTime2:', slot);
             // Only add if this slot doesn't already exist (avoid duplicates)
             const exists = allSlots.some(s => 
               s.fromHour === slot.fromHour && 
@@ -178,7 +213,10 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
         }
         
         // If we found slots, break (we only need one day's slots as a template)
-        if (allSlots.length > 0) break;
+        if (allSlots.length > 0) {
+          console.log('Found slots, breaking. Total slots:', allSlots.length);
+          break;
+        }
       }
       
       // Sort slots by start time
@@ -188,46 +226,55 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
         return aStart - bStart;
       });
       
-      // Determine if we have slot 2 data (13-23 range)
-      const hasSlot2Data = allSlots.some(slot => parseInt(slot.fromHour) >= 13);
-      const hasSlot1Data = allSlots.some(slot => parseInt(slot.fromHour) < 13);
-      
-      // Build final slots array
+      // Build final slots array - SIMPLE LOGIC
       const finalSlots: TimeSlot[] = [];
       
-      if (hasSlot2Data) {
-        // If we have slot 2 data, ensure we show both slots
+      // If calendar has ANY slot 2 time (>= 13:00), ALWAYS show 2 slots
+      if (hasAnySlot2Time) {
+        console.log('Slot 2 time detected - will show 2 slots');
+        
+        // Find slot 1 data (00-12 range) from parsed slots
         const slot1Data = allSlots.find(slot => parseInt(slot.fromHour) < 13);
+        // Find slot 2 data (13-23 range) from parsed slots  
         const slot2Data = allSlots.find(slot => parseInt(slot.fromHour) >= 13);
         
-        // Add slot 1 (if no data, use 00:00 - 00:00 as default)
-        if (slot1Data) {
-          finalSlots.push(slot1Data);
+        console.log('Slot 1 data:', slot1Data);
+        console.log('Slot 2 data:', slot2Data);
+        
+        // ALWAYS add slot 1 (with data or default 00:00)
+        finalSlots.push(slot1Data || { fromHour: '00', fromMin: '00', toHour: '00', toMin: '00', notAvailable: false });
+        
+        // ALWAYS add slot 2 (with data or default 13:00)
+        finalSlots.push(slot2Data || { fromHour: '13', fromMin: '00', toHour: '14', toMin: '00', notAvailable: false });
+        
+      } else {
+        // No slot 2 time - just show slot 1 or default
+        if (allSlots.length > 0) {
+          finalSlots.push(...allSlots);
         } else {
           finalSlots.push({ fromHour: '00', fromMin: '00', toHour: '00', toMin: '00', notAvailable: false });
         }
-        
-        // Add slot 2
-        if (slot2Data) {
-          finalSlots.push(slot2Data);
-        }
-      } else if (hasSlot1Data) {
-        // Only slot 1 data, just show slot 1
-        finalSlots.push(...allSlots);
       }
       
-      // If we found slots, use them; otherwise, keep the default
-      if (finalSlots.length > 0) {
-        setTimeSlots(finalSlots);
-      }
+      console.log('Initial prefill - Final slots to set:', finalSlots);
+      console.log('Initial prefill - Final slots count:', finalSlots.length);
+      
+      // Always set the time slots (remove the condition)
+      setTimeSlots(finalSlots);
+      
+      // Verify state was set
+      console.log('State set. Slots should now be:', finalSlots.length, 'slots');
+      
+      // Force re-render by logging after state update
+      setTimeout(() => {
+        console.log('After state update - timeSlots.length should be:', finalSlots.length);
+      }, 100);
       
       // Prefill slot duration if available
       if (calendarData.slotDuration || calendarData.slotDurationMinutes) {
         const duration = (calendarData.slotDuration || calendarData.slotDurationMinutes).toString();
         setSlotDuration(duration);
       }
-      
-      console.log('Prefilled time slots:', finalSlots);
     }
   }, [open, calendarData]);
 
@@ -413,42 +460,51 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
         console.log('Number of slots parsed:', allSlots.length);
         console.log('=== END SLOT DEBUG ===');
         
-        // Determine if we have slot 2 data (13-23 range)
-        const hasSlot2Data = allSlots.some(slot => parseInt(slot.fromHour) >= 13);
-        const hasSlot1Data = allSlots.some(slot => parseInt(slot.fromHour) < 13);
+        // Check if selected date has slot 2 time (>= 13:00)
+        const hasSlot2TimeForDate = allSlots.some(slot => parseInt(slot.fromHour) >= 13);
         
-        console.log('Has slot 1 data (00-12 range):', hasSlot1Data);
-        console.log('Has slot 2 data (13-23 range):', hasSlot2Data);
+        console.log('Date selection - Has slot 2 time (>= 13:00)?', hasSlot2TimeForDate);
         
-        // Build final slots array
+        // Build final slots array - SIMPLE LOGIC
         const finalSlots: TimeSlot[] = [];
         
-        if (hasSlot2Data) {
-          // If we have slot 2 data, ensure we show both slots
+        if (hasSlot2TimeForDate) {
+          console.log('Slot 2 time detected for this date - will show 2 slots');
+          
+          // Find slot 1 data (00-12 range) from parsed slots
           const slot1Data = allSlots.find(slot => parseInt(slot.fromHour) < 13);
+          // Find slot 2 data (13-23 range) from parsed slots  
           const slot2Data = allSlots.find(slot => parseInt(slot.fromHour) >= 13);
           
-          // Add slot 1 (if no data, use 00:00 - 00:00 as default)
-          if (slot1Data) {
-            finalSlots.push(slot1Data);
+          console.log('Date selection - Slot 1 data:', slot1Data);
+          console.log('Date selection - Slot 2 data:', slot2Data);
+          
+          // ALWAYS add slot 1 (with data or default 00:00)
+          finalSlots.push(slot1Data || { fromHour: '00', fromMin: '00', toHour: '00', toMin: '00', notAvailable: false });
+          
+          // ALWAYS add slot 2 (with data or default 13:00)
+          finalSlots.push(slot2Data || { fromHour: '13', fromMin: '00', toHour: '14', toMin: '00', notAvailable: false });
+          
+        } else {
+          // No slot 2 time - just show slot 1 or default
+          if (allSlots.length > 0) {
+            finalSlots.push(...allSlots);
           } else {
             finalSlots.push({ fromHour: '00', fromMin: '00', toHour: '00', toMin: '00', notAvailable: false });
           }
-          
-          // Add slot 2
-          if (slot2Data) {
-            finalSlots.push(slot2Data);
-          }
-        } else if (hasSlot1Data) {
-          // Only slot 1 data, just show slot 1
-          finalSlots.push(...allSlots);
-        } else {
-          // No slots found for this date - set default empty slot with 00:00
-          finalSlots.push({ fromHour: '00', fromMin: '00', toHour: '00', toMin: '00', notAvailable: false });
         }
         
-        console.log('Final slots to set:', finalSlots);
+        console.log('Date selection - Final slots to set:', finalSlots);
+        console.log('Date selection - Final slots count:', finalSlots.length);
         setTimeSlots(finalSlots);
+        
+        // Verify state was set
+        console.log('State set. Slots should now be:', finalSlots.length, 'slots');
+        
+        // Force re-render by logging after state update
+        setTimeout(() => {
+          console.log('After date selection - timeSlots.length should be:', finalSlots.length);
+        }, 100);
         
         // Prefill slot duration if available
         if (response.slotDuration) {
@@ -574,6 +630,27 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
       const notAvailableFirstSlot = timeSlots[0]?.notAvailable ? 'Yes' : '';
       const notAvailableSecondSlot = timeSlots[1]?.notAvailable ? 'Yes' : '';
 
+      // Determine slotIndex based on time range
+      // slotIndex=1 for 00-12 hours, slotIndex=2 for 13-23 hours
+      // Find the first slot with valid time data (not 00:00-00:00) to determine slotIndex
+      let slotIndex = 1; // Default to slot 1
+      for (const slot of completeSlots) {
+        // Skip slots that are 00:00-00:00
+        if (slot.fromHour === '00' && slot.fromMin === '00' && slot.toHour === '00' && slot.toMin === '00') {
+          continue;
+        }
+        // Check if start hour is >= 13 (afternoon/evening slot)
+        const startHour = parseInt(slot.fromHour);
+        if (startHour >= 13) {
+          slotIndex = 2;
+        } else {
+          slotIndex = 1;
+        }
+        break; // Use the first valid slot to determine slotIndex
+      }
+      
+      console.log('Determined slotIndex:', slotIndex);
+
       // Prepare API payload
       const payload = {
         userName: localStorage.getItem('userName') || '',
@@ -588,6 +665,7 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
         slotDuration2: '',
         bookAppType: calendarData.bookAppType || 'timeslot',
         slotId: calendarData.slotId?.toString() || '',
+        slotIndex: slotIndex,
         notAvailableFirstSlot: notAvailableFirstSlot,
         notAvailableSecondSlot: notAvailableSecondSlot
       };
@@ -649,6 +727,33 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
 
   const calendarDays = getCalendarDays();
   const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+  // FORCE CHECK: Ensure 2 slots are shown if slot 2 data exists
+  // This runs on every render to catch any state issues
+  React.useEffect(() => {
+    if (open && calendarData && timeSlots.length === 1) {
+      // Check if calendar has slot 2 time
+      const hasSlot2 = [
+        calendarData.sundayStartTime1, calendarData.mondayStartTime1, calendarData.tuesdayStartTime1,
+        calendarData.wednesdayStartTime1, calendarData.thursdayStartTime1, calendarData.fridayStartTime1,
+        calendarData.saturdayStartTime1, calendarData.sundayStartTime2, calendarData.mondayStartTime2,
+        calendarData.tuesdayStartTime2, calendarData.wednesdayStartTime2, calendarData.thursdayStartTime2,
+        calendarData.fridayStartTime2, calendarData.saturdayStartTime2
+      ].some(time => {
+        if (!time || time === "00:00") return false;
+        const hour = parseInt(time.split(':')[0]);
+        return hour >= 13;
+      });
+      
+      if (hasSlot2) {
+        console.log('FORCE FIX: Detected slot 2 data but only 1 slot showing. Adding slot 2 now.');
+        setTimeSlots([
+          timeSlots[0], // Keep slot 1
+          { fromHour: '13', fromMin: '00', toHour: '14', toMin: '00', notAvailable: false } // Add slot 2
+        ]);
+      }
+    }
+  }, [open, timeSlots.length, calendarData]);
 
   return (
     <Dialog 
@@ -902,6 +1007,7 @@ const TempAdjustment: React.FC<TempAdjustmentProps> = ({
                 </Box>
               ) : (
                 <>
+              {console.log('RENDERING - Current timeSlots array:', timeSlots, 'Length:', timeSlots.length)}
               {timeSlots.map((slot, index) => (
                 <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: '8px' }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>

@@ -31,7 +31,10 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Checkbox from '@mui/material/Checkbox';
 import CircularProgress from '@mui/material/CircularProgress';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 import { getPetOwnerList, getPetList, getUploadedDocuments, PetOwnerResponse, PetResponse, UploadedDocument, removeDocument, shareWithDoc } from '@/services/manageCalendar';
+import { getDoctorList, DoctorListItem } from '@/services/userService';
 
 const recordTypes = [
   { label: 'All Records' },
@@ -210,28 +213,54 @@ const FilterDialog = ({ open, onClose }: { open: boolean; onClose: () => void })
 
 // ShareDialog component
 function ShareDialog({ open, onClose, fileName, petName, documentId }: { open: boolean; onClose: () => void; fileName: string; petName: string; documentId: string }) {
-  const [expanded, setExpanded] = React.useState(false);
   const [searchName, setSearchName] = React.useState('');
   const [searchMobile, setSearchMobile] = React.useState('');
   const [selectedUsers, setSelectedUsers] = React.useState<string[]>([]);
   const [isSharing, setIsSharing] = React.useState(false);
-  const dummyUsers = [
-    { id: '24', name: 'Dr. Sarah Johnson', category: 'Dermatology' },
-    { id: '25', name: 'Dr. Michael Chen', category: 'Oncology' },
-    { id: '26', name: 'Dr. Emily Rodriguez', category: 'Cardiology' },
-    { id: '27', name: 'Dr. James Wilson', category: 'Orthopedics' },
-    { id: '28', name: 'Dr. Lisa Thompson', category: 'Internal Medicine' },
-    { id: '29', name: 'Dr. Robert Davis', category: 'Surgery' },
-  ];
+  const [doctors, setDoctors] = React.useState<DoctorListItem[]>([]);
+  const [loadingDoctors, setLoadingDoctors] = React.useState(false);
+  const [snackbar, setSnackbar] = React.useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
+
+  // Fetch doctors when modal opens
+  React.useEffect(() => {
+    if (open) {
+      const fetchDoctors = async () => {
+        setLoadingDoctors(true);
+        try {
+          const payload = {
+            callingFrom: 'app',
+            userName: localStorage.getItem('userName') || '',
+            userPass: localStorage.getItem('userPwd') || '',
+            deviceStat: 'M',
+            orgId: localStorage.getItem('orgId') || '2'
+          };
+          const response = await getDoctorList(payload);
+          setDoctors(response);
+        } catch (error) {
+          console.error('Error fetching doctors:', error);
+        } finally {
+          setLoadingDoctors(false);
+        }
+      };
+      fetchDoctors();
+    }
+  }, [open]);
   const handleUserToggle = (userId: string) => {
     setSelectedUsers(selectedUsers.includes(userId)
       ? selectedUsers.filter(u => u !== userId)
       : [...selectedUsers, userId]);
   };
-  const handleShareClick = () => setExpanded(true);
   const handleShareDocuments = async () => {
     if (selectedUsers.length === 0) {
-      alert('Please select at least one doctor to share with');
+      setSnackbar({
+        open: true,
+        message: 'Please select at least one doctor to share with',
+        severity: 'error'
+      });
       return;
     }
 
@@ -249,25 +278,39 @@ function ShareDialog({ open, onClose, fileName, petName, documentId }: { open: b
       const response = await shareWithDoc(payload);
       
       if (response.status === 'Success') {
-        alert('Document shared successfully!');
-        setExpanded(false);
-        onClose();
+        setSnackbar({
+          open: true,
+          message: response.message || 'Your records have been shared',
+          severity: 'success'
+        });
+        // Reset selection and close after a short delay
+        setTimeout(() => {
+          setSelectedUsers([]);
+          onClose();
+        }, 1500);
       } else {
-        alert('Failed to share document: ' + response.message);
+        setSnackbar({
+          open: true,
+          message: response.message || 'Failed to share document',
+          severity: 'error'
+        });
       }
     } catch (error) {
       console.error('Error sharing document:', error);
-      alert('Error sharing document. Please try again.');
+      setSnackbar({
+        open: true,
+        message: 'Error sharing document. Please try again.',
+        severity: 'error'
+      });
     } finally {
       setIsSharing(false);
     }
   };
-  const handleClose = () => { setExpanded(false); onClose(); };
 
   return (
     <Dialog 
       open={open} 
-      onClose={handleClose} 
+      onClose={onClose} 
       maxWidth="md" 
       fullWidth
       PaperProps={{
@@ -297,73 +340,20 @@ function ShareDialog({ open, onClose, fileName, petName, documentId }: { open: b
             Pet: {petName}
           </Typography>
         </Box>
-        {expanded && (
-          <IconButton 
-            onClick={handleClose} 
-            sx={{ 
-              color: '#fff',
-              bgcolor: 'rgba(255,255,255,0.1)',
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-            }}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-        )}
+        <IconButton 
+          onClick={onClose} 
+          sx={{ 
+            color: '#fff',
+            bgcolor: 'rgba(255,255,255,0.1)',
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
+          }}
+        >
+          <ArrowBackIcon />
+        </IconButton>
       </Box>
 
-      {!expanded ? (
-        // Initial Actions
-        <Box sx={{ p: 4, display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center' }}>
-          <Typography variant="h6" fontWeight={600} sx={{ color: '#2c3e50', mb: 2 }}>
-            What would you like to do?
-          </Typography>
-          <Button
-            variant="outlined"
-            fullWidth
-            startIcon={<DownloadIcon />}
-            sx={{
-              borderColor: '#174a7c',
-              color: '#174a7c',
-              fontWeight: 600,
-              fontSize: '1rem',
-              borderRadius: 2,
-              py: 1.5,
-              px: 3,
-              '&:hover': { 
-                borderColor: '#103a61', 
-                color: '#103a61', 
-                bgcolor: '#f5faff' 
-              },
-            }}
-            onClick={handleClose}
-          >
-            Download Document
-          </Button>
-          <Button
-            variant="contained"
-            fullWidth
-            startIcon={<ShareOutlinedIcon sx={{ color: '#fff' }} />}
-            sx={{
-              bgcolor: '#174a7c',
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: '1rem',
-              borderRadius: 2,
-              py: 1.5,
-              px: 3,
-              '&:hover': { 
-                bgcolor: '#103a61',
-                boxShadow: '0 4px 12px rgba(23, 74, 124, 0.3)'
-              },
-            }}
-            onClick={handleShareClick}
-          >
-            Share with Others
-          </Button>
-        </Box>
-      ) : (
-        // Share Form
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '75vh' }}>
+      {/* Share Form */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '75vh' }}>
           {/* Search Section */}
           <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0', bgcolor: '#f8f9fa' }}>
             <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: '#2c3e50', fontSize: '0.9rem' }}>
@@ -443,59 +433,78 @@ function ShareDialog({ open, onClose, fileName, petName, documentId }: { open: b
             <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: '#2c3e50', fontSize: '0.9rem' }}>
               Select Recipients ({selectedUsers.length} selected)
             </Typography>
-            <TableContainer sx={{ 
-              border: '1px solid #e0e0e0', 
-              borderRadius: 1,
-              bgcolor: 'white',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.05)'
-            }}>
-              <Table size="small">
-                <TableHead sx={{ bgcolor: '#f7f9fc' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600, color: '#2c3e50', fontSize: '0.85rem', py: 1 }}>
-                      Name
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#2c3e50', fontSize: '0.85rem', py: 1 }}>
-                      Specialty
-                    </TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 600, color: '#2c3e50', fontSize: '0.85rem', py: 1 }}>
-                      Select
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {dummyUsers.map(user => (
-                    <TableRow 
-                      key={user.id}
-                      sx={{ 
-                        '&:hover': { bgcolor: 'rgba(23, 74, 124, 0.04)' },
-                        '&:last-child td': { borderBottom: 0 }
-                      }}
-                    >
-                      <TableCell sx={{ fontWeight: 500, color: '#2c3e50', fontSize: '0.85rem', py: 0.5 }}>
-                        {user.name}
+            {loadingDoctors ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                <CircularProgress sx={{ color: '#174a7c' }} />
+              </Box>
+            ) : (
+              <TableContainer sx={{ 
+                border: '1px solid #e0e0e0', 
+                borderRadius: 1,
+                bgcolor: 'white',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.05)'
+              }}>
+                <Table size="small">
+                  <TableHead sx={{ bgcolor: '#f7f9fc' }}>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 600, color: '#2c3e50', fontSize: '0.85rem', py: 1 }}>
+                        Name
                       </TableCell>
-                      <TableCell sx={{ color: '#666', fontSize: '0.8rem', py: 0.5 }}>
-                        {user.category}
+                      <TableCell sx={{ fontWeight: 600, color: '#2c3e50', fontSize: '0.85rem', py: 1 }}>
+                        Specialty
                       </TableCell>
-                      <TableCell align="center" sx={{ py: 0.5 }}>
-                        <Checkbox
-                          checked={selectedUsers.includes(user.id)}
-                          onChange={() => handleUserToggle(user.id)}
-                          size="small"
-                          sx={{
-                            color: '#174a7c',
-                            '&.Mui-checked': {
-                              color: '#174a7c',
-                            },
-                          }}
-                        />
+                      <TableCell align="center" sx={{ fontWeight: 600, color: '#2c3e50', fontSize: '0.85rem', py: 1 }}>
+                        Select
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {doctors
+                      .filter(doctor => {
+                        const nameMatch = !searchName || doctor.userName?.toLowerCase().includes(searchName.toLowerCase());
+                        const mobileMatch = !searchMobile || doctor.cellNumber?.includes(searchMobile);
+                        return nameMatch && mobileMatch;
+                      })
+                      .map(doctor => (
+                        <TableRow 
+                          key={doctor.userUid}
+                          sx={{ 
+                            '&:hover': { bgcolor: 'rgba(23, 74, 124, 0.04)' },
+                            '&:last-child td': { borderBottom: 0 }
+                          }}
+                        >
+                          <TableCell sx={{ fontWeight: 500, color: '#2c3e50', fontSize: '0.85rem', py: 0.5 }}>
+                            {doctor.userName}
+                          </TableCell>
+                          <TableCell sx={{ color: '#666', fontSize: '0.8rem', py: 0.5 }}>
+                            {doctor.specialty}
+                          </TableCell>
+                          <TableCell align="center" sx={{ py: 0.5 }}>
+                            <Checkbox
+                              checked={selectedUsers.includes(doctor.userUid.toString())}
+                              onChange={() => handleUserToggle(doctor.userUid.toString())}
+                              size="small"
+                              sx={{
+                                color: '#174a7c',
+                                '&.Mui-checked': {
+                                  color: '#174a7c',
+                                },
+                              }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    {doctors.length === 0 && !loadingDoctors && (
+                      <TableRow>
+                        <TableCell colSpan={3} align="center" sx={{ py: 3, color: '#999' }}>
+                          No doctors found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
           </Box>
 
           {/* Action Buttons */}
@@ -509,7 +518,7 @@ function ShareDialog({ open, onClose, fileName, petName, documentId }: { open: b
           }}>
             <Button
               variant="outlined"
-              onClick={handleClose}
+              onClick={onClose}
               sx={{
                 borderColor: '#dde2e7',
                 color: '#666',
@@ -555,7 +564,21 @@ function ShareDialog({ open, onClose, fileName, petName, documentId }: { open: b
                   </Button>
           </Box>
         </Box>
-      )}
+      
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Dialog>
   );
 }
@@ -1137,6 +1160,27 @@ const RecordsPage: React.FC = () => {
                         My Vet
                       </Typography>
                       <Box sx={{ flex: 1 }} />
+                      <IconButton 
+                        aria-label="download" 
+                        size="small" 
+                        sx={{ 
+                          color: '#174a7c', 
+                          mr: 0.5,
+                          '&:hover': {
+                            bgcolor: 'rgba(23, 74, 124, 0.1)'
+                          }
+                        }} 
+                        onClick={() => {
+                          if (doc.savedFileName) {
+                            const downloadUrl = `https://www.aptcarepet.com/provider/cprescription/${encodeURIComponent(doc.savedFileName)}`;
+                            window.open(downloadUrl, '_blank');
+                          } else {
+                            console.error('savedFileName not available for document:', doc.documentId);
+                          }
+                        }}
+                      >
+                        <DownloadIcon sx={{ fontSize: '1rem' }} />
+                      </IconButton>
                       <IconButton 
                         aria-label="share" 
                         size="small" 
