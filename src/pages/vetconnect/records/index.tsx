@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PrivateRoute from '@/components/PrivateRoute';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
 import Box from '@mui/material/Box';
@@ -607,6 +607,13 @@ const RecordsPage: React.FC = () => {
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [filteredDocuments, setFilteredDocuments] = useState<UploadedDocument[]>([]);
 
+  // Snackbar state
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
+
   // Fetch pet owners on component mount
   useEffect(() => {
     const fetchPetOwners = async () => {
@@ -661,45 +668,47 @@ const RecordsPage: React.FC = () => {
     }
   }, [selectedPetOwner]);
 
-  // Fetch documents when pet is selected
-  useEffect(() => {
-    if (selectedPet) {
-      const fetchDocuments = async () => {
-        setLoadingDocuments(true);
-        try {
-          const payload = {
-            userName: localStorage.getItem('userName') || '',
-            userPass: localStorage.getItem('userPwd') || '',
-            deviceStat: "M",
-            patientUid: selectedPet.patientUid.toString()
-          };
-          const response = await getUploadedDocuments(payload);
-          
-          // Handle different response formats
-          if (Array.isArray(response)) {
-            setDocuments(response);
-          } else if (response && response.status === 'notfound') {
-            // Handle "notfound" status response
-            console.log('No documents found:', response.message);
-            setDocuments([]);
-          } else {
-            // Fallback for unexpected response format
-            console.log('Unexpected response format:', response);
-            setDocuments([]);
-          }
-        } catch (error) {
-          console.error('Error fetching documents:', error);
-          setDocuments([]);
-        } finally {
-          setLoadingDocuments(false);
-        }
-      };
-
-      fetchDocuments();
-    } else {
+  // Function to fetch documents
+  const fetchDocuments = useCallback(async () => {
+    if (!selectedPet) {
       setDocuments([]);
+      return;
+    }
+    
+    setLoadingDocuments(true);
+    try {
+      const payload = {
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
+        deviceStat: "M",
+        patientUid: selectedPet.patientUid.toString()
+      };
+      const response = await getUploadedDocuments(payload);
+      
+      // Handle different response formats
+      if (Array.isArray(response)) {
+        setDocuments(response);
+      } else if (response && response.status === 'notfound') {
+        // Handle "notfound" status response
+        console.log('No documents found:', response.message);
+        setDocuments([]);
+      } else {
+        // Fallback for unexpected response format
+        console.log('Unexpected response format:', response);
+        setDocuments([]);
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+      setDocuments([]);
+    } finally {
+      setLoadingDocuments(false);
     }
   }, [selectedPet]);
+
+  // Fetch documents when pet is selected
+  useEffect(() => {
+    fetchDocuments();
+  }, [fetchDocuments]);
 
   // Filter documents based on selected category
   useEffect(() => {
@@ -758,7 +767,11 @@ const RecordsPage: React.FC = () => {
   };
   const handleConfirmDelete = async () => {
     if (!recordToDelete || !selectedPet) {
-      alert('Missing required information for deletion');
+      setSnackbar({
+        open: true,
+        message: 'Missing required information for deletion',
+        severity: 'error'
+      });
       return;
     }
 
@@ -776,28 +789,28 @@ const RecordsPage: React.FC = () => {
       const response = await removeDocument(payload);
       
       if (response.status === 'Success' || response.statusCode === '200') {
-        alert('Document removed successfully!');
+        setSnackbar({
+          open: true,
+          message: 'Document removed successfully!',
+          severity: 'success'
+        });
         // Refresh the documents list
-        if (selectedPet) {
-          const fetchPayload = {
-            userName: localStorage.getItem('userName') || '',
-            userPass: localStorage.getItem('userPwd') || '',
-            deviceStat: 'M',
-            patientUid: selectedPet.patientUid.toString()
-          };
-          const updatedDocuments = await getUploadedDocuments(fetchPayload);
-          if (Array.isArray(updatedDocuments)) {
-            setDocuments(updatedDocuments);
-          } else {
-            setDocuments([]);
-          }
-        }
+        fetchDocuments();
       } else {
-        alert('Failed to remove document: ' + response.message);
+        setSnackbar({
+          open: true,
+          message: `Failed to remove document: ${response.message || 'Unknown error'}`,
+          severity: 'error'
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error removing document:', error);
-      alert('Error removing document. Please try again.');
+      const errorMessage = error?.response?.data?.message || error?.message || 'Error removing document. Please try again.';
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: 'error'
+      });
     } finally {
       setIsDeleting(false);
       setOpenDeleteDialog(false);
@@ -1172,7 +1185,7 @@ const RecordsPage: React.FC = () => {
                         }} 
                         onClick={() => {
                           if (doc.savedFileName) {
-                            const downloadUrl = `https://www.aptcarepet.com/provider/cprescription/${encodeURIComponent(doc.savedFileName)}`;
+                            const downloadUrl = `https://www.aptcarepet.com/provider/cuploaded/${encodeURIComponent(doc.savedFileName)}`;
                             window.open(downloadUrl, '_blank');
                           } else {
                             console.error('savedFileName not available for document:', doc.documentId);
@@ -1221,6 +1234,7 @@ const RecordsPage: React.FC = () => {
             open={openAddDialog} 
             onClose={() => setOpenAddDialog(false)} 
             selectedPet={selectedPet}
+            onUploadSuccess={fetchDocuments}
           />
           <FilterDialog open={openFilterDialog} onClose={() => setOpenFilterDialog(false)} />
           <ShareDialog 
@@ -1259,6 +1273,22 @@ const RecordsPage: React.FC = () => {
               </Button>
             </DialogActions>
           </Dialog>
+
+          {/* Snackbar for notifications */}
+          <Snackbar
+            open={snackbar.open}
+            autoHideDuration={6000}
+            onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          >
+            <Alert
+              onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+              severity={snackbar.severity}
+              sx={{ width: '100%' }}
+            >
+              {snackbar.message}
+            </Alert>
+          </Snackbar>
         </Box>
       </AuthenticatedLayout>
     </PrivateRoute>

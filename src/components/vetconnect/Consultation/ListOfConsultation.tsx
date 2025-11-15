@@ -219,6 +219,12 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
     handleConsultationStarted(index, consultation, 'offline');
   };
 
+  const handleViewCompleted = (consultation: ConsultationItem) => {
+    // For completed consultations, just open the modal without calling API
+    setSelectedConsultation(consultation);
+    setOpenOnlinePopup(true);
+  };
+
   const handleCompleteConsultation = async (index: number, consultation: ConsultationItem) => {
     if (!consultation.patientMrn || !consultation.petOwnerUid || !consultation.patientUid || !consultation.appointmentId || !consultation.facilityId) {
       setSnackbar({
@@ -421,7 +427,25 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
               </Box>
             </Box>
             <Box sx={{ ml: 1.5, flexShrink: 0 }}>
-              {isArrived ? (
+              {isCompleted ? (
+                <Button
+                  variant="contained"
+                  onClick={() => handleViewCompleted(consultation)}
+                  sx={{
+                    bgcolor: "#757575",
+                    color: "#fff",
+                    fontWeight: 600,
+                    fontSize: '0.75rem',
+                    borderRadius: 1.5,
+                    py: 0.75,
+                    px: 2,
+                    whiteSpace: "nowrap",
+                    "&:hover": { bgcolor: "#616161" },
+                  }}
+                >
+                  VIEW
+                </Button>
+              ) : isArrived ? (
                 <Box
                   sx={{
                     display: "flex",
@@ -526,17 +550,22 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
           </IconButton>
         </DialogTitle>
         <DialogContent sx={{ overflowY: "auto", maxHeight: "80vh" }}>
-          {selectedConsultation && (
-            <ConsultationPopup 
-              consultation={selectedConsultation} 
-              onCompleteConsultation={(consultation) => {
-                const index = consultations.findIndex(c => c.appointmentId === consultation.appointmentId);
-                if (index !== -1) {
-                  handleCompleteConsultation(index, consultation);
-                }
-              }}
-            />
-          )}
+          {selectedConsultation && (() => {
+            const normalizedStatus = selectedConsultation.appointmentStatus?.toLowerCase();
+            const isCompleted = normalizedStatus === 'completed' || normalizedStatus === 'complete';
+            return (
+              <ConsultationPopup 
+                consultation={selectedConsultation} 
+                isCompleted={isCompleted}
+                onCompleteConsultation={(consultation) => {
+                  const index = consultations.findIndex(c => c.appointmentId === consultation.appointmentId);
+                  if (index !== -1) {
+                    handleCompleteConsultation(index, consultation);
+                  }
+                }}
+              />
+            );
+          })()}
         </DialogContent>
       </Dialog>
 

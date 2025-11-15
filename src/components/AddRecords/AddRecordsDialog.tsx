@@ -12,6 +12,8 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import Paper from '@mui/material/Paper';
 import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -27,6 +29,7 @@ interface AddRecordsDialogProps {
     patientUid: number;
     mrn: number;
   } | null;
+  onUploadSuccess?: () => void;
 }
 
 const documentTypes = [
@@ -40,7 +43,7 @@ const documentTypes = [
 
 const PRIMARY_COLOR = '#174a7c';
 
-const AddRecordsDialog: React.FC<AddRecordsDialogProps> = ({ open, onClose, selectedPet }) => {
+const AddRecordsDialog: React.FC<AddRecordsDialogProps> = ({ open, onClose, selectedPet, onUploadSuccess }) => {
   const [documentType, setDocumentType] = useState('');
   const [recordType, setRecordType] = useState('');
   const [docName, setDocName] = useState('');
@@ -50,6 +53,11 @@ const AddRecordsDialog: React.FC<AddRecordsDialogProps> = ({ open, onClose, sele
   const [documentTypes, setDocumentTypes] = useState<DocumentTypeResponse[]>([]);
   const [loadingDocumentTypes, setLoadingDocumentTypes] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+  }>({ open: false, message: '', severity: 'success' });
 
   // Fetch document types when dialog opens
   useEffect(() => {
@@ -94,7 +102,11 @@ const AddRecordsDialog: React.FC<AddRecordsDialogProps> = ({ open, onClose, sele
   const handleConfirm = async () => {
     // Validate required fields
     if (!recordType || !docName || !docDate || !file || !selectedPet) {
-      alert('Please fill in all required fields and select a file');
+      setSnackbar({
+        open: true,
+        message: 'Please fill in all required fields and select a file',
+        severity: 'warning'
+      });
       return;
     }
 
@@ -102,7 +114,11 @@ const AddRecordsDialog: React.FC<AddRecordsDialogProps> = ({ open, onClose, sele
     const userPass = localStorage.getItem('userPwd');
     
     if (!userName || !userPass) {
-      alert('User credentials not found. Please login again.');
+      setSnackbar({
+        open: true,
+        message: 'User credentials not found. Please login again.',
+        severity: 'error'
+      });
       return;
     }
 
@@ -133,20 +149,37 @@ const AddRecordsDialog: React.FC<AddRecordsDialogProps> = ({ open, onClose, sele
 
       const response = await uploadDocument(payload);
       
-      if (response.status === 'success') {
-        alert('Document uploaded successfully!');
+      // Check HTTP status code
+      if (response.status === 200) {
+        setSnackbar({
+          open: true,
+          message: 'Document uploaded successfully!',
+          severity: 'success'
+        });
         // Reset form
         setRecordType('');
         setDocName('');
         setDocDate(dayjs());
         setFile(null);
+        // Close modal and refresh list
         onClose();
+        // Call callback to refresh documents list
+        onUploadSuccess?.();
       } else {
-        alert('Failed to upload document: ' + response.message);
+        setSnackbar({
+          open: true,
+          message: `Failed to upload document: ${response.data?.message || 'Unknown error'}`,
+          severity: 'error'
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading document:', error);
-      alert('Error uploading document. Please try again.');
+      const errorMessage = error?.response?.data?.message || error?.message || 'Error uploading document. Please try again.';
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: 'error'
+      });
     } finally {
       setIsUploading(false);
     }
@@ -180,7 +213,7 @@ const AddRecordsDialog: React.FC<AddRecordsDialogProps> = ({ open, onClose, sele
         }}>
           <AddCircleOutlineIcon sx={{ fontSize: 28, mr: 2 }} />
           <Typography variant="h5" fontWeight={700}>
-            Add New Record
+            Add New Record 
           </Typography>
         </Box>
 
@@ -436,6 +469,22 @@ const AddRecordsDialog: React.FC<AddRecordsDialogProps> = ({ open, onClose, sele
           </Box>
         </Box>
       </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </LocalizationProvider>
   );
 };

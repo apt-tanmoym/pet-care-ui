@@ -51,11 +51,13 @@ interface ConsultationItem {
 interface ConsultationPopupProps {
   consultation: ConsultationItem;
   onCompleteConsultation?: (consultation: ConsultationItem) => void;
+  isCompleted?: boolean;
 }
 
 const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
   consultation,
   onCompleteConsultation,
+  isCompleted = false,
 }) => {
   const currentDate = new Date();
   const formattedDate = currentDate.toLocaleDateString("en-GB", {
@@ -259,10 +261,10 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
 
         const response = await uploadDocument(payload);
 
-        if (response.status === "Success") {
+        if (response.status === 200) {
           setSnackbar({
             open: true,
-            message: response.message || "Document uploaded successfully!",
+            message: response.data?.message || "Document uploaded successfully!",
             severity: "success"
           });
 
@@ -281,7 +283,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
         } else {
           setSnackbar({
             open: true,
-            message: response.message || "Failed to upload document",
+            message: response.data?.message || "Failed to upload document",
             severity: "error"
           });
         }
@@ -494,10 +496,10 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
 
         const response = await uploadDocument(payload);
 
-        if (response.status === "Success") {
+        if (response.status === 200) {
           setSnackbar({
             open: true,
-            message: response.message || "Document uploaded successfully!",
+            message: response.data?.message || "Document uploaded successfully!",
             severity: "success"
           });
 
@@ -697,6 +699,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
               <Button
                 variant="contained"
                 onClick={() => onCompleteConsultation?.(consultation)}
+                disabled={isCompleted}
                 sx={{
                   bgcolor: '#4CAF50',
                   color: '#fff',
@@ -708,6 +711,10 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
                 textTransform: 'none',
                   '&:hover': {
                     bgcolor: '#45a049',
+                  },
+                  '&:disabled': {
+                    bgcolor: '#ccc',
+                    color: '#999',
                   },
                 }}
               >

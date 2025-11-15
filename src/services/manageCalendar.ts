@@ -1129,7 +1129,7 @@ export interface UploadDocumentResponse {
   status: string;
 }
 
-export const uploadDocument = async (payload: UploadDocumentPayload): Promise<UploadDocumentResponse> => {
+export const uploadDocument = async (payload: UploadDocumentPayload): Promise<{ data: UploadDocumentResponse; status: number }> => {
   try {
     const formData = new FormData();
     formData.append('userName', payload.userName);
@@ -1142,13 +1142,17 @@ export const uploadDocument = async (payload: UploadDocumentPayload): Promise<Up
     formData.append('appointmentId', payload.appointmentId);
     formData.append('uploaded_file', payload.uploaded_file);
 
-    const { data } = await http.post<UploadDocumentResponse>('/uploaddocument', formData, {
+    const response = await http.post<UploadDocumentResponse>('/uploaddocument', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
-    return data;
-  } catch (error) {
+    return { data: response.data, status: response.status };
+  } catch (error: any) {
+    // If error has response, return it with status, otherwise throw
+    if (error.response) {
+      return { data: error.response.data, status: error.response.status };
+    }
     throw error;
   }
 };
