@@ -379,7 +379,7 @@ function VetConnectUserProfile() {
 			setExperienceData(newRows);
 		}
 	};
-
+	//need to refresh
 	const onSaveAddEdit = async () => {
 		console.log("hit");
 		const loginDetails = {
@@ -407,11 +407,12 @@ function VetConnectUserProfile() {
 					educationFromDt: formData?.startDate,
 					educationToDt: formData?.endDate,
 				};
+				console.log("Hittt");
 				saveDoctorEducation(data);
-				fetchDoctorProfileDetails();
 				setOpenSnackbar(true);
 				setSnackbarSeverity("success");
 				setSnackbarMessage("Details Saved Successfully");
+				setTimeout(() => fetchDoctorProfileDetails(), 1000);
 			} catch (error) {
 				console.log(error);
 				setOpenSnackbar(true);
@@ -435,11 +436,13 @@ function VetConnectUserProfile() {
 					experienceFromDt: formData?.startDate,
 					experienceToDt: formData?.endDate,
 				};
+				console.log("Hittt111");
 				saveDoctorExperience(data);
-				fetchDoctorProfileDetails();
+
 				setOpenSnackbar(true);
 				setSnackbarSeverity("success");
 				setSnackbarMessage("Details Saved Successfully");
+				setTimeout(() => fetchDoctorProfileDetails(), 1000);
 			} catch (error) {
 				console.log(error);
 				setOpenSnackbar(true);

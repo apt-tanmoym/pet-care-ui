@@ -79,6 +79,11 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
 
 	// selected pet (object). default to first pet if available
 	const [selectedPet, setSelectedPet] = useState<any>(petList ?? null);
+	console.log("petlist");
+	console.log(selectedPet);
+	const [selectedPetId, setSelectedPetId] = useState<any>(
+		petList.patientUid ?? null
+	);
 
 	// training toggle (local UI state)
 	const [checked, setChecked] = useState<boolean>(
@@ -228,7 +233,10 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
 
 	const handlePetSelectChange = async (e: any) => {
 		const petId = e.target.value;
-
+		setSelectedPetId(petId);
+		console.log("Change Dropdown");
+		console.log(petId);
+		//test
 		const response = await fecthPetDetails(petId);
 		if (response) {
 			setSelectedPet(response);
@@ -398,7 +406,15 @@ const PatientDetails: React.FC<PatientDetailsProps> = ({
 			setopenDocumentDialoge(false);
 			setOpenSnackbar(true);
 			setSnackbarSeverity("success");
-			setSnackbarMessage("Added Successfully"); // Close dialog on success
+			// Close dialog on success
+			setTimeout(async function () {
+				const response = await fecthPetDetails(selectedPetId);
+				if (response) {
+					setSelectedPet(response);
+					setSnackbarMessage("Added Successfully");
+				}
+			}, 1000);
+			//need to refresh
 		} catch (err) {
 			setSnackbarSeverity("error");
 			setSnackbarMessage("Error Occured"); // Close dialog on success
