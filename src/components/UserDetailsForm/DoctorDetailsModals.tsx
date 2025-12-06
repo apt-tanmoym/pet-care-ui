@@ -289,15 +289,17 @@ const DoctorDetailsModal: React.FC<Props> = ({
 			try {
 				const formData = new FormData();
 
-				// Common fields
-				if (councilId) {
-					formData.append("councilId", councilId);
-				}
-				if (yearOfReg) {
-					formData.append("yearReg", yearOfReg);
-				}
-				if (regNo) {
-					formData.append("registrationNumber", regNo);
+				// Common fields - Only include registration fields during add mode, not edit
+				if (type === "add") {
+					if (councilId) {
+						formData.append("councilId", councilId);
+					}
+					if (yearOfReg) {
+						formData.append("yearReg", yearOfReg);
+					}
+					if (regNo) {
+						formData.append("registrationNumber", regNo);
+					}
 				}
 				formData.append("userName", localStorage.getItem("userName") || "");
 				formData.append("userPwd", localStorage.getItem("userPwd") || "");
@@ -428,6 +430,7 @@ const DoctorDetailsModal: React.FC<Props> = ({
 						<Select
 							value={councilId}
 							label='Medical Council'
+							disabled={type === "edit"}
 							onChange={(e) => setCouncilId(e.target.value)}>
 							<MenuItem value=''>Select</MenuItem>
 							{councilList.map((c) => (
@@ -449,6 +452,7 @@ const DoctorDetailsModal: React.FC<Props> = ({
 						fullWidth
 						required
 						type='number'
+						disabled={type === "edit"}
 						error={!!yearError}
 						helperText={yearError}
 					/>
@@ -458,6 +462,7 @@ const DoctorDetailsModal: React.FC<Props> = ({
 						onChange={(e) => setRegNo(e.target.value)}
 						fullWidth
 						required
+						disabled={type === "edit"}
 						error={!!regNoError}
 						helperText={regNoError}
 					/>
