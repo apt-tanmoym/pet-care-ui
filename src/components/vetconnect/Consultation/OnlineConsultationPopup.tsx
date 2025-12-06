@@ -537,7 +537,7 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
         } else {
           setSnackbar({
             open: true,
-            message: response.message || "Failed to upload document",
+            message: response.data?.message || "Failed to upload document",
             severity: "error"
           });
         }

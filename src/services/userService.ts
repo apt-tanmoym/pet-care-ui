@@ -275,3 +275,269 @@ export const getDoctorList = async (payload: GetDoctorListPayload): Promise<Doct
     throw error;
   }
 };
+
+// Interface for assigned facilities payload
+interface GetAssignedFacilitiesPayload {
+  callingFrom: string;
+  userName: string;
+  userPass: string;
+  orgId: string;
+  loggedInFacilityId: string;
+  orgUserId: string;
+}
+
+// Interface for assigned facilities response
+export interface AssignedFacility {
+  facilityId: number;
+  facilityName: string;
+  orgId: number;
+  [key: string]: any; // Allow other properties from API response
+}
+
+// Get assigned facilities for a user
+export const getAssignedFacilities = async (orgUserId: string): Promise<AssignedFacility[]> => {
+  const payload: GetAssignedFacilitiesPayload = {
+    callingFrom: 'web',
+    userName: localStorage.getItem('userName') || '',
+    userPass: localStorage.getItem('userPwd') || '',
+    orgId: localStorage.getItem('orgId') || '',
+    loggedInFacilityId: localStorage.getItem('loggedinFacilityId') || '1',
+    orgUserId,
+  };
+
+  try {
+    const response = await http.post<AssignedFacility[]>('/getassignedfacilities', payload);
+    // Ensure response.data is an array
+    if (Array.isArray(response.data)) {
+      return response.data;
+    } else if (response.data && typeof response.data === 'object') {
+      // If response.data is an object, try to extract array from it
+      console.warn('API returned non-array response:', response.data);
+      return [];
+    }
+    return [];
+  } catch (error) {
+    console.error('Error fetching assigned facilities:', error);
+    throw error;
+  }
+};
+
+// Interface for facility user role mapping payload
+interface GetOrgFacilityUserRoleMappingPayload {
+  callingFrom: string;
+  userName: string;
+  userPass: string;
+  orgId: string;
+  loggedInFacilityId: string;
+  orgUserId: string;
+}
+
+// Interface for facility user role mapping response
+export interface FacilityUserRoleMapping {
+  roleName: string;
+  roleGroupName: string;
+  roleId: number;
+  facilityId: number;
+  orgUserId: number;
+  activeInd: number;
+  [key: string]: any; // Allow other properties from API response
+}
+
+// Get organization facility user role mapping
+export const getOrgFacilityUserRoleMapping = async (orgUserId: string): Promise<FacilityUserRoleMapping[]> => {
+  const payload: GetOrgFacilityUserRoleMappingPayload = {
+    callingFrom: 'web',
+    userName: localStorage.getItem('userName') || '',
+    userPass: localStorage.getItem('userPwd') || '',
+    orgId: localStorage.getItem('orgId') || '',
+    loggedInFacilityId: localStorage.getItem('loggedinFacilityId') || '1',
+    orgUserId,
+  };
+
+  try {
+    const response = await http.post<FacilityUserRoleMapping[]>('/getorgfacilityuserrolemapping', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching facility user role mapping:', error);
+    throw error;
+  }
+};
+
+// Interface for user facility privilege mapping payload
+interface GetOrgUserFacilityPrivilegeMappingPayload {
+  callingFrom: string;
+  userName: string;
+  userPass: string;
+  orgId: string;
+  loggedInFacilityId: string;
+  orgUserId: string;
+}
+
+// Interface for user facility privilege mapping response
+export interface UserFacilityPrivilegeMapping {
+  id: number;
+  privilegeId: number;
+  parentId: number;
+  facilityId: number;
+  menuName: string;
+  displayName: string | null;
+  menuAction: string | null;
+  facilityName: string | null;
+}
+
+// Get organization user facility privilege mapping
+export const getOrgUserFacilityPrivilegeMapping = async (orgUserId: string): Promise<UserFacilityPrivilegeMapping[]> => {
+  const payload: GetOrgUserFacilityPrivilegeMappingPayload = {
+    callingFrom: 'web',
+    userName: localStorage.getItem('userName') || '',
+    userPass: localStorage.getItem('userPwd') || '',
+    orgId: localStorage.getItem('orgId') || '',
+    loggedInFacilityId: localStorage.getItem('loggedinFacilityId') || '1',
+    orgUserId,
+  };
+
+  try {
+    const response = await http.post<UserFacilityPrivilegeMapping[]>('/getorguserfacilityprivilegemapping', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching user facility privilege mapping:', error);
+    throw error;
+  }
+};
+
+// Interface for all roles of facility payload
+interface GetAllRolesOfFacilityPayload {
+  userName: string;
+  userPass: string;
+  deviceStat: string;
+  callingFrom: string;
+  orgId: string;
+  facilityId: string;
+  isDoctor: string; // '0' or '1'
+}
+
+// Interface for all roles of facility response
+export interface FacilityRole {
+  roleName: string;
+  orgRoleGroup: string | null;
+  globalRoleGroup: string;
+  orgRoleId: number;
+  globalRoleGroupId: number;
+  orgId: number;
+  activeInd: number;
+}
+
+// Get all roles of facility
+export const getAllRolesOfFacility = async (facilityId: string, isDoctor: boolean): Promise<FacilityRole[]> => {
+  const payload: GetAllRolesOfFacilityPayload = {
+    userName: localStorage.getItem('userName') || '',
+    userPass: localStorage.getItem('userPwd') || '',
+    deviceStat: 'M',
+    callingFrom: 'web',
+    orgId: localStorage.getItem('orgId') || '',
+    facilityId,
+    isDoctor: isDoctor ? '1' : '0',
+  };
+
+  try {
+    const response = await http.post<FacilityRole[]>('/getallrolesoffacility', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching all roles of facility:', error);
+    throw error;
+  }
+};
+
+// Interface for all privileges of role in org payload
+interface GetAllPrivsOfRoleInOrgPayload {
+  userName: string;
+  userPass: string;
+  deviceStat: string;
+  callingFrom: string;
+  orgId: string;
+  facilityId: string;
+  roleIds: string; // Comma-separated role IDs like "1,4,5"
+}
+
+// Interface for all privileges of role in org response (same structure as UserFacilityPrivilegeMapping)
+export interface RolePrivilege {
+  id: number;
+  privilegeId: number;
+  parentId: number;
+  facilityId: number;
+  menuName: string;
+  displayName: string | null;
+  menuAction: string | null;
+  facilityName: string | null;
+}
+
+// Get all privileges of role in org
+export const getAllPrivsOfRoleInOrg = async (facilityId: string, roleIds: number[]): Promise<RolePrivilege[]> => {
+  const payload: GetAllPrivsOfRoleInOrgPayload = {
+    userName: localStorage.getItem('userName') || '',
+    userPass: localStorage.getItem('userPwd') || '',
+    deviceStat: 'M',
+    callingFrom: 'web',
+    orgId: localStorage.getItem('orgId') || '',
+    facilityId,
+    roleIds: roleIds.join(','), // Convert array to comma-separated string
+  };
+
+  try {
+    const response = await http.post<RolePrivilege[]>('/getallprivsofroleinorg', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching all privileges of role in org:', error);
+    throw error;
+  }
+};
+
+// Interface for save user privileges payload
+interface SaveUserPrivilegesPayload {
+  callingFrom: string;
+  callMode: string; // 'add' or 'edit'
+  userName: string;
+  userPass: string;
+  orgId: string;
+  loggedInFacilityId: string;
+  orgUserId: string;
+  facilityIds: string; // Comma-separated facility IDs
+  facilityRoleIds: string; // Comma-separated format: "facilityId_roleId"
+  facilityPrivIds: string; // Comma-separated format: "facilityId_privilegeId"
+}
+
+// Interface for save user privileges response
+export interface SaveUserPrivilegesResponse {
+  message: string;
+  status?: string;
+}
+
+// Save user privileges
+export const saveUserPrivileges = async (
+  orgUserId: string,
+  facilityIds: number[],
+  facilityRoleIds: Array<{ facilityId: number; roleId: number }>,
+  facilityPrivIds: Array<{ facilityId: number; privilegeId: number }>,
+  callMode: 'add' | 'edit' = 'edit'
+): Promise<SaveUserPrivilegesResponse> => {
+  const payload: SaveUserPrivilegesPayload = {
+    callingFrom: 'web',
+    callMode,
+    userName: localStorage.getItem('userName') || '',
+    userPass: localStorage.getItem('userPwd') || '',
+    orgId: localStorage.getItem('orgId') || '',
+    loggedInFacilityId: localStorage.getItem('loggedinFacilityId') || '1',
+    orgUserId,
+    facilityIds: facilityIds.join(','),
+    facilityRoleIds: facilityRoleIds.map(fr => `${fr.facilityId}_${fr.roleId}`).join(','),
+    facilityPrivIds: facilityPrivIds.map(fp => `${fp.facilityId}_${fp.privilegeId}`).join(','),
+  };
+
+  try {
+    const response = await http.post<SaveUserPrivilegesResponse>('/saveuserprivileges', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error saving user privileges:', error);
+    throw error;
+  }
+};

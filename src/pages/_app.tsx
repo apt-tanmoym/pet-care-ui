@@ -9,6 +9,7 @@ import createEmotionCache from "@/lib/createEmotionCache";
 import { AuthProvider } from "@/common/context/AuthContext";
 import BaseLayout from "@/components/BaseLayout";
 import Loader from "@/components/Loader";
+import { LoaderProvider } from "@/components/Loader/LoaderContext";
 import 'react-toastify/dist/ReactToastify.css';
 import { ConfigProvider } from 'antd';
 import '@/config/antd';
@@ -25,11 +26,14 @@ export default function App({ Component, pageProps }: AppProps) {
     <ConfigProvider>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <BaseLayout>
-          <AuthProvider>
-            <Component {...pageProps} />
-          </AuthProvider>
-        </BaseLayout>
+        <LoaderProvider>
+          <BaseLayout>
+            <AuthProvider>
+              <Component {...pageProps} />
+            </AuthProvider>
+          </BaseLayout>
+          <Loader />
+        </LoaderProvider>
       </ThemeProvider>
     </ConfigProvider>
   );

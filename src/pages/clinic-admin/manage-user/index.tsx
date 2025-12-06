@@ -24,7 +24,7 @@ const ManageUsersPage = () => {
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'assign' | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [privilegeModalOpen, setPrivilegeModalOpen] = useState(false);
-  const [privilegeUser, setPrivilegeUser] = useState<{ id: number; firstName: string; lastName: string; image: string } | null>(null);
+  const [privilegeUser, setPrivilegeUser] = useState<{ id: number; firstName: string; lastName: string; image: string; isDoctor?: number } | null>(null);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
@@ -161,6 +161,7 @@ const ManageUsersPage = () => {
               firstName: user.firstName || user.userNameWithTitle?.split(' ')[1] || '',
               lastName: user.lastName || user.userNameWithTitle?.split(' ').slice(2).join(' ') || '',
               image: user.imageFilePath || 'https://via.placeholder.com/50',
+              isDoctor: user.isDoctor,
             })}
           />
         </>
@@ -221,7 +222,7 @@ const ManageUsersPage = () => {
     }
   };
 
-  const handleAssignClick = (user: { id: number; firstName: string; lastName: string; image: string }) => {
+  const handleAssignClick = (user: { id: number; firstName: string; lastName: string; image: string; isDoctor?: number }) => {
     setPrivilegeUser(user);
     setPrivilegeModalOpen(true);
   };
