@@ -87,8 +87,8 @@ const PaymentCollection: React.FC<PaymentCollectionProps> = ({
 		userName: localStorage.getItem("userName") || "",
 		userPass: localStorage.getItem("userPwd") || "",
 		orgId: localStorage.getItem("orgId") || "",
-		//loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "1",
-		loggedInFacilityId: "1",
+		loggedInFacilityId: localStorage.getItem("loggedinFacilityId"),
+		//loggedInFacilityId: "1",
 	};
 
 	const handleCloseSnackbar = () => {
@@ -139,15 +139,12 @@ const PaymentCollection: React.FC<PaymentCollectionProps> = ({
 		{ id: "action", label: "Action" },
 	];
 
-	const handleViewClick = (payment: any) => {
-		const payload = {
-			...basePayload,
-			invoiceId: payment.invoiceId,
-		};
-		//	setInvoiceId(payment.invoiceId);
-		fetchInvoiceDueCharges(payload);
-		//setViewData(payment);
-		//setOpenDialog(true);
+	const handleViewClick = (filePath: any) => {
+		const BASE_URL = "https://www.aptcarepet.com/provider";
+		if (filePath) {
+			const fullUrl = `${BASE_URL}/${filePath}`;
+			window.open(fullUrl, "_blank");
+		}
 	};
 
 	const handleCollectClick = (payment: any) => {
@@ -430,7 +427,7 @@ const PaymentCollection: React.FC<PaymentCollectionProps> = ({
 								text='Print Invoice'
 								icon={<ReceiptLongIcon />}
 								color='primary'
-								onClick={() => handleViewClick(payment)}
+								onClick={() => handleViewClick(payment.pdfFileName)}
 							/>
 							<TableLinkButton
 								text='Collect Payment'

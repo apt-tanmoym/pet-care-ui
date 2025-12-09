@@ -17,10 +17,12 @@ import {
 	getPatientlistWithdueCharges,
 	getPatientPendingCharges,
 	getRevisedDiscount,
+	addInvoice,
 } from "@/services/generateInvoiceService";
 import { format, isValid } from "date-fns";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import Message from "../common/Message";
 
 // Define interface for invoice data
 interface Invoice {
@@ -33,38 +35,6 @@ interface Invoice {
 	totalDueAmount: number;
 }
 
-// Sample data for the table
-const initialInvoices: Invoice[] = [
-	{
-		id: 1,
-		ownerFirstName: "John",
-		ownerLastName: "Smith",
-		petName: "Buddy",
-		mrn: "MRN12345",
-		encounterDate: "2025-05-01",
-		totalDueAmount: 150.0,
-	},
-	{
-		id: 2,
-		ownerFirstName: "Emma",
-		ownerLastName: "Johnson",
-		petName: "Luna",
-		mrn: "MRN67890",
-		encounterDate: "2025-05-10",
-		totalDueAmount: 200.0,
-	},
-	{
-		id: 3,
-		ownerFirstName: "Michael",
-		ownerLastName: "Brown",
-		petName: "Max",
-		mrn: "MRN54321",
-		encounterDate: "2025-05-15",
-		totalDueAmount: 175.0,
-	},
-];
-
-// Props for the GenerateInvoice component
 interface GenerateInvoiceProps {
 	onDataUpdate?: (invoices: Invoice[]) => void;
 }
@@ -74,48 +44,65 @@ const GenerateInvoice: React.FC<GenerateInvoiceProps> = ({ onDataUpdate }) => {
 	const [openDialog, setOpenDialog] = useState<boolean>(false);
 	const [viewData, setViewData] = useState<any>(null);
 	const [rowData, setRowData] = useState<any>(null);
-	//const [invoiceDate, setInvoiceDate] = useState<string>(formattedDate);
-	const [quantity, setQuantity] = useState<number>(1); // Default quantity
-	const [revisedValuePerUnit, setRevisedValuePerUnit] = useState<number>(0); // Default
-	// revised value
-	const [taxes, setTaxes] = useState<number>(0);
 	const [invoiceDate, setInvoiceDate] = useState<Date | null>(new Date());
+	const [doctorName, setDoctorName] = useState("");
+	const [encounterDate, setEncounterDate] = useState("");
 
-	const [gst, setGst] = useState<number>(0);
-	const [finalValue, setFinalValue] = useState<number>(0);
-	const [discountAmount, setDiscountAmount] = useState<number>(0);
-	// Format for display as dd/mm/yyyy
+	// --- Per-row states ---
+	const [quantities, setQuantities] = useState<any>({});
+	const [revisedValues, setRevisedValues] = useState<any>({});
+	const [taxValues, setTaxValues] = useState<any>({});
+	const [gstValues, setGstValues] = useState<any>({});
+	const [showGstValues, setShowGstValues] = useState<any>(0);
+	const [totalValues, setTotalValues] = useState<any>({});
+	const [showTotalValues, setShowTotalValues] = useState<any>(0);
+	const [discountValues, setDiscountValues] = useState<any>({});
+	const [showDiscountValues, setShowDiscountValues] = useState<any>(0);
+
+	const [openSnackbar, setOpenSnackbar] = useState(false);
+	const [snackbarMessage, setSnackbarMessage] = useState("");
+	const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">(
+		"success"
+	);
+
+	const handleCloseSnackbar = () => {
+		setOpenSnackbar(false);
+	};
+
 	const formattedDate =
 		invoiceDate && isValid(invoiceDate)
 			? format(invoiceDate, "dd/MM/yyyy")
 			: "";
+
+	const formatDate = (dateString: any) => {
+		const date = new Date(dateString);
+
+		const day = String(date.getDate()).padStart(2, "0");
+		const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-based
+		const year = date.getFullYear();
+
+		return `${day}/${month}/${year}`;
+	};
+
 	const handleDateChange = (newValue: Date | null) => {
 		setInvoiceDate(newValue);
 	};
-
-	/*  React.useEffect(() => {
-    if (onDataUpdate) {
-      onDataUpdate(invoices);
-    }
-  }, [invoices, onDataUpdate]); */
 
 	const basePayload = {
 		callingFrom: "web",
 		userName: localStorage.getItem("userName") || "",
 		userPass: localStorage.getItem("userPwd") || "",
 		orgId: localStorage.getItem("orgId") || "",
-		loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+		loggedInFacilityId: localStorage.getItem("loggedinFacilityId"),
+		//loggedInFacilityId: 1,
 	};
 
 	const fetchWithdrawCharges = async () => {
 		try {
 			const response = await getPatientlistWithdueCharges(basePayload);
-			const data: any = await response;
-			setInvoices(data);
+			setInvoices(await response);
 		} catch (error: any) {
 			console.log(error);
-			/*  setSnackbarMessage(error?.response?.data?.message || "Server Error");
-        setOpenSnackbar(true); */
 		}
 	};
 
@@ -135,7 +122,6 @@ const GenerateInvoice: React.FC<GenerateInvoiceProps> = ({ onDataUpdate }) => {
 
 	const handleGenerateClick = async (invoice: any) => {
 		setRowData(invoice);
-		console.log(formattedDate);
 		setInvoiceDate(new Date());
 		const payload = {
 			...basePayload,
@@ -143,13 +129,32 @@ const GenerateInvoice: React.FC<GenerateInvoiceProps> = ({ onDataUpdate }) => {
 			appointmentId: invoice.appointmentId,
 		};
 		const response = await getPatientPendingCharges(payload);
-		setQuantity(response[0].quantity);
-		console.log(response);
 		setViewData(response);
-		setRevisedValuePerUnit(response[0].chargeItemRate);
-		setTaxes(response[0].taxPercentage);
+
+		response.forEach((item) => {
+			if (item.doctorName) setDoctorName(item.doctorName);
+			if (item.encounterDate) setEncounterDate(item.encounterDate);
+		});
+
+		// Initialize per-row states
+		const rowId = response[0].apOrgChargeItemId;
+		setQuantities({ [rowId]: response[0].quantity });
+		setRevisedValues({ [rowId]: response[0].chargeItemRate });
+		setTaxValues({ [rowId]: response[0].taxPercentage });
+		const totalCharge = response.reduce(
+			(acc: any, item: any) => acc + (item.chargeAmount || 0),
+			0
+		);
+
+		const totalTax = response.reduce(
+			(acc: any, item: any) => acc + (item.taxAmount || 0),
+			0
+		);
+		setShowGstValues(totalTax);
+		console.log(totalCharge);
+		setShowTotalValues(totalCharge);
+
 		setOpenDialog(true);
-		//setData();
 	};
 
 	const handleClose = () => {
@@ -157,37 +162,121 @@ const GenerateInvoice: React.FC<GenerateInvoiceProps> = ({ onDataUpdate }) => {
 		setViewData(null);
 	};
 
-	const handleGenerate = () => {
+	/* const handleGenerate = () => {
 		window.print();
 		handleClose();
-	};
+	}; */
 
-	const setData = () => {
-		const gstAmount = (revisedValuePerUnit * quantity * taxes) / 100;
-		setGst(gstAmount);
-		const totalValue = revisedValuePerUnit * quantity + gstAmount;
-		setFinalValue(totalValue);
-		getPendingCharge(revisedValuePerUnit, quantity);
-	};
-
-	const getPendingCharge = async (revisedValuePerUnit: any, quantiy: any) => {
-		const payload = {
+	const handleGenerate = async () => {
+		//window.print();
+		const invoiceDetails = viewData.map((row: any) => {
+			return {
+				chargeId: row.chargeId,
+				revisedRate: revisedValues[row.apOrgChargeItemId] ?? row.chargeItemRate,
+				quantity: quantities[row.apOrgChargeItemId] ?? row.quantity,
+				taxPercentage: taxValues[row.apOrgChargeItemId] ?? row.taxPercentage,
+			};
+		});
+		console.log(invoiceDetails);
+		const payloadObj = {
 			...basePayload,
-			revisedRate: revisedValuePerUnit,
-			quantity: quantiy,
-			refWith: "Consultation",
-			chargeId: viewData[0].chargeId,
+			mrn: rowData.mrn,
+			appointmentId: rowData.appointmentId,
+			invDate: formatDate(invoiceDate),
+			totalCharge: showTotalValues,
+			totalDiscount: showDiscountValues,
+			totalTax: showGstValues,
+			netAmountPayble: showTotalValues + showGstValues - showDiscountValues,
+			invoiceDetails: invoiceDetails,
 		};
-		const response = await getRevisedDiscount(payload);
-		setDiscountAmount(response?.discountAmount);
+		try {
+			const response = await addInvoice(payloadObj);
+
+			setSnackbarMessage(
+				response?.status ? response?.status : "Invoice generated successfully!"
+			);
+			setSnackbarSeverity("success");
+			setOpenSnackbar(true);
+			fetchWithdrawCharges();
+		} catch (error) {
+			setSnackbarMessage("Some error is there");
+			setSnackbarSeverity("error");
+			setOpenSnackbar(true);
+		}
+
+		handleClose();
+	};
+	// --- Update functions for each input ---
+	const updateQuantity = (id: number, value: number) => {
+		setQuantities((prev: any) => ({ ...prev, [id]: value }));
+	};
+
+	const updateRevisedValue = (id: number, value: number) => {
+		setRevisedValues((prev: any) => ({ ...prev, [id]: value }));
+	};
+
+	const updateTaxes = (id: number, value: number) => {
+		setTaxValues((prev: any) => ({ ...prev, [id]: value }));
+	};
+
+	// --- setData function per row ---
+	const setData = async (row: any) => {
+		const rowId = row.apOrgChargeItemId;
+		const quantity = quantities[rowId] ?? 1;
+		const revisedRate = revisedValues[rowId] ?? row.chargeItemRate;
+		const taxPercent = taxValues[rowId] ?? row.taxPercentage;
+
+		const gstAmount = (revisedRate * quantity * taxPercent) / 100;
+		const totalAmount = revisedRate * quantity + gstAmount;
+		console.log(gstAmount);
+		const totalCharge = viewData.reduce((acc: number, item: any) => {
+			const rowId = item.apOrgChargeItemId;
+			const quantity = quantities[rowId] ?? item.quantity;
+			const revisedRate = revisedValues[rowId] ?? item.chargeItemRate;
+			const taxPercent = taxValues[rowId] ?? item.taxPercentage;
+
+			//const gstAmount = (revisedRate * quantity * taxPercent) / 100;
+			const totalAmount = revisedRate * quantity;
+
+			return acc + totalAmount;
+		}, 0);
+
+		const totalTax = viewData.reduce((acc: number, item: any) => {
+			const rowId = item.apOrgChargeItemId;
+			const quantity = quantities[rowId] ?? item.quantity;
+			const revisedRate = revisedValues[rowId] ?? item.chargeItemRate;
+			const taxPercent = taxValues[rowId] ?? item.taxPercentage;
+
+			const gstAmount = (revisedRate * quantity * taxPercent) / 100;
+
+			return acc + gstAmount;
+		}, 0);
+
+		setShowGstValues(totalTax);
+		setShowTotalValues(totalCharge);
+		setGstValues((prev: any) => ({ ...prev, [rowId]: gstAmount }));
+		setTotalValues((prev: any) => ({ ...prev, [rowId]: totalAmount }));
+
+		// Call discount API
+		try {
+			const payload = {
+				...basePayload,
+				revisedRate: revisedRate,
+				quantity: quantity,
+				refWith: "Consultation",
+				chargeId: row.chargeId,
+			};
+			const response = await getRevisedDiscount(payload);
+			const discountAmount = response?.discountAmount ?? 0;
+			setShowDiscountValues(discountAmount);
+			setDiscountValues((prev: any) => ({ ...prev, [rowId]: discountAmount }));
+		} catch (err) {
+			console.error("Error fetching discount:", err);
+		}
 	};
 
 	const renderInvoiceDetails = (invoice: any) => {
-		//const valuePerUnit = ; // Fixed as per the image
-		const currentPaymentPercentage = 100.0; // Fixed as per the image
-		/* const paymentDue =
-			(quantity * valuePerUnit * currentPaymentPercentage) / 100; */
-		//const totalValue = quantity * (valuePerUnit - revisedValuePerUnit);
+		const rowId = invoice[0].apOrgChargeItemId;
 
 		return (
 			<Box sx={{ p: 3 }}>
@@ -198,39 +287,28 @@ const GenerateInvoice: React.FC<GenerateInvoiceProps> = ({ onDataUpdate }) => {
 					sx={{ fontWeight: "bold" }}>
 					INVOICE DETAILS
 				</Typography>
-				<Box
-					sx={{
-						display: "flex",
-						justifyContent: "space-between",
-						mb: 2,
-						alignItems: "center",
-					}}>
+
+				<Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
 					<Typography sx={{ flex: 1, fontWeight: "bold" }}>
 						Patient Name:{" "}
 						<span style={{ fontWeight: "normal" }}>{rowData.patientName}</span>
 					</Typography>
 					<Typography sx={{ flex: 1, fontWeight: "bold", textAlign: "center" }}>
 						Physician Name:{" "}
-						<span style={{ fontWeight: "normal" }}>
-							{invoice[0]?.doctorName}
-						</span>
+						<span style={{ fontWeight: "normal" }}>{doctorName}</span>
 					</Typography>
 					<Typography sx={{ flex: 1, fontWeight: "bold", textAlign: "right" }}>
 						Encounter Date:{" "}
-						<span style={{ fontWeight: "normal" }}>
-							{rowData?.encounterDate
-								? rowData?.encounterDate
-								: rowData?.transactionDate}
-						</span>
+						<span style={{ fontWeight: "normal" }}>{encounterDate}</span>
 					</Typography>
 				</Box>
+
 				<Box
 					sx={{
 						display: "flex",
 						justifyContent: "flex-start",
 						mb: 2,
 						width: 250,
-						alignItems: "center",
 					}}>
 					<LocalizationProvider dateAdapter={AdapterDateFns}>
 						<DatePicker
@@ -239,201 +317,155 @@ const GenerateInvoice: React.FC<GenerateInvoiceProps> = ({ onDataUpdate }) => {
 							onChange={handleDateChange}
 							format='dd/MM/yyyy'
 							slotProps={{
-								textField: {
-									fullWidth: true,
-									size: "small",
-									//helperText: formattedDate ? `Selected: ${formattedDate}` : "",
-								},
+								textField: { fullWidth: true, size: "small" },
 							}}
 						/>
 					</LocalizationProvider>
 				</Box>
+
 				<Table sx={{ mb: 2, borderCollapse: "collapse" }}>
 					<TableHead>
 						<TableRow sx={{ backgroundColor: "#e0e0e0" }}>
-							<TableCell
-								sx={{
-									fontWeight: "bold",
-									border: "1px solid #ccc",
-									padding: "8px",
-								}}>
-								ITEM
-							</TableCell>
-							<TableCell
-								sx={{
-									fontWeight: "bold",
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								QUANTITY
-							</TableCell>
-							<TableCell
-								sx={{
-									fontWeight: "bold",
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								VALUE PER UNIT
-							</TableCell>
-							<TableCell
-								sx={{
-									fontWeight: "bold",
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								CURRENT PAYMENT %
-							</TableCell>
-							<TableCell
-								sx={{
-									fontWeight: "bold",
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								PAYMENT DUE
-							</TableCell>
-							<TableCell
-								sx={{
-									fontWeight: "bold",
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								REVISED VALUE PER UNIT
-							</TableCell>
-							<TableCell
-								sx={{
-									fontWeight: "bold",
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								GST or Other Tax %
-							</TableCell>
-							<TableCell
-								sx={{
-									fontWeight: "bold",
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								GST or Other Tax Amount
-							</TableCell>
-							<TableCell
-								sx={{
-									fontWeight: "bold",
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								TOTAL VALUE
-							</TableCell>
+							{[
+								"ITEM",
+								"QUANTITY",
+								"VALUE PER UNIT",
+								"CURRENT PAYMENT %",
+								"PAYMENT DUE",
+								"REVISED VALUE PER UNIT",
+								"GST or Other Tax %",
+								"GST or Other Tax Amount",
+								"TOTAL VALUE",
+							].map((col) => (
+								<TableCell
+									key={col}
+									sx={{
+										fontWeight: "bold",
+										border: "1px solid #ccc",
+										padding: "8px",
+										textAlign: "center",
+									}}>
+									{col}
+								</TableCell>
+							))}
 						</TableRow>
 					</TableHead>
 					<TableBody>
-						<TableRow>
-							<TableCell sx={{ border: "1px solid #ccc", padding: "8px" }}>
-								Consultation ( {invoice[0]?.doctorName} )
-							</TableCell>
-							<TableCell
-								sx={{
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								<TextField
-									type='number'
-									value={quantity}
-									onChange={(e) => setQuantity(Number(e.target.value))}
-									onBlur={setData}
-									size='small'
-									sx={{ width: 80 }}
-									inputProps={{ min: 1 }}
-								/>
-							</TableCell>
-							<TableCell
-								sx={{
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								{invoice[0].basePricePerUnit}
-							</TableCell>
-							<TableCell
-								sx={{
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								{invoice[0].paymentPerentage}
-							</TableCell>
-							<TableCell
-								sx={{
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								{invoice[0].chargeItemRate}
-							</TableCell>
-							<TableCell
-								sx={{
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								<TextField
-									type='number'
-									value={revisedValuePerUnit}
-									onChange={(e) =>
-										setRevisedValuePerUnit(Number(e.target.value))
-									}
-									onBlur={setData}
-									size='small'
-									sx={{ width: 80 }}
-									inputProps={{ min: 0 }}
-								/>
-							</TableCell>
-
-							<TableCell
-								sx={{
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								<TextField
-									type='number'
-									value={taxes}
-									onChange={(e) => setTaxes(Number(e.target.value))}
-									onBlur={setData}
-									size='small'
-									sx={{ width: 80 }}
-									inputProps={{ min: 0 }}
-								/>
-							</TableCell>
-
-							<TableCell
-								sx={{
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								{gst == 0 ? invoice[0].taxPercentage : gst}
-							</TableCell>
-
-							<TableCell
-								sx={{
-									border: "1px solid #ccc",
-									padding: "8px",
-									textAlign: "center",
-								}}>
-								{finalValue == 0 ? invoice[0].chargeAmount : finalValue}
-							</TableCell>
-						</TableRow>
+						{invoice.map((row: any) => (
+							<TableRow key={row.apOrgChargeItemId}>
+								<TableCell sx={{ border: "1px solid #ccc", padding: "8px" }}>
+									{row.chargeItemName} {row.doctorName && `(${row.doctorName})`}
+								</TableCell>
+								<TableCell
+									sx={{
+										border: "1px solid #ccc",
+										padding: "8px",
+										textAlign: "center",
+									}}>
+									<TextField
+										type='number'
+										value={quantities[row.apOrgChargeItemId] ?? row.quantity}
+										onChange={(e) =>
+											updateQuantity(
+												row.apOrgChargeItemId,
+												Number(e.target.value)
+											)
+										}
+										onBlur={() => setData(row)}
+										size='small'
+										sx={{ width: 80 }}
+										inputProps={{ min: 1 }}
+									/>
+								</TableCell>
+								<TableCell
+									sx={{
+										border: "1px solid #ccc",
+										padding: "8px",
+										textAlign: "center",
+									}}>
+									{row.basePricePerUnit}
+								</TableCell>
+								<TableCell
+									sx={{
+										border: "1px solid #ccc",
+										padding: "8px",
+										textAlign: "center",
+									}}>
+									{row.paymentPerentage}
+								</TableCell>
+								<TableCell
+									sx={{
+										border: "1px solid #ccc",
+										padding: "8px",
+										textAlign: "center",
+									}}>
+									{row.chargeItemRate}
+								</TableCell>
+								<TableCell
+									sx={{
+										border: "1px solid #ccc",
+										padding: "8px",
+										textAlign: "center",
+									}}>
+									<TextField
+										type='number'
+										value={
+											revisedValues[row.apOrgChargeItemId] ?? row.chargeItemRate
+										}
+										onChange={(e) =>
+											updateRevisedValue(
+												row.apOrgChargeItemId,
+												Number(e.target.value)
+											)
+										}
+										onBlur={() => setData(row)}
+										size='small'
+										sx={{ width: 80 }}
+										inputProps={{ min: 0 }}
+									/>
+								</TableCell>
+								<TableCell
+									sx={{
+										border: "1px solid #ccc",
+										padding: "8px",
+										textAlign: "center",
+									}}>
+									<TextField
+										type='number'
+										value={
+											taxValues[row.apOrgChargeItemId] ?? row.taxPercentage
+										}
+										onChange={(e) =>
+											updateTaxes(row.apOrgChargeItemId, Number(e.target.value))
+										}
+										onBlur={() => setData(row)}
+										size='small'
+										sx={{ width: 80 }}
+										inputProps={{ min: 0 }}
+									/>
+								</TableCell>
+								<TableCell
+									sx={{
+										border: "1px solid #ccc",
+										padding: "8px",
+										textAlign: "center",
+									}}>
+									{gstValues[row.apOrgChargeItemId] ?? row.taxAmount}
+								</TableCell>
+								<TableCell
+									sx={{
+										border: "1px solid #ccc",
+										padding: "8px",
+										textAlign: "center",
+									}}>
+									{totalValues[row.apOrgChargeItemId] ?? row.chargeAmount}
+								</TableCell>
+							</TableRow>
+						))}
 					</TableBody>
 				</Table>
+
+				{/* Gross / Discount / Net */}
 				<Box
 					sx={{
 						display: "flex",
@@ -445,19 +477,24 @@ const GenerateInvoice: React.FC<GenerateInvoiceProps> = ({ onDataUpdate }) => {
 					<Typography sx={{ fontWeight: "bold" }}>
 						Gross Amount:{" "}
 						<span style={{ fontWeight: "normal" }}>
-							{finalValue == 0 ? invoice[0].chargeAmount : finalValue}
+							{/* 							{totalValues[rowId] ?? invoice[0].chargeAmount} */}
+							{showTotalValues}
 						</span>
 					</Typography>
 					<Typography sx={{ fontWeight: "bold" }}>
 						Discount:{" "}
-						<span style={{ fontWeight: "normal" }}>{discountAmount}</span>
+						<span style={{ fontWeight: "normal" }}>
+							{discountValues[rowId] ?? 0}
+						</span>
+					</Typography>
+					<Typography sx={{ fontWeight: "bold" }}>
+						GST Or Other Tax Amount :{" "}
+						<span style={{ fontWeight: "normal" }}>{showGstValues ?? 0}</span>
 					</Typography>
 					<Typography sx={{ fontWeight: "bold" }}>
 						Net Amount:{" "}
 						<span style={{ fontWeight: "normal" }}>
-							{discountAmount === 0
-								? invoice[0].chargeAmount
-								: finalValue - discountAmount}
+							{showTotalValues + showGstValues - (discountValues[rowId] ?? 0)}
 						</span>
 					</Typography>
 				</Box>
@@ -502,6 +539,13 @@ const GenerateInvoice: React.FC<GenerateInvoiceProps> = ({ onDataUpdate }) => {
 					{renderInvoiceDetails(viewData)}
 				</CummonDialog>
 			)}
+
+			<Message
+				openSnackbar={openSnackbar}
+				handleCloseSnackbar={handleCloseSnackbar}
+				snackbarSeverity={snackbarSeverity}
+				snackbarMessage={snackbarMessage}
+			/>
 		</>
 	);
 };

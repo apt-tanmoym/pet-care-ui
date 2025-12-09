@@ -27,3 +27,13 @@ export const getRevisedDiscount =  async (payload: any): Promise<any> => {
   }
 };
 
+export const addInvoice =  async (payload: any): Promise<any> => {
+  try {
+    const { data } = await http.post<any>('/addinvoice', payload);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+//80, 81 pending
