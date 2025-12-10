@@ -102,6 +102,21 @@ const DoctorDetailsModal: React.FC<Props> = ({
 	const [councilError, setCouncilError] = useState("");
 	const [yearError, setYearError] = useState("");
 	const [regNoError, setRegNoError] = useState("");
+	
+	// Full mode validation errors
+	const [titleError, setTitleError] = useState("");
+	const [firstNameError, setFirstNameError] = useState("");
+	const [emailError, setEmailError] = useState("");
+	const [specialtyError, setSpecialtyError] = useState("");
+	const [qualificationError, setQualificationError] = useState("");
+	const [addressLine1Error, setAddressLine1Error] = useState("");
+	const [cityError, setCityError] = useState("");
+	const [areaError, setAreaError] = useState("");
+	const [countryError, setCountryError] = useState("");
+	const [stateError, setStateError] = useState("");
+	const [pinError, setPinError] = useState("");
+	const [cellNumberError, setCellNumberError] = useState("");
+	const [userNameError, setUserNameError] = useState("");
 
 	// Full mode fields
 	const [userTitle, setUserTitle] = useState("Dr.");
@@ -286,6 +301,116 @@ const DoctorDetailsModal: React.FC<Props> = ({
 		}
 		
 		if (mode === "full") {
+			// Validate all required fields in full mode
+			let isValid = true;
+			
+			// Clear previous errors
+			setTitleError("");
+			setFirstNameError("");
+			setEmailError("");
+			setSpecialtyError("");
+			setQualificationError("");
+			setAddressLine1Error("");
+			setCityError("");
+			setAreaError("");
+			setCountryError("");
+			setStateError("");
+			setPinError("");
+			setCellNumberError("");
+			setUserNameError("");
+			
+			// Validate required fields
+			if (!userTitle || userTitle.trim() === "") {
+				setTitleError("Title is required");
+				isValid = false;
+			}
+			
+			if (!firstName || firstName.trim() === "") {
+				setFirstNameError("First Name is required");
+				isValid = false;
+			}
+			
+			if (!email || email.trim() === "") {
+				setEmailError("Email is required");
+				isValid = false;
+			} else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+				setEmailError("Please enter a valid email address");
+				isValid = false;
+			}
+			
+			if (!specialty || specialty === "" || specialty === "Select") {
+				setSpecialtyError("Speciality is required");
+				isValid = false;
+			}
+			
+			if (!orgUserQlfn || orgUserQlfn.trim() === "") {
+				setQualificationError("Qualification is required");
+				isValid = false;
+			}
+			
+			if (!addressLine1 || addressLine1.trim() === "") {
+				setAddressLine1Error("Address Line 1 is required");
+				isValid = false;
+			}
+			
+			if (!city || city.trim() === "" || !selectedCity) {
+				setCityError("City is required");
+				isValid = false;
+			}
+			
+			if (!areaName || areaName.trim() === "") {
+				setAreaError("Area is required");
+				isValid = false;
+			} else if (!selectedCity) {
+				setAreaError("Please select a city first");
+				isValid = false;
+			}
+			
+			// Validate country - if city was selected from autocomplete, country should be auto-filled
+			if (!country || country.trim() === "") {
+				// Only show error if not auto-filled from city selection
+				if (!selectedCity || !selectedCity.country) {
+					setCountryError("Country is required");
+					isValid = false;
+				}
+			} else {
+				setCountryError("");
+			}
+			
+			// Validate state - if city was selected from autocomplete, state should be auto-filled
+			if (!state || state.trim() === "") {
+				// Only show error if not auto-filled from city selection
+				if (!selectedCity || !selectedCity.stateName) {
+					setStateError("State is required");
+					isValid = false;
+				}
+			} else {
+				setStateError("");
+			}
+			
+			// Validate PIN - might be auto-filled from area selection
+			if (!pin || pin.trim() === "") {
+				setPinError("PIN is required");
+				isValid = false;
+			} else {
+				setPinError("");
+			}
+			
+			if (!cellNumber || cellNumber.trim() === "") {
+				setCellNumberError("Cell Number is required");
+				isValid = false;
+			}
+			
+			if (type === "add" && (!userName || userName.trim() === "")) {
+				setUserNameError("User Name is required");
+				isValid = false;
+			}
+			
+			if (!isValid) {
+				setError(true);
+				return;
+			}
+			
 			try {
 				const formData = new FormData();
 
@@ -481,16 +606,26 @@ const DoctorDetailsModal: React.FC<Props> = ({
 								<TextField
 									label='Title'
 									value={userTitle}
-									onChange={(e) => setUserTitle(e.target.value)}
+									onChange={(e) => {
+										setUserTitle(e.target.value);
+										setTitleError("");
+									}}
 									sx={{ width: 80 }}
 									required
+									error={!!titleError}
+									helperText={titleError}
 								/>
 								<TextField
 									label='First Name'
 									value={firstName}
-									onChange={(e) => setFirstName(e.target.value)}
+									onChange={(e) => {
+										setFirstName(e.target.value);
+										setFirstNameError("");
+									}}
 									required
 									sx={{ flex: 2 }}
+									error={!!firstNameError}
+									helperText={firstNameError}
 								/>
 								<TextField
 									label='Last Name'
@@ -501,40 +636,65 @@ const DoctorDetailsModal: React.FC<Props> = ({
 								<TextField
 									label='Email'
 									value={email}
-									onChange={(e) => setEmail(e.target.value)}
+									onChange={(e) => {
+										setEmail(e.target.value);
+										setEmailError("");
+									}}
 									required
 									sx={{ flex: 2 }}
+									error={!!emailError}
+									helperText={emailError}
+									type="email"
 								/>
 							</Box>
 							<Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-								<FormControl fullWidth required>
+								<FormControl fullWidth required error={!!specialtyError}>
 									<InputLabel>Speciality</InputLabel>
 									<Select
 										value={specialty}
 										label='Speciality'
-										onChange={(e) => setSpecialty(e.target.value)}>
+										onChange={(e) => {
+											setSpecialty(e.target.value);
+											setSpecialtyError("");
+										}}>
+										<MenuItem value="">Select</MenuItem>
 										{specalityList.map((s) => (
 											<MenuItem key={s.specialtyId} value={s.specialtyId}>
 												{s.specialtyName}
 											</MenuItem>
 										))}
 									</Select>
+									{specialtyError && (
+										<Typography color='error' variant='caption'>
+											{specialtyError}
+										</Typography>
+									)}
 								</FormControl>
 								<TextField
 									label='Qualification'
 									value={orgUserQlfn}
-									onChange={(e) => setOrgUserQlfn(e.target.value)}
+									onChange={(e) => {
+										setOrgUserQlfn(e.target.value);
+										setQualificationError("");
+									}}
 									required
 									fullWidth
+									error={!!qualificationError}
+									helperText={qualificationError}
 								/>
 							</Box>
 							<TextField
 								label='Address Line1'
 								value={addressLine1}
-								onChange={(e) => setAddressLine1(e.target.value)}
+								onChange={(e) => {
+									setAddressLine1(e.target.value);
+									setAddressLine1Error("");
+								}}
 								fullWidth
 								required
 								sx={{ mb: 2 }}
+								error={!!addressLine1Error}
+								helperText={addressLine1Error}
 							/>
 							<TextField
 								label='Address Line2'
@@ -567,6 +727,10 @@ const DoctorDetailsModal: React.FC<Props> = ({
 											setCountry(value.country || "");
 											setAreaName("");
 											setAreaOptions([]);
+											// Clear errors for auto-filled fields
+											setStateError("");
+											setCountryError("");
+											setPinError("");
 										} else {
 											setSelectedCity(null);
 											setCity(value || "");
@@ -576,14 +740,15 @@ const DoctorDetailsModal: React.FC<Props> = ({
 											setAreaOptions([]);
 										}
 										setCityAreaError("");
+										setCityError("");
 									}}
 									renderInput={(params) => (
 										<TextField
 											{...params}
 											label='City'
 											required
-											error={!!cityAreaError}
-											helperText={cityAreaError}
+											error={!!cityError || !!cityAreaError}
+											helperText={cityError || cityAreaError}
 											InputProps={{
 												...params.InputProps,
 												endAdornment: (
@@ -628,16 +793,19 @@ const DoctorDetailsModal: React.FC<Props> = ({
 											setAreaName(value.areaName);
 											setAreaMappingId(value.cityPincodeMappingId);
 											setPin(value?.pincode || "");
+											// Clear PIN error when auto-filled from area selection
+											setPinError("");
 										}
 										setCityAreaError("");
+										setAreaError("");
 									}}
 									renderInput={(params) => (
 										<StyledTextField
 											{...params}
 											label='Area'
 											required
-											//helperText={!selectedCity ? 'Select a city first' : errors.areaName || apiError}
-											//error={!!errors.areaName || !!apiError}
+											error={!!areaError}
+											helperText={areaError}
 											InputProps={{
 												...params.InputProps,
 												endAdornment: (
@@ -658,32 +826,52 @@ const DoctorDetailsModal: React.FC<Props> = ({
 								<TextField
 									label='Country'
 									value={country}
-									onChange={(e) => setCountry(e.target.value)}
+									onChange={(e) => {
+										setCountry(e.target.value);
+										setCountryError("");
+									}}
 									required
 									sx={{ flex: 1 }}
+									error={!!countryError}
+									helperText={countryError}
 								/>
 								<TextField
 									label='State'
 									value={state}
-									onChange={(e) => setState(e.target.value)}
+									onChange={(e) => {
+										setState(e.target.value);
+										setStateError("");
+									}}
 									required
 									sx={{ flex: 1 }}
+									error={!!stateError}
+									helperText={stateError}
 								/>
 							</Box>
 							<Box sx={{ display: "flex", gap: 2, mb: 2 }}>
 								<TextField
 									label='PIN'
 									value={pin}
-									onChange={(e) => setPin(e.target.value)}
+									onChange={(e) => {
+										setPin(e.target.value);
+										setPinError("");
+									}}
 									required
 									sx={{ flex: 1 }}
+									error={!!pinError}
+									helperText={pinError}
 								/>
 								<TextField
 									label='Cell No.'
 									value={cellNumber}
-									onChange={(e) => setCellNumber(e.target.value)}
+									onChange={(e) => {
+										setCellNumber(e.target.value);
+										setCellNumberError("");
+									}}
 									required
 									sx={{ flex: 1 }}
+									error={!!cellNumberError}
+									helperText={cellNumberError}
 								/>
 							</Box>
 							<Box sx={{ display: "flex", gap: 2, mb: 2 }}>
@@ -691,9 +879,14 @@ const DoctorDetailsModal: React.FC<Props> = ({
 									label='User Name'
 									value={userName}
 									disabled={type === "edit" ? true : false}
-									onChange={(e) => setUserName(e.target.value)}
-									required
+									onChange={(e) => {
+										setUserName(e.target.value);
+										setUserNameError("");
+									}}
+									required={type === "add"}
 									sx={{ flex: 1 }}
+									error={!!userNameError}
+									helperText={userNameError}
 								/>
 							</Box>
 						</Box>

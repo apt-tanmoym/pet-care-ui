@@ -634,12 +634,38 @@ const ManageUsersPage = () => {
             </Button>
             <Button variant="contained" sx={{ bgcolor: '#174a7c' }} onClick={() => {
               setShowConfirmDialog(false);
-              // Use pendingDoctor which already has all fields including registrationNumber
-              const fullData = pendingDoctor ? {
-                ...pendingDoctor,
-                // Ensure both regNo and registrationNumber are set
+              // Only prefill medical council, year of registration, registration number, and title
+              // All other fields should be empty
+              const fullData: User | null = pendingDoctor ? {
+                // Required fields
+                orgUserId: pendingDoctor.orgUserId || 0,
+                activeInd: pendingDoctor.activeInd || 1,
+                isDoctor: 1,
+                // Prefilled fields
+                councilId: pendingDoctor.councilId || '',
+                yearOfReg: pendingDoctor.yearOfReg || 0,
                 regNo: pendingDoctor.regNo || pendingDoctor.registrationNumber || '',
                 registrationNumber: pendingDoctor.registrationNumber || pendingDoctor.regNo || '',
+                userTitle: pendingDoctor.userTitle || 'Dr.',
+                // All other fields should be empty/default
+                firstName: '',
+                lastName: '',
+                email: '',
+                cellNumber: '',
+                addressLine1: '',
+                addressLine2: '',
+                city: '',
+                areaName: '',
+                state: '',
+                country: '',
+                pin: '',
+                userName: '',
+                orgUserQlfn: '',
+                glbSpltyId: '',
+                profileDetails: '',
+                cityId: '',
+                cityMappingId: '',
+                imageFilePath: undefined,
               } : null;
               setFullDoctorData(fullData);
               setShowFullDoctorForm(true);

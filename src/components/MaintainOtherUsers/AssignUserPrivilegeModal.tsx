@@ -22,8 +22,14 @@ import {
   FacilityRole,
   getAllPrivsOfRoleInOrg,
   RolePrivilege,
-  saveUserPrivileges
+  saveUserPrivileges,
+  getOrgFacilityUserRoleMapping,
+  FacilityUserRoleMapping,
+  getOrgUserFacilityPrivilegeMapping,
+  UserFacilityPrivilegeMapping
 } from '@/services/userService';
+import { getOwnFacilites } from '@/services/faclilityService';
+import { FaclityServiceResponse } from '@/interfaces/facilityInterface';
 
 interface User {
   id: number;
@@ -41,9 +47,10 @@ interface Props {
 }
 
 const AssignUserPrivilegeModal: React.FC<Props> = ({ open, onClose, user, onSubmit }) => {
-  const [facilities, setFacilities] = useState<AssignedFacility[]>([]);
+  const [facilities, setFacilities] = useState<FaclityServiceResponse[]>([]);
+  const [assignedFacilityIds, setAssignedFacilityIds] = useState<Set<number>>(new Set());
   const [loadingFacilities, setLoadingFacilities] = useState(false);
-  const [selectedFacility, setSelectedFacility] = useState<AssignedFacility | null>(null);
+  const [selectedFacility, setSelectedFacility] = useState<FaclityServiceResponse | null>(null);
   const [roles, setRoles] = useState<FacilityRole[]>([]);
   const [loadingRoles, setLoadingRoles] = useState(false);
   const [privileges, setPrivileges] = useState<RolePrivilege[]>([]);
@@ -51,6 +58,9 @@ const AssignUserPrivilegeModal: React.FC<Props> = ({ open, onClose, user, onSubm
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedPrivileges, setSelectedPrivileges] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  // Store all saved role and privilege mappings for all facilities
+  const [allUserRoleMappings, setAllUserRoleMappings] = useState<FacilityUserRoleMapping[]>([]);
+  const [allUserPrivilegeMappings, setAllUserPrivilegeMappings] = useState<UserFacilityPrivilegeMapping[]>([]);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -63,17 +73,56 @@ const AssignUserPrivilegeModal: React.FC<Props> = ({ open, onClose, user, onSubm
       const fetchFacilities = async () => {
         setLoadingFacilities(true);
         try {
-          const response = await getAssignedFacilities(user.id.toString());
+          // Fetch all facilities from getownfacility
+          const allFacilitiesPayload = {
+            userName: localStorage.getItem('userName') || '',
+            userPass: localStorage.getItem('userPwd') || '',
+            deviceStat: 'M',
+            callingFrom: 'web',
+            orgId: localStorage.getItem('orgId') || '',
+            searchFacility: '',
+            status: 'All',
+          };
+          const allFacilities = await getOwnFacilites(allFacilitiesPayload);
+          
           // Ensure response is an array
-          if (Array.isArray(response)) {
-            setFacilities(response);
+          if (Array.isArray(allFacilities)) {
+            setFacilities(allFacilities);
+            
+            // Fetch assigned facilities to know which ones are selected
+            try {
+              const assignedFacilities = await getAssignedFacilities(user.id.toString());
+              if (Array.isArray(assignedFacilities)) {
+                const assignedIds = new Set(assignedFacilities.map(f => f.facilityId));
+                setAssignedFacilityIds(assignedIds);
+              }
+            } catch (assignedError) {
+              console.error('Error fetching assigned facilities:', assignedError);
+              setAssignedFacilityIds(new Set());
+            }
+
+            // Fetch all saved role and privilege mappings for this user (for all facilities)
+            try {
+              const [roleMappings, privilegeMappings] = await Promise.all([
+                getOrgFacilityUserRoleMapping(user.id.toString()),
+                getOrgUserFacilityPrivilegeMapping(user.id.toString())
+              ]);
+              setAllUserRoleMappings(roleMappings || []);
+              setAllUserPrivilegeMappings(privilegeMappings || []);
+            } catch (mappingError) {
+              console.error('Error fetching user mappings:', mappingError);
+              setAllUserRoleMappings([]);
+              setAllUserPrivilegeMappings([]);
+            }
           } else {
-            console.error('Invalid response format - expected array:', response);
+            console.error('Invalid response format - expected array:', allFacilities);
             setFacilities([]);
+            setAssignedFacilityIds(new Set());
           }
         } catch (error) {
-          console.error('Error fetching assigned facilities:', error);
+          console.error('Error fetching facilities:', error);
           setFacilities([]);
+          setAssignedFacilityIds(new Set());
         } finally {
           setLoadingFacilities(false);
         }
@@ -82,6 +131,9 @@ const AssignUserPrivilegeModal: React.FC<Props> = ({ open, onClose, user, onSubm
     } else {
       // Reset facilities when modal closes
       setFacilities([]);
+      setAssignedFacilityIds(new Set());
+      setAllUserRoleMappings([]);
+      setAllUserPrivilegeMappings([]);
     }
   }, [open, user.id]);
 
@@ -94,18 +146,29 @@ const AssignUserPrivilegeModal: React.FC<Props> = ({ open, onClose, user, onSubm
         setPrivileges([]);
         
         try {
-          // Fetch all roles for the facility based on user type (Doctor/Non-Doctor)
-          // This API returns the saved/selected roles for this user and facility
+          // Step 1: Fetch ALL available roles for the facility based on user type (Doctor/Non-Doctor)
           const isDoctor = user.isDoctor === 1;
-          const facilityRoles = await getAllRolesOfFacility(
+          const allFacilityRoles = await getAllRolesOfFacility(
             selectedFacility.facilityId.toString(),
             isDoctor
           );
-          setRoles(facilityRoles);
+          setRoles(allFacilityRoles);
           
-          // Auto-select the roles returned by the API (these are the saved roles)
-          const savedRoleNames = facilityRoles.map(role => role.roleName);
-          setSelectedRoles(savedRoleNames);
+          // Step 2: Fetch the selected/assigned roles for this user
+          const userRoleMappings = await getOrgFacilityUserRoleMapping(user.id.toString());
+          
+          // Step 3: Filter roles that are assigned to this user for the selected facility
+          const selectedRoleIds = userRoleMappings
+            .filter(mapping => mapping.facilityId === selectedFacility.facilityId)
+            .map(mapping => mapping.roleId);
+          
+          // Step 4: Pre-select only the roles that are assigned to this user in this facility
+          // Match by roleId (orgRoleId from getAllRolesOfFacility matches roleId from getOrgFacilityUserRoleMapping)
+          const selectedRoleNames = allFacilityRoles
+            .filter(role => selectedRoleIds.includes(role.orgRoleId))
+            .map(role => role.roleName);
+          
+          setSelectedRoles(selectedRoleNames);
         } catch (error) {
           console.error('Error fetching facility roles:', error);
           setRoles([]);
@@ -130,22 +193,34 @@ const AssignUserPrivilegeModal: React.FC<Props> = ({ open, onClose, user, onSubm
         setLoadingPrivileges(true);
         
         try {
-          // Get orgRoleId for selected role names
+          // Step 1: Get orgRoleId for selected role names (from UI selections)
           const selectedRoleIds = roles
             .filter(role => selectedRoles.includes(role.roleName))
             .map(role => role.orgRoleId);
           
           if (selectedRoleIds.length > 0) {
-            // This API returns the saved/selected privileges for the selected roles
-            const privilegesResponse = await getAllPrivsOfRoleInOrg(
+            // Step 2: Fetch ALL available privileges for the selected roles
+            const allPrivileges = await getAllPrivsOfRoleInOrg(
               selectedFacility.facilityId.toString(),
               selectedRoleIds
             );
-            setPrivileges(privilegesResponse);
+            setPrivileges(allPrivileges);
             
-            // Pre-select ALL privileges returned by the API (these are the saved privileges)
-            const savedPrivilegeNames = privilegesResponse.map(priv => priv.menuName);
-            setSelectedPrivileges(savedPrivilegeNames);
+            // Step 3: Fetch the assigned/selected privileges for this user
+            const userPrivilegeMappings = await getOrgUserFacilityPrivilegeMapping(user.id.toString());
+            
+            // Step 4: Filter privileges that are assigned to this user for the selected facility
+            const assignedPrivilegeIds = userPrivilegeMappings
+              .filter(mapping => mapping.facilityId === selectedFacility.facilityId)
+              .map(mapping => mapping.privilegeId);
+            
+            // Step 5: Pre-select only the privileges that are assigned to this user in this facility
+            // Match by privilegeId
+            const assignedPrivilegeNames = allPrivileges
+              .filter(priv => assignedPrivilegeIds.includes(priv.privilegeId))
+              .map(priv => priv.menuName);
+            
+            setSelectedPrivileges(assignedPrivilegeNames);
           } else {
             setPrivileges([]);
             setSelectedPrivileges([]);
@@ -164,7 +239,7 @@ const AssignUserPrivilegeModal: React.FC<Props> = ({ open, onClose, user, onSubm
       setPrivileges([]);
       setSelectedPrivileges([]);
     }
-  }, [selectedRoles, selectedFacility, roles]);
+  }, [selectedRoles, selectedFacility, roles, user.id]);
 
   const handleRoleToggle = (role: string) => {
     setSelectedRoles((prev) =>
@@ -178,7 +253,7 @@ const AssignUserPrivilegeModal: React.FC<Props> = ({ open, onClose, user, onSubm
     );
   };
 
-  const handleFacilitySelect = (facility: AssignedFacility) => {
+  const handleFacilitySelect = (facility: FaclityServiceResponse) => {
     setSelectedFacility(facility);
   };
 
@@ -203,39 +278,95 @@ const AssignUserPrivilegeModal: React.FC<Props> = ({ open, onClose, user, onSubm
 
     setIsSaving(true);
     try {
-      // Map ONLY selected role names to role IDs (filter ensures only checked roles are included)
-      const facilityRoleIds = roles
+      // Step 1: Get current facility's selections
+      const currentFacilityRoleIds = roles
         .filter(role => selectedRoles.includes(role.roleName))
         .map(role => ({
           facilityId: selectedFacility.facilityId,
           roleId: role.orgRoleId
         }));
 
-      // Map ONLY selected privilege menu names to privilege IDs (filter ensures only checked privileges are included)
-      const facilityPrivIds = privileges
+      const currentFacilityPrivIds = privileges
         .filter(priv => selectedPrivileges.includes(priv.menuName))
         .map(priv => ({
           facilityId: selectedFacility.facilityId,
           privilegeId: priv.privilegeId
         }));
 
-      // Log for debugging - verify only selected items are being sent
-      console.log('Saving user privileges:', {
-        facilityId: selectedFacility.facilityId,
-        selectedRolesCount: selectedRoles.length,
-        selectedPrivilegesCount: selectedPrivileges.length,
-        facilityRoleIds: facilityRoleIds.map(fr => `${fr.facilityId}_${fr.roleId}`).join(','),
-        facilityPrivIds: facilityPrivIds.map(fp => `${fp.facilityId}_${fp.privilegeId}`).join(','),
+      // Step 2: Get all other facilities' saved data (exclude current facility)
+      const otherFacilitiesRoleIds = allUserRoleMappings
+        .filter(mapping => mapping.facilityId !== selectedFacility.facilityId)
+        .map(mapping => ({
+          facilityId: mapping.facilityId,
+          roleId: mapping.roleId
+        }));
+
+      const otherFacilitiesPrivIds = allUserPrivilegeMappings
+        .filter(mapping => mapping.facilityId !== selectedFacility.facilityId)
+        .map(mapping => ({
+          facilityId: mapping.facilityId,
+          privilegeId: mapping.privilegeId
+        }));
+
+      // Step 3: Merge current selections with saved data for other facilities
+      const allFacilityRoleIds = [...currentFacilityRoleIds, ...otherFacilitiesRoleIds];
+      const allFacilityPrivIds = [...currentFacilityPrivIds, ...otherFacilitiesPrivIds];
+
+      // Step 4: Get all unique facility IDs
+      const allFacilityIds = new Set<number>();
+      allFacilityRoleIds.forEach(fr => allFacilityIds.add(fr.facilityId));
+      allFacilityPrivIds.forEach(fp => allFacilityIds.add(fp.facilityId));
+      const facilityIdsArray = Array.from(allFacilityIds);
+
+      // Log for debugging
+      console.log('Saving user privileges (all facilities):', {
+        currentFacilityId: selectedFacility.facilityId,
+        allFacilityIds: facilityIdsArray,
+        totalRolesCount: allFacilityRoleIds.length,
+        totalPrivilegesCount: allFacilityPrivIds.length,
+        facilityRoleIds: allFacilityRoleIds.map(fr => `${fr.facilityId}_${fr.roleId}`).join(','),
+        facilityPrivIds: allFacilityPrivIds.map(fp => `${fp.facilityId}_${fp.privilegeId}`).join(','),
       });
 
-      // Call the API (using 'edit' mode as default - can handle both add and edit)
+      // Step 5: Call the API (using 'edit' mode as default - can handle both add and edit)
       const response = await saveUserPrivileges(
         user.id.toString(),
-        [selectedFacility.facilityId],
-        facilityRoleIds,
-        facilityPrivIds,
+        facilityIdsArray,
+        allFacilityRoleIds,
+        allFacilityPrivIds,
         'edit' // Using 'edit' mode as default
       );
+
+      // Step 6: Update the saved mappings with current selections
+      // Remove old mappings for current facility and add new ones
+      const updatedRoleMappings = [
+        ...allUserRoleMappings.filter(m => m.facilityId !== selectedFacility.facilityId),
+        ...currentFacilityRoleIds.map(fr => ({
+          roleName: roles.find(r => r.orgRoleId === fr.roleId)?.roleName || '',
+          roleGroupName: '',
+          roleId: fr.roleId,
+          facilityId: fr.facilityId,
+          orgUserId: user.id,
+          activeInd: 1
+        }))
+      ];
+
+      const updatedPrivMappings = [
+        ...allUserPrivilegeMappings.filter(m => m.facilityId !== selectedFacility.facilityId),
+        ...currentFacilityPrivIds.map(fp => ({
+          id: 0,
+          privilegeId: fp.privilegeId,
+          parentId: 0,
+          facilityId: fp.facilityId,
+          menuName: privileges.find(p => p.privilegeId === fp.privilegeId)?.menuName || '',
+          displayName: null,
+          menuAction: null,
+          facilityName: null
+        }))
+      ];
+
+      setAllUserRoleMappings(updatedRoleMappings);
+      setAllUserPrivilegeMappings(updatedPrivMappings);
 
       setSnackbar({
         open: true,
@@ -298,16 +429,28 @@ const AssignUserPrivilegeModal: React.FC<Props> = ({ open, onClose, user, onSubm
               </Box>
             ) : (
               <List>
-                {facilities.map((facility) => (
-                  <ListItem
-                    key={facility.facilityId}
-                    button
-                    selected={selectedFacility?.facilityId === facility.facilityId}
-                    onClick={() => handleFacilitySelect(facility)}
-                  >
-                    <ListItemText primary={facility.facilityName} />
-                  </ListItem>
-                ))}
+                {facilities.map((facility) => {
+                  const isAssigned = assignedFacilityIds.has(facility.facilityId);
+                  return (
+                    <ListItem
+                      key={facility.facilityId}
+                      button
+                      selected={selectedFacility?.facilityId === facility.facilityId}
+                      onClick={() => handleFacilitySelect(facility)}
+                      sx={{
+                        bgcolor: isAssigned ? '#e3f2fd' : 'transparent',
+                        '&:hover': {
+                          bgcolor: isAssigned ? '#bbdefb' : '#f5f5f5',
+                        },
+                      }}
+                    >
+                      <ListItemText 
+                        primary={facility.facilityName}
+                        secondary={isAssigned ? 'Assigned' : ''}
+                      />
+                    </ListItem>
+                  );
+                })}
               </List>
             )}
           </Paper>
