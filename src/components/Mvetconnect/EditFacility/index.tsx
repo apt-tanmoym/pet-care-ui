@@ -274,6 +274,7 @@ const EditFacility = forwardRef(function EditFacility(
 		try {
 			await addNewFacility({
 				...form,
+				loggedInFacilityId: localStorage.getItem("loggedinFacilityId"),
 				callingFrom: "web",
 				userName: localStorage.getItem("userName") || "",
 				userPass: localStorage.getItem("userPwd") || "",
@@ -281,6 +282,7 @@ const EditFacility = forwardRef(function EditFacility(
 				orgId: localStorage.getItem("orgId") || "",
 				facilityType: "practice",
 			});
+
 			if (onSubmit) onSubmit(form);
 			if (callbacks.onSuccess) callbacks.onSuccess();
 			return true;

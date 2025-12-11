@@ -65,6 +65,7 @@ export const getCityList = async (searchText: string): Promise<any[]> => {
 };
 
 export const editFacilityDetails = async (payload: any): Promise<any[]> => {
+  
   try {
     const { data } = await http.post('/editfacilitydetails', payload);
     return data;
