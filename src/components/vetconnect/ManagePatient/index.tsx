@@ -139,7 +139,7 @@ function VetConnectManagePatient() {
 
 	const handleEditClick = async (row: any) => {
 		const list = await fetchPetList(row.petOwnerUid);
-		const details = await fecthPetDetails(list[1].patientUid);
+		const details = await fecthPetDetails(list[0].patientUid);
 		if (list.length > 0 && details) {
 			console.log("inside edit");
 			console.log(petList);
