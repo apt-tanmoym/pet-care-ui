@@ -115,7 +115,6 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({
 	const [areaMappingId, setAreaMappingId] = useState(user.cityMappingId);
 
 	const [errors, setErrors] = useState<Partial<User & { image: string }>>({
-		roleName: "",
 		userTitle: "",
 		firstName: "",
 		email: "",
@@ -136,7 +135,6 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({
 			preview?: string | null
 		) => string;
 	} = {
-		roleName: (value: string) => (value ? "" : "Role is required"),
 		userTitle: (value: string) => (value ? "" : "Title is required"),
 		firstName: (value: string) => (value ? "" : "First Name is required"),
 		email: (value: string) =>
@@ -344,43 +342,6 @@ const ManageUsersEdit: React.FC<ManageUsersEditProps> = ({
 	return (
 		<form onSubmit={handleSubmit}>
 			<Grid container spacing={3}>
-				{/* Role dropdown */}
-				<Grid item xs={12}>
-					<FormControl fullWidth required error={!!errors.roleName}>
-						<InputLabel sx={{ color: "#0288d1" }}>Choose Role</InputLabel>
-						<Select
-							name='roleName'
-							value={formValues.roleName}
-							onChange={handleChange}
-							displayEmpty
-							renderValue={(selected) => selected}
-							sx={{
-								bgcolor: "white",
-								borderRadius: 2,
-								"& .MuiOutlinedInput-notchedOutline": {
-									borderColor: "#0288d1",
-								},
-								"&:hover .MuiOutlinedInput-notchedOutline": {
-									borderColor: "#01579b",
-								},
-							}}>
-							{Array.isArray(roleGroupList) && roleGroupList.length > 0 ? (
-								roleGroupList.map((role) => (
-									<MenuItem key={role.roleGroupId} value={role.roleGroupName}>
-										{role.roleGroupName}
-									</MenuItem>
-								))
-							) : (
-								<MenuItem disabled>No roles available</MenuItem>
-							)}
-						</Select>
-						{errors.roleName && (
-							<Typography variant='caption' color='error'>
-								{errors.roleName}
-							</Typography>
-						)}
-					</FormControl>
-				</Grid>
 				{/* Title, First Name, Last Name in a row */}
 				<Grid item xs={12} sm={4} md={2}>
 					<FormControl fullWidth required error={!!errors.userTitle}>

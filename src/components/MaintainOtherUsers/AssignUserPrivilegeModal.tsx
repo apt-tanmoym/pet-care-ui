@@ -152,23 +152,48 @@ const AssignUserPrivilegeModal: React.FC<Props> = ({ open, onClose, user, onSubm
             selectedFacility.facilityId.toString(),
             isDoctor
           );
-          setRoles(allFacilityRoles);
           
-          // Step 2: Fetch the selected/assigned roles for this user
-          const userRoleMappings = await getOrgFacilityUserRoleMapping(user.id.toString());
+          console.log('getAllRolesOfFacility response:', allFacilityRoles);
           
-          // Step 3: Filter roles that are assigned to this user for the selected facility
-          const selectedRoleIds = userRoleMappings
-            .filter(mapping => mapping.facilityId === selectedFacility.facilityId)
-            .map(mapping => mapping.roleId);
-          
-          // Step 4: Pre-select only the roles that are assigned to this user in this facility
-          // Match by roleId (orgRoleId from getAllRolesOfFacility matches roleId from getOrgFacilityUserRoleMapping)
-          const selectedRoleNames = allFacilityRoles
-            .filter(role => selectedRoleIds.includes(role.orgRoleId))
-            .map(role => role.roleName);
-          
-          setSelectedRoles(selectedRoleNames);
+          // Ensure allFacilityRoles is an array - always set roles if it's an array
+          if (Array.isArray(allFacilityRoles)) {
+            setRoles(allFacilityRoles);
+            console.log('Roles set:', allFacilityRoles.length, 'roles');
+            
+            // Step 2: Fetch the selected/assigned roles for this user (handle errors gracefully)
+            let userRoleMappings: FacilityUserRoleMapping[] = [];
+            try {
+              userRoleMappings = await getOrgFacilityUserRoleMapping(user.id.toString());
+              console.log('getOrgFacilityUserRoleMapping response:', userRoleMappings);
+              // Ensure it's an array
+              if (!Array.isArray(userRoleMappings)) {
+                userRoleMappings = [];
+              }
+            } catch (mappingError) {
+              console.log('No role mappings found or error fetching mappings:', mappingError);
+              userRoleMappings = [];
+            }
+            
+            // Step 3: Filter roles that are assigned to this user for the selected facility
+            const selectedRoleIds = userRoleMappings
+              .filter(mapping => mapping.facilityId === selectedFacility.facilityId)
+              .map(mapping => mapping.roleId);
+            
+            console.log('Selected role IDs for facility:', selectedRoleIds);
+            
+            // Step 4: Pre-select only the roles that are assigned to this user in this facility
+            // Match by roleId (orgRoleId from getAllRolesOfFacility matches roleId from getOrgFacilityUserRoleMapping)
+            const selectedRoleNames = allFacilityRoles
+              .filter(role => selectedRoleIds.includes(role.orgRoleId))
+              .map(role => role.roleName);
+            
+            console.log('Selected role names:', selectedRoleNames);
+            setSelectedRoles(selectedRoleNames);
+          } else {
+            console.warn('getAllRolesOfFacility did not return an array:', allFacilityRoles, typeof allFacilityRoles);
+            setRoles([]);
+            setSelectedRoles([]);
+          }
         } catch (error) {
           console.error('Error fetching facility roles:', error);
           setRoles([]);

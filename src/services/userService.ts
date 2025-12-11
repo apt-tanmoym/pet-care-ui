@@ -355,11 +355,27 @@ export const getOrgFacilityUserRoleMapping = async (orgUserId: string): Promise<
   };
 
   try {
-    const response = await http.post<FacilityUserRoleMapping[]>('/getorgfacilityuserrolemapping', payload);
-    return response.data;
+    const response = await http.post<any>('/getorgfacilityuserrolemapping', payload);
+    
+    // Handle case where API returns a message object instead of array
+    if (response.data && typeof response.data === 'object') {
+      // Check if it's an array
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      // Check if it's a message object (e.g., { message: "...", status: "notfound" })
+      if (response.data.message || response.data.status) {
+        console.log('No role mappings found:', response.data.message || response.data.status);
+        return [];
+      }
+    }
+    
+    // Default: return empty array if response is not in expected format
+    return [];
   } catch (error) {
     console.error('Error fetching facility user role mapping:', error);
-    throw error;
+    // Return empty array instead of throwing, so UI can still show available roles
+    return [];
   }
 };
 
@@ -397,11 +413,27 @@ export const getOrgUserFacilityPrivilegeMapping = async (orgUserId: string): Pro
   };
 
   try {
-    const response = await http.post<UserFacilityPrivilegeMapping[]>('/getorguserfacilityprivilegemapping', payload);
-    return response.data;
+    const response = await http.post<any>('/getorguserfacilityprivilegemapping', payload);
+    
+    // Handle case where API returns a message object instead of array
+    if (response.data && typeof response.data === 'object') {
+      // Check if it's an array
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      // Check if it's a message object (e.g., { message: "...", status: "notfound" })
+      if (response.data.message || response.data.status) {
+        console.log('No privilege mappings found:', response.data.message || response.data.status);
+        return [];
+      }
+    }
+    
+    // Default: return empty array if response is not in expected format
+    return [];
   } catch (error) {
     console.error('Error fetching user facility privilege mapping:', error);
-    throw error;
+    // Return empty array instead of throwing, so UI can still show available privileges
+    return [];
   }
 };
 
@@ -440,8 +472,18 @@ export const getAllRolesOfFacility = async (facilityId: string, isDoctor: boolea
   };
 
   try {
-    const response = await http.post<FacilityRole[]>('/getallrolesoffacility', payload);
-    return response.data;
+    const response = await http.post<any>('/getallrolesoffacility', payload);
+    console.log('getAllRolesOfFacility API response:', response);
+    console.log('getAllRolesOfFacility response.data:', response.data);
+    
+    // Ensure response.data is an array
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    
+    // If response.data is not an array, log and return empty array
+    console.warn('getAllRolesOfFacility did not return an array:', response.data);
+    return [];
   } catch (error) {
     console.error('Error fetching all roles of facility:', error);
     throw error;
