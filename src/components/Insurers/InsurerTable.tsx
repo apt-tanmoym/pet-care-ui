@@ -54,7 +54,11 @@ const InsurerTable: React.FC = () => {
 	const fetchList = async () => {
 		try {
 			const response: any = await getOrgInsurers(basePayload);
-			setMaintains(response);
+			if (Array.isArray(response)) {
+				setMaintains(response);
+			} else {
+				setMaintains([]);
+			}
 		} catch (exception) {
 			console.log(exception);
 		}

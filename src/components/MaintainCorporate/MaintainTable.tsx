@@ -53,7 +53,12 @@ const MaintainTable: React.FC = () => {
 	const fetchList = async () => {
 		try {
 			const response: any = await getOrgCorporates(basePayload);
-			setMaintains(response);
+
+			if (Array.isArray(response)) {
+				setMaintains(response);
+			} else {
+				setMaintains([]);
+			}
 		} catch (exception) {
 			console.log(exception);
 		}
