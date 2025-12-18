@@ -122,7 +122,7 @@ const FacilityPage = () => {
 						value={newFacilityType}
 						onChange={handleFacilityTypeChange}
 						label='Add Facilities'>
-						<MenuItem value='Tele Medicine'>Tele Medicine</MenuItem>
+						<MenuItem value='telemedicine'>Tele Medicine</MenuItem>
 						<MenuItem value='practice'>Practice</MenuItem>
 					</Select>
 				</FormControl>
@@ -142,7 +142,7 @@ const FacilityPage = () => {
 					}}
 					disabled={
 						!newFacilityType ||
-						(isTelemedecine && newFacilityType == "Tele Medicine")
+						(isTelemedecine && newFacilityType == "telemedicine")
 					}>
 					Add
 				</Button>
