@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
 	Box,
 	Typography,
@@ -12,6 +12,7 @@ import {
 	TableBody,
 	Button,
 	TablePagination,
+	Grid,
 } from "@mui/material";
 
 import { styled } from "@mui/system";
@@ -25,6 +26,8 @@ import {
 	getPetList,
 	getPetOwnerList,
 } from "@/services/managePatientService";
+import CummonDialog from "@/components/common/CummonDialog";
+import AddPetOwner from "./forms/AddPetOwner";
 
 const Container = styled(Box)(({ theme }) => ({
 	padding: theme?.spacing?.(2),
@@ -43,10 +46,17 @@ function VetConnectManagePatient() {
 	const [rowsPerPage, setRowsPerPage] = useState(10);
 	const [searchTerm, setSearchTerm] = useState("");
 	const [isEditClicked, setIsEditClicked] = useState(false);
+	const [openDialog, setOpenDialog] = useState(false);
+
+	const addNewPatientRef = useRef<any>(null);
 
 	const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">(
 		"success"
 	);
+
+	const handleCloseDialog = () => {
+		setOpenDialog(false);
+	};
 
 	const counsltationPayload = {
 		callingFrom: "web",
@@ -155,6 +165,31 @@ function VetConnectManagePatient() {
 		setOpenSnackbar(false);
 	};
 
+	const handleFacilitySubmit = async () => {
+		console.log("submit");
+		if (addNewPatientRef.current && addNewPatientRef.current.submitForm) {
+			const result = await addNewPatientRef.current.submitForm({
+				onSuccess: () => {
+					setSnackbarMessage("Facility added successfully!");
+					setSnackbarSeverity("success");
+					setOpenSnackbar(true);
+				},
+				onError: () => {
+					setSnackbarMessage("Failed to add facility.");
+					setSnackbarSeverity("error");
+					setOpenSnackbar(true);
+				},
+			});
+
+			if (result) {
+				setOpenDialog(false);
+				//	setSelectedFacility(null);
+				//setModalMode("add");
+				//onAddSuccess();
+			}
+		}
+	};
+
 	return (
 		<>
 			{!isEditClicked && (
@@ -186,6 +221,7 @@ function VetConnectManagePatient() {
 							size='small'
 							label='Search by Email'
 							sx={{
+								marginRight: 120,
 								maxWidth: 280,
 								"& .MuiOutlinedInput-root": {
 									bgcolor: "white",
@@ -208,7 +244,26 @@ function VetConnectManagePatient() {
 							value={searchTerm}
 							onChange={(e) => setSearchTerm(e.target.value)}
 						/>
+
+						<Grid
+							item
+							xs={12}
+							md={5}
+							display='flex'
+							justifyContent='flex-end'
+							gap={1}>
+							<Button
+								variant='contained'
+								color='primary'
+								sx={{ background: "#174a7c" }}
+								onClick={() => {
+									setOpenDialog(true);
+								}}>
+								Add Pet
+							</Button>
+						</Grid>
 					</Box>
+
 					<TableContainer component={Paper} className={styles.tableWrapper}>
 						<Table size='small'>
 							<TableHead>
@@ -270,6 +325,15 @@ function VetConnectManagePatient() {
 					isEditClick={setIsEditClicked}
 				/>
 			)}
+
+			<CummonDialog
+				open={openDialog}
+				onClose={handleCloseDialog}
+				title='Add Pet Owner'
+				maxWidth='md'
+				onSubmit={handleFacilitySubmit}>
+				<AddPetOwner ref={addNewPatientRef} />
+			</CummonDialog>
 		</>
 	);
 }

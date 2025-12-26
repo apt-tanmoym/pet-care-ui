@@ -168,17 +168,17 @@ const menuItems: MenuItem[] = [
 			{
 				text: "Manage calendar Of Doctors",
 				icon: <CalendarMonthIcon />,
-				url: "/vetconnect/calendar",
+				url: "/front-desk/calendar",
 			},
 			{
 				text: "Manage Patients",
 				icon: <PeopleIcon />,
-				url: "/vetconnect/manage-patients",
+				url: "/front-desk/manage-patients",
 			},
 			{
 				text: "Manage Appointments",
 				icon: <EventIcon />,
-				url: "/vetconnect/appointments",
+				url: "/front-desk/appointments",
 			},
 		],
 	},

@@ -15,7 +15,6 @@ import Alert from "@mui/material/Alert";
 import dayjs from "dayjs";
 import "dayjs/locale/en";
 import ConsultationPopup from "./OnlineConsultationPopup";
-import OfflineConsultationPopup from "./OfflineConsultationPopup";
 import { updateStatusArrive, updateConsultationStarted, updateStatusComplete } from "@/services/manageCalendar";
 
 interface ConsultationItem {
@@ -37,6 +36,7 @@ interface ListOfConsultationProps {
   selectedDate: Date | null;
   consultations: ConsultationItem[];
   onArriveClick: (consultation: ConsultationItem) => void;
+  onRefresh?: () => void;
 }
 
 const getOrdinalSuffix = (day: number) => {
@@ -57,6 +57,7 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
   selectedDate,
   consultations,
   onArriveClick,
+  onRefresh,
 }) => {
   if (!selectedDate) {
     return null;
@@ -68,9 +69,9 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
   const formattedDate = `${day}${getOrdinalSuffix(day)} ${month} ${year}`;
 
   const [arrivedConsultations, setArrivedConsultations] = useState<Set<number>>(new Set());
-  const [openOnlinePopup, setOpenOnlinePopup] = useState(false);
-  const [openOfflinePopup, setOpenOfflinePopup] = useState(false);
+  const [openConsultationPopup, setOpenConsultationPopup] = useState(false);
   const [selectedConsultation, setSelectedConsultation] = useState<ConsultationItem | null>(null);
+  const [consultationType, setConsultationType] = useState<'online' | 'offline'>('online');
   const [loadingArrive, setLoadingArrive] = useState<Set<number>>(new Set());
   const [loadingConsultation, setLoadingConsultation] = useState<Set<number>>(new Set());
   const [consultationStarted, setConsultationStarted] = useState<Set<number>>(new Set());
@@ -181,13 +182,10 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
           severity: 'success'
         });
         
-        // Open the appropriate consultation popup
+        // Open the consultation popup with the appropriate type
         setSelectedConsultation(consultation);
-        if (consultationType === 'online') {
-          setOpenOnlinePopup(true);
-        } else {
-          setOpenOfflinePopup(true);
-        }
+        setConsultationType(consultationType);
+        setOpenConsultationPopup(true);
       } else {
         setSnackbar({
           open: true,
@@ -212,17 +210,28 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
   };
 
   const handleConsultOnline = (index: number, consultation: ConsultationItem) => {
+    // Open dialog immediately with online type
+    setSelectedConsultation(consultation);
+    setConsultationType('online');
+    setOpenConsultationPopup(true);
+    // Make API call in background
     handleConsultationStarted(index, consultation, 'online');
   };
 
   const handleConsultOffline = (index: number, consultation: ConsultationItem) => {
+    // Open dialog immediately with offline type
+    setSelectedConsultation(consultation);
+    setConsultationType('offline');
+    setOpenConsultationPopup(true);
+    // Make API call in background
     handleConsultationStarted(index, consultation, 'offline');
   };
 
   const handleViewCompleted = (consultation: ConsultationItem) => {
     // For completed consultations, just open the modal without calling API
     setSelectedConsultation(consultation);
-    setOpenOnlinePopup(true);
+    setConsultationType('online'); // Default to online for completed consultations
+    setOpenConsultationPopup(true);
   };
 
   const handleCompleteConsultation = async (index: number, consultation: ConsultationItem) => {
@@ -269,10 +278,11 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
           message: response.message,
           severity: 'success'
         });
-        // Close consultation popups
-        setOpenOnlinePopup(false);
-        setOpenOfflinePopup(false);
+        // Close consultation popup
+        setOpenConsultationPopup(false);
         setSelectedConsultation(null);
+        // Refresh the consultations list
+        onRefresh?.();
       } else {
         setSnackbar({
           open: true,
@@ -539,13 +549,13 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
         )}
       </CardContent>
 
-      {/* Online Consultation Dialog */}
-      <Dialog open={openOnlinePopup} onClose={() => setOpenOnlinePopup(false)} maxWidth="lg" fullWidth>
+      {/* Consultation Dialog - Used for both Online and Offline */}
+      <Dialog open={openConsultationPopup} onClose={() => setOpenConsultationPopup(false)} maxWidth="lg" fullWidth>
         <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            Online Consultation 
+            {consultationType === 'online' ? 'Online Consultation' : 'Offline Consultation'}
           </Typography>
-          <IconButton onClick={() => setOpenOnlinePopup(false)}>
+          <IconButton onClick={() => setOpenConsultationPopup(false)}>
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -557,6 +567,7 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
               <ConsultationPopup 
                 consultation={selectedConsultation} 
                 isCompleted={isCompleted}
+                consultationType={consultationType}
                 onCompleteConsultation={(consultation) => {
                   const index = consultations.findIndex(c => c.appointmentId === consultation.appointmentId);
                   if (index !== -1) {
@@ -566,31 +577,6 @@ const ListOfConsultation: React.FC<ListOfConsultationProps> = ({
               />
             );
           })()}
-        </DialogContent>
-      </Dialog>
-
-      {/* Offline Consultation Dialog */}
-      <Dialog open={openOfflinePopup} onClose={() => setOpenOfflinePopup(false)} maxWidth="lg" fullWidth>
-        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            Offline Consultation
-          </Typography>
-          <IconButton onClick={() => setOpenOfflinePopup(false)}>
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ overflowY: "auto", maxHeight: "80vh" }}>
-          {selectedConsultation && (
-            <OfflineConsultationPopup 
-              consultation={selectedConsultation} 
-              onCompleteConsultation={(consultation) => {
-                const index = consultations.findIndex(c => c.appointmentId === consultation.appointmentId);
-                if (index !== -1) {
-                  handleCompleteConsultation(index, consultation);
-                }
-              }}
-            />
-          )}
         </DialogContent>
       </Dialog>
 

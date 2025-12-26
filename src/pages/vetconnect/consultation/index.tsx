@@ -8,6 +8,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import ConsultationFacilitySelector from "@/components/vetconnect/Consultation/ConsultationFacilitySelector";
 import AlertPopup from "@/components/vetconnect/Consultation/AlertPopup";
 import ListOfConsultation from "@/components/vetconnect/Consultation/ListOfConsultation";
+import { viewPatientsInSlot } from '@/services/manageCalendar';
 
 interface ConsultationItem {
   petName: string;
@@ -87,6 +88,27 @@ const Consultation: React.FC = () => {
     alert(`Appointment booked successfully! ${response.message}`);
   };
 
+  const refreshConsultations = async () => {
+    if (!selectedFacility?.facilityId || !selectedDate) return;
+    
+    try {
+      const response = await viewPatientsInSlot({
+        callingFrom: 'web',
+        userName: localStorage.getItem('userName') || '',
+        userPass: localStorage.getItem('userPwd') || '',
+        loggedInFacilityId: selectedFacility.facilityId,
+        orgId: parseInt(localStorage.getItem('orgId') || '39'),
+        facilityId: selectedFacility.facilityId,
+        slotIndex: 1,
+        startDate: dayjs(selectedDate).format('DD/MM/YYYY')
+      });
+      
+      setPatientSlots(response);
+    } catch (error) {
+      console.error('Error refreshing consultations:', error);
+    }
+  };
+
 
 
   return (
@@ -109,6 +131,7 @@ const Consultation: React.FC = () => {
               selectedDate={selectedDate}
               consultations={mapPatientSlotsToConsultations(patientSlots)}
               onArriveClick={handleArriveClick}
+              onRefresh={refreshConsultations}
             />
           )}
 

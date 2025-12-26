@@ -52,12 +52,14 @@ interface ConsultationPopupProps {
   consultation: ConsultationItem;
   onCompleteConsultation?: (consultation: ConsultationItem) => void;
   isCompleted?: boolean;
+  consultationType?: 'online' | 'offline';
 }
 
 const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
   consultation,
   onCompleteConsultation,
   isCompleted = false,
+  consultationType = 'online',
 }) => {
   const currentDate = new Date();
   const formattedDate = currentDate.toLocaleDateString("en-GB", {
@@ -609,15 +611,15 @@ const ConsultationPopup: React.FC<ConsultationPopupProps> = ({
                 variant="caption"
                 sx={{
                   fontWeight: 700,
-                  color: "#2196F3",
-                  bgcolor: "#e3f2fd",
+                  color: consultationType === 'online' ? "#2196F3" : "#FF9800",
+                  bgcolor: consultationType === 'online' ? "#e3f2fd" : "#fff3e0",
                   px: 1.5,
                   py: 0.5,
                   borderRadius: 1,
                   fontSize: '0.7rem'
                 }}
               >
-                ONLINE
+                {consultationType === 'online' ? 'ONLINE' : 'OFFLINE'}
             </Typography>
             </Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
