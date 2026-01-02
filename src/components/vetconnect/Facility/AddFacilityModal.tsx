@@ -148,10 +148,9 @@ const AddFacility: React.FC<FacilityFormProps> = ({
 					userName: localStorage.getItem("userName") || "",
 					userPass: localStorage.getItem("userPwd") || "",
 					deviceStat: "M",
-					orgId: "39",
-					loggedInFacilityId: "1",
+					orgId: localStorage.getItem("orgId") || "",
+					facilityId: 0,
 					facilityName: value,
-					facilityType: "practice",
 				};
 				const data = await checkDuplicateFacility(payload);
 				console.log(data);
@@ -171,8 +170,10 @@ const AddFacility: React.FC<FacilityFormProps> = ({
 					userName: localStorage.getItem("userName") || "",
 					userPass: localStorage.getItem("userPwd") || "",
 					deviceStat: "M",
+					orgId: localStorage.getItem("orgId") || "",
+					loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
 					facilityName: value,
-					facilityId: "0",
+					facilityId: 0,
 				};
 				const data = await checkDuplicateFacility(payload);
 				console.log(data);
@@ -256,6 +257,7 @@ const AddFacility: React.FC<FacilityFormProps> = ({
 				userPass: localStorage.getItem("userPwd") || "",
 				deviceStat: "M",
 				facilityId: "0",
+				loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
 				orgId: localStorage.getItem("orgId") || "",
 				city: selectedCity?.cityName || data.city,
 				state: selectedCity?.stateName || "",

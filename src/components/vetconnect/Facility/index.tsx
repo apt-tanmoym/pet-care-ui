@@ -41,6 +41,7 @@ const FacilityPage = () => {
 					deviceStat: "M",
 					callingFrom: "app",
 					orgId: localStorage.getItem("orgId") || "",
+					loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
 					searchFacility: "",
 					status: "All",
 				};

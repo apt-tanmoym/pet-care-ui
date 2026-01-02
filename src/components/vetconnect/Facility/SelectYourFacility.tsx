@@ -69,6 +69,7 @@ const SelectYourFacility = ({
 				deviceStat: "M",
 				callingFrom: "app",
 				orgId: localStorage.getItem("orgId") || "",
+				loggedInFacilityId: localStorage.getItem("loggedinFacilityId"),
 				facilityId: selectedId,
 			};
 
@@ -92,12 +93,13 @@ const SelectYourFacility = ({
 		const fetchFacilities = async () => {
 			setLoading(true);
 			try {
-				const payload: FaclityServicePayload = {
+				const payload: any = {
 					userName: localStorage.getItem("userName") || "",
 					userPass: localStorage.getItem("userPwd") || "",
 					deviceStat: "M",
 					callingFrom: "app",
 					orgId: localStorage.getItem("orgId") || "",
+					loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
 					searchFacility: "",
 					status: "All",
 				};
@@ -139,6 +141,7 @@ const SelectYourFacility = ({
 			deviceStat: "M",
 			facilityType: facilityDetails.facilityType,
 			facilityId: facilityDetails.facilityId,
+			loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
 			city: facilityDetails.city,
 			state: facilityDetails.state,
 			country: facilityDetails.country,
