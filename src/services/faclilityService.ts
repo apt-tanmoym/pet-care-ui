@@ -3,7 +3,12 @@ import { FaclityServicePayload, FaclityServiceResponse, GetFacilityDetailsPayloa
 
 export const getOwnFacilites = async (payload: FaclityServicePayload): Promise<FaclityServiceResponse[]> => {
   try {
-    const { data } = await http.post<FaclityServiceResponse[]>('/getownfacility', payload);
+     let fixPaylod = {
+      ...payload,
+      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+     }
+
+    const { data } = await http.post<FaclityServiceResponse[]>('/getownfacility', fixPaylod);
     return data;
   } catch (error) {
     throw error;

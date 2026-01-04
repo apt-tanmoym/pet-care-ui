@@ -318,6 +318,8 @@ function VetConnectUserProfile() {
 			treatmentCategories: "",
 			practiceSpeciality: "",
 			backFile: null,
+			loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+			orgId: localStorage.getItem("orgId") || "",
 			file: base64ToFile(file),
 		};
 		const formData = new FormData();

@@ -116,7 +116,7 @@ interface Facility {
 
 export const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
   try {
-    const { data } = await http.post<LoginResponse>('/validateUser', credentials);
+    const { data } = await http.post<any>('/validateUser', credentials);
     
     // Save orgId to localStorage on successful login
     if (data && data.orgId) {
@@ -130,6 +130,7 @@ export const login = async (credentials: LoginCredentials): Promise<LoginRespons
       localStorage.setItem('userName', credentials.userName);
       localStorage.setItem('userPwd', credentials.userPwd);
       localStorage.setItem('loggedinFacilityId', data.loggedinFacilityId.toString())
+      localStorage.setItem('doctorUid', data?.doctorMasterId.toString())
     }
     
     return data;

@@ -67,7 +67,12 @@ export interface GetDoctorSlotsResponse {
 
 export const checkDayAvailability = async (payload: CheckDayAvailabilityPayload): Promise<CheckDayAvailabilityResponse> => {
   try {
-    const { data } = await http.post<CheckDayAvailabilityResponse>('/checkdayavailability', payload);
+    let fixPaylod = {
+      ...payload,
+      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+      doctorUId: localStorage.getItem("doctorUid") || "",
+     }
+    const { data } = await http.post<CheckDayAvailabilityResponse>('/checkdayavailability', fixPaylod);
     return data;
   } catch (error) {
     throw error;
@@ -76,7 +81,11 @@ export const checkDayAvailability = async (payload: CheckDayAvailabilityPayload)
 
 export const checkDuplicateSlot = async (payload: CheckDuplicateSlotPayload): Promise<CheckDuplicateSlotResponse> => {
   try {
-    const { data } = await http.post<CheckDuplicateSlotResponse>('/checkduplicateslot', payload);
+    let fixPaylod = {
+      ...payload,
+      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || ""
+     }
+    const { data } = await http.post<CheckDuplicateSlotResponse>('/checkduplicateslot', fixPaylod);
     return data;
   } catch (error) {
     throw error;
@@ -85,7 +94,12 @@ export const checkDuplicateSlot = async (payload: CheckDuplicateSlotPayload): Pr
 
 export const addSlot = async (payload: AddSlotPayload): Promise<AddSlotResponse> => {
   try {
-    const { data } = await http.post<AddSlotResponse>('/addslot', payload);
+    let fixPaylod = {
+      ...payload,
+      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+      doctorUId: localStorage.getItem("doctorUid") || "",
+     }
+    const { data } = await http.post<AddSlotResponse>('/addslot', fixPaylod);
     return data;
   } catch (error) {
     throw error;
@@ -94,7 +108,14 @@ export const addSlot = async (payload: AddSlotPayload): Promise<AddSlotResponse>
 
 export const getdoctorSlots = async (payload: GetDoctorSlotsPayload): Promise<GetDoctorSlotsResponse> => {
   try {
-    const { data } = await http.post<GetDoctorSlotsResponse>('/getdoctorslots', payload);
+    let fixPaylod = {
+      ...payload,
+      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+      orgId: localStorage.getItem("orgId") || "",
+      doctorUId: localStorage.getItem("doctorUid") || "",
+     }
+     
+    const { data } = await http.post<GetDoctorSlotsResponse>('/getdoctorslots', fixPaylod);
     return data;
   } catch (error) {
     throw error;
@@ -215,7 +236,13 @@ interface GetEditSlotDataResponse {
 
 export const getEditSlotData = async (payload: GetEditSlotDataPayload): Promise<GetEditSlotDataResponse> => {
   try {
-    const { data } = await http.post<GetEditSlotDataResponse>('/geteditslotdata', payload);
+
+    let fixPaylod = {
+      ...payload,
+      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+      orgId: localStorage.getItem("orgId") || "",
+     }
+    const { data } = await http.post<GetEditSlotDataResponse>('/geteditslotdata', fixPaylod);
     return data;
   } catch (error) {
     throw error;
@@ -224,7 +251,11 @@ export const getEditSlotData = async (payload: GetEditSlotDataPayload): Promise<
 
 export const editSlot = async (payload: AddSlotPayload): Promise<AddSlotResponse> => {
   try {
-    const { data } = await http.post<AddSlotResponse>('/editslot', payload);
+    let fixPaylod = {
+      ...payload,
+      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+     }
+    const { data } = await http.post<AddSlotResponse>('/editslot', fixPaylod);
     return data;
   } catch (error) {
     throw error;
@@ -255,7 +286,11 @@ interface TemporaryAdjustCalendarResponse {
 
 export const temporaryAdjustCalendar = async (payload: TemporaryAdjustCalendarPayload): Promise<TemporaryAdjustCalendarResponse> => {
   try {
-    const { data } = await http.post<TemporaryAdjustCalendarResponse>('/temporaryadjustcalendar', payload);
+    let fixPaylod = {
+      ...payload,
+      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || ""
+     }
+    const { data } = await http.post<TemporaryAdjustCalendarResponse>('/temporaryadjustcalendar', fixPaylod);
     return data;
   } catch (error) {
     throw error;
@@ -278,7 +313,13 @@ interface GetSlotDatesResponse {
 
 export const getSlotDates = async (payload: GetSlotDatesPayload): Promise<GetSlotDatesResponse> => {
   try {
-    const { data } = await http.post<GetSlotDatesResponse>('/getslotdates', payload);
+    let fixPaylod = {
+      ...payload,
+      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+      orgId: localStorage.getItem("orgId") || "",
+      doctorUId: localStorage.getItem("doctorUid") || "",
+     }
+    const { data } = await http.post<GetSlotDatesResponse>('/getslotdates', fixPaylod);
     return data;
   } catch (error) {
     throw error;
@@ -1319,7 +1360,12 @@ export interface GetSelectedDaySlotsResponse {
 
 export const getSelectedDaySlots = async (payload: GetSelectedDaySlotsPayload): Promise<GetSelectedDaySlotsResponse> => {
   try {
-    const { data } = await http.post<GetSelectedDaySlotsResponse>('/getselecteddayslots', payload);
+    let fixPaylod = {
+      ...payload,
+      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+      doctorUId: localStorage.getItem("doctorUid") || "",
+     }
+    const { data } = await http.post<GetSelectedDaySlotsResponse>('/getselecteddayslots', fixPaylod);
     return data;
   } catch (error) {
     throw error;
