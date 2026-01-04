@@ -83,7 +83,8 @@ export const checkDuplicateSlot = async (payload: CheckDuplicateSlotPayload): Pr
   try {
     let fixPaylod = {
       ...payload,
-      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || ""
+      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+      doctorUId: localStorage.getItem("doctorUid") || "",
      }
     const { data } = await http.post<CheckDuplicateSlotResponse>('/checkduplicateslot', fixPaylod);
     return data;
@@ -444,7 +445,11 @@ interface PatientSlot {
 
 export const viewPatientsInSlot = async (payload: ViewPatientsInSlotPayload): Promise<PatientSlot[]> => {
   try {
-    const { data } = await http.post<PatientSlot[]>('/viewpatientsinslot', payload);
+     let fixPaylod = {
+      ...payload,
+      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+     }
+    const { data } = await http.post<PatientSlot[]>('/viewpatientsinslot', fixPaylod);
     return data;
   } catch (error) {
     throw error;
@@ -545,7 +550,11 @@ export interface SearchApptPatientResponse {
 
 export const searchApptPatient = async (payload: SearchApptPatientPayload): Promise<SearchApptPatientResponse[] | { message: string; status: string }> => {
   try {
-    const { data } = await http.post<SearchApptPatientResponse[] | { message: string; status: string }>('/searchapptpatient', payload);
+    let fixPaylod = {
+      ...payload,
+      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+     }
+    const { data } = await http.post<SearchApptPatientResponse[] | { message: string; status: string }>('/searchapptpatient', fixPaylod);
     return data;
   } catch (error) {
     throw error;
@@ -1090,7 +1099,12 @@ export interface SaveAppointmentResponse {
 
 export const saveAppointment = async (payload: SaveAppointmentPayload): Promise<SaveAppointmentResponse> => {
   try {
-    const { data } = await http.post<SaveAppointmentResponse>('/saveappointment', payload);
+    let fixPaylod = {
+      ...payload,
+      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+      doctorUId: localStorage.getItem("doctorUid") || "",
+     }
+    const { data } = await http.post<SaveAppointmentResponse>('/saveappointment', fixPaylod);
     return data;
   } catch (error) {
     throw error;
