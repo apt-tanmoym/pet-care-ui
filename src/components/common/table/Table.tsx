@@ -240,7 +240,14 @@ const CommonTable: React.FC<CommonTableProps> = ({
 							paginatedRows.map((row, idx) => (
 								<TableRow key={idx}>
 									{colHeaders.map((col) => (
-										<TableCell key={col.id}>
+										<TableCell
+											sx={{
+												maxWidth: 200, // adjust as needed
+												whiteSpace: "normal",
+												wordBreak: "break-word",
+												overflowWrap: "break-word",
+											}}
+											key={col.id}>
 											{col.id === "image" ? (
 												<img src={row[col.id]} alt='row-img' width='50' />
 											) : (

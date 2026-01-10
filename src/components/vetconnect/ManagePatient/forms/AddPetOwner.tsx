@@ -30,6 +30,7 @@ import {
 	addNewFacility,
 } from "@/services/faclilityService";
 import { FaclityServiceResponse } from "@/interfaces/facilityInterface";
+import { savePatient } from "@/services/managePatientService";
 
 /* -------------------- Types -------------------- */
 
@@ -50,6 +51,7 @@ interface FormValues {
 	firstName: string;
 	lastName: string;
 	gender: string;
+	petName: string;
 	petCategory: string;
 	dob: string;
 	email: string;
@@ -92,6 +94,7 @@ const AddPetOwner = forwardRef(function AddPetOwner(
 			lastName: "",
 			gender: "",
 			petCategory: "",
+			petName: "",
 			dob: "",
 			email: "",
 			phoneNumber: "",
@@ -151,19 +154,46 @@ const AddPetOwner = forwardRef(function AddPetOwner(
 
 	/* -------------------- Submit -------------------- */
 
+	const submitCallbacksRef = useRef<{
+		onSuccess?: () => void;
+		onError?: () => void;
+	}>({});
 	const submitForm = async (data: FormValues) => {
+		let callbacks: { onSuccess?: () => void; onError?: () => void } = {};
 		const finalData = {
-			...data,
+			//...data,
 			loggedInFacilityId: localStorage.getItem("loggedinFacilityId"),
 			callingFrom: "web",
 			userName: localStorage.getItem("userName") || "",
-			userPass: localStorage.getItem("userPwd") || "",
+			userPwd: localStorage.getItem("userPwd") || "",
 			deviceStat: "M",
 			orgId: localStorage.getItem("orgId") || "",
 			facilityType: "practice",
+			gender: data.gender,
+			firstName: data.firstName,
+			lastName: data.lastName,
+			petName: data.petName,
+			petCategory: data.petCategory,
+			address1: data.address1,
+			address2: data.address2,
+			pin: data.pin,
+			cityId: data.cityId,
+			city: data.city,
+			cityPincodeMappingId: data.cityPincodeMappingId,
+			areaName: data.areaName,
+			state: data.state,
+			country: data.country,
+			email: data.email,
+			contactNo: data.phoneNumber,
+			dob: data.dob,
 		};
 		console.log(finalData);
-
+		try {
+			await savePatient(finalData);
+			submitCallbacksRef.current.onSuccess?.();
+		} catch (error) {
+			submitCallbacksRef.current.onError?.();
+		}
 		/* await addNewFacility({
 			...data,
 			loggedInFacilityId: localStorage.getItem("loggedinFacilityId"),
@@ -175,12 +205,18 @@ const AddPetOwner = forwardRef(function AddPetOwner(
 			facilityType: "practice",
 		}); */
 
-		onSubmit?.(data as any);
-		return true;
+		/* onSubmit?.(data as any);
+		return true; */
 	};
 
 	useImperativeHandle(ref, () => ({
-		submitForm: handleSubmit(submitForm),
+		submitForm: (callbacks?: {
+			onSuccess?: () => void;
+			onError?: () => void;
+		}) => {
+			submitCallbacksRef.current = callbacks || {};
+			formRef.current?.requestSubmit(); // 🔥 triggers form submit
+		},
 	}));
 
 	/* -------------------- UI -------------------- */
@@ -190,7 +226,7 @@ const AddPetOwner = forwardRef(function AddPetOwner(
 			<form ref={formRef} onSubmit={handleSubmit(submitForm)}>
 				<Grid container spacing={2}>
 					{/* First Name */}
-					<Grid item xs={12} sm={6}>
+					<Grid item xs={12} sm={4}>
 						<Controller
 							name='firstName'
 							control={control}
@@ -208,7 +244,7 @@ const AddPetOwner = forwardRef(function AddPetOwner(
 					</Grid>
 
 					{/* Last Name */}
-					<Grid item xs={12} sm={6}>
+					<Grid item xs={12} sm={4}>
 						<Controller
 							name='lastName'
 							control={control}
@@ -220,6 +256,23 @@ const AddPetOwner = forwardRef(function AddPetOwner(
 									fullWidth
 									error={!!errors.lastName}
 									helperText={errors.lastName?.message}
+								/>
+							)}
+						/>
+					</Grid>
+
+					<Grid item xs={12} sm={4}>
+						<Controller
+							name='petName'
+							control={control}
+							rules={{ required: "Pet Name is required" }}
+							render={({ field }) => (
+								<TextField
+									{...field}
+									label='Pet Name'
+									fullWidth
+									error={!!errors.petName}
+									helperText={errors.petName?.message}
 								/>
 							)}
 						/>
@@ -268,6 +321,7 @@ const AddPetOwner = forwardRef(function AddPetOwner(
 								rules={{ required: "Date Of Birth is required" }}
 								render={({ field }) => (
 									<DatePicker
+										disableFuture
 										label='Date of Birth'
 										format='DD/MM/YYYY' // ✅ DISPLAY FORMAT
 										value={field.value ? dayjs(field.value) : null}

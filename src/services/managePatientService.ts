@@ -20,7 +20,12 @@ export const getPetList = async (payload: any): Promise<any> => {
 
 export const getPetDetails = async (payload: any): Promise<any> => {
   try {
-    const { data } = await http.post<any>('/getpetprofile', payload);
+    const fixPaylod = {
+      ...payload,
+      loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+      orgId: localStorage.getItem("orgId") || "",
+    }
+    const { data } = await http.post<any>('/getpetprofile', fixPaylod);
     return data;
   } catch (error) {
     throw error;

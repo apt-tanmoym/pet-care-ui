@@ -389,7 +389,9 @@ const LocalOrder: React.FC = () => {
 							<Select
 								value={source}
 								onChange={(e) => setSource(e.target.value)}>
-								<MenuItem value='ICD10'>From ICD10</MenuItem>
+								<MenuItem value='ICD10'>
+									International/National Databases
+								</MenuItem>
 								<MenuItem value='Other'>Other</MenuItem>
 							</Select>
 						</FormControl>

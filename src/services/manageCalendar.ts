@@ -448,6 +448,7 @@ export const viewPatientsInSlot = async (payload: ViewPatientsInSlotPayload): Pr
      let fixPaylod = {
       ...payload,
       loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
+      doctorUId: localStorage.getItem("doctorUid") || "",
      }
     const { data } = await http.post<PatientSlot[]>('/viewpatientsinslot', fixPaylod);
     return data;

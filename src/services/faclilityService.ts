@@ -1,7 +1,7 @@
 import http from '@/common/http';
 import { FaclityServicePayload, FaclityServiceResponse, GetFacilityDetailsPayload, AddNewFacilityPayload } from '@/interfaces/facilityInterface';
 
-export const getOwnFacilites = async (payload: FaclityServicePayload): Promise<FaclityServiceResponse[]> => {
+export const getOwnFacilites = async (payload: any): Promise<FaclityServiceResponse[]> => {
   try {
      let fixPaylod = {
       ...payload,

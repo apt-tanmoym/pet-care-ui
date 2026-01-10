@@ -165,7 +165,7 @@ function VetConnectManagePatient() {
 		setOpenSnackbar(false);
 	};
 
-	const handleFacilitySubmit = async () => {
+	const handlePetFormSubmit = async () => {
 		console.log("submit");
 		if (addNewPatientRef.current && addNewPatientRef.current.submitForm) {
 			const result = await addNewPatientRef.current.submitForm({
@@ -173,16 +173,20 @@ function VetConnectManagePatient() {
 					setSnackbarMessage("Facility added successfully!");
 					setSnackbarSeverity("success");
 					setOpenSnackbar(true);
+					fetchOwnerList();
+					setOpenDialog(false);
 				},
 				onError: () => {
 					setSnackbarMessage("Failed to add facility.");
 					setSnackbarSeverity("error");
 					setOpenSnackbar(true);
+					setOpenDialog(false);
 				},
 			});
 
 			if (result) {
 				setOpenDialog(false);
+
 				//	setSelectedFacility(null);
 				//setModalMode("add");
 				//onAddSuccess();
@@ -259,7 +263,7 @@ function VetConnectManagePatient() {
 								onClick={() => {
 									setOpenDialog(true);
 								}}>
-								Add Pet
+								Add Pet Owner
 							</Button>
 						</Grid>
 					</Box>
@@ -331,7 +335,7 @@ function VetConnectManagePatient() {
 				onClose={handleCloseDialog}
 				title='Add Pet Owner'
 				maxWidth='md'
-				onSubmit={handleFacilitySubmit}>
+				onSubmit={handlePetFormSubmit}>
 				<AddPetOwner ref={addNewPatientRef} />
 			</CummonDialog>
 		</>

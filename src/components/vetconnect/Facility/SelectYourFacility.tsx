@@ -26,6 +26,7 @@ import {
 
 interface SelectYourFacilityProps {
 	selectedFacility: string;
+	facilityType: string;
 	setSelectedFacility: (value: string) => void;
 	generateBills: boolean;
 	onLoad: number;
@@ -38,6 +39,7 @@ const SelectYourFacility = ({
 	generateBills,
 	setGenerateBills,
 	onLoad,
+	facilityType = "",
 }: SelectYourFacilityProps) => {
 	const [fees, setFees] = useState("");
 	const [displayFees, setDisplayFees] = useState(false);
@@ -88,36 +90,74 @@ const SelectYourFacility = ({
 			setFacilityDetails(null);
 		}
 	};
+	if (facilityType != "telemedicine") {
+		useEffect(() => {
+			const fetchFacilities = async () => {
+				setLoading(true);
+				try {
+					const payload: any = {
+						userName: localStorage.getItem("userName") || "",
+						userPass: localStorage.getItem("userPwd") || "",
+						deviceStat: "M",
+						callingFrom: "app",
+						orgId: localStorage.getItem("orgId") || "",
+						loggedInFacilityId:
+							localStorage.getItem("loggedinFacilityId") || "",
+						searchFacility: "",
+						status: "All",
+					};
+					const data = await getOwnFacilites(payload);
+					const telemedicinePresent = data.filter(
+						(x) => x.facilityType == "telemedicine"
+					);
+					const isTelemedicine = telemedicinePresent.length ? true : false;
+					console.log(telemedicinePresent);
+					setFacilities(data);
+				} catch (error) {
+					setFacilities([]);
+				} finally {
+					setLoading(false);
+				}
+			};
+			fetchFacilities();
+		}, [onLoad]);
+	}
+	if (facilityType == "telemedicine") {
+		console.log("enter");
+		setSelectedFacility("");
+		useEffect(() => {
+			const fetchTeleMedicineData = async () => {
+				setLoading(true);
+				try {
+					const payload = {
+						userName: localStorage.getItem("userName") || "",
+						userPass: localStorage.getItem("userPwd") || "",
+						deviceStat: "M",
+						callingFrom: "app",
+						orgId: localStorage.getItem("orgId") || "",
+						loggedInFacilityId: localStorage.getItem("loggedinFacilityId"),
+						facilityId: "",
+						facilityType: "telemedicine",
+					};
 
-	useEffect(() => {
-		const fetchFacilities = async () => {
-			setLoading(true);
-			try {
-				const payload: any = {
-					userName: localStorage.getItem("userName") || "",
-					userPass: localStorage.getItem("userPwd") || "",
-					deviceStat: "M",
-					callingFrom: "app",
-					orgId: localStorage.getItem("orgId") || "",
-					loggedInFacilityId: localStorage.getItem("loggedinFacilityId") || "",
-					searchFacility: "",
-					status: "All",
-				};
-				const data = await getOwnFacilites(payload);
-				const telemedicinePresent = data.filter(
-					(x) => x.facilityType == "telemedicine"
-				);
-				const isTelemedicine = telemedicinePresent.length ? true : false;
-				console.log(telemedicinePresent);
-				setFacilities(data);
-			} catch (error) {
-				setFacilities([]);
-			} finally {
-				setLoading(false);
-			}
-		};
-		fetchFacilities();
-	}, [onLoad]);
+					const details = await getFacilityDetails(payload);
+					setFacilityDetails(details);
+					console.log(details?.fees);
+					setFees(details?.fees);
+					setGenerateBills(details?.internBilling == 1 ? true : false);
+					setDisplayFees(details?.patientsToView == 1 ? true : false);
+					// Optional: If you want to update UI state based on details
+					// setFees(details?.fees || '');
+					// setGenerateBills(details?.generateBills || false);
+					// setDisplayFees(details?.displayFees || false);
+				} catch (error) {
+					console.error("Error fetching facility details:", error);
+					setFacilityDetails(null);
+				}
+			};
+			fetchTeleMedicineData();
+		}, [facilityType]);
+	}
 
 	const handleUpdateFacilityDetails = async () => {
 		if (!facilityDetails) {
@@ -174,32 +214,33 @@ const SelectYourFacility = ({
 
 	return (
 		<Box>
-			<FormControl fullWidth variant='outlined'>
-				<InputLabel id='facility-label'>Select Facility</InputLabel>
-				<Select
-					labelId='facility-label'
-					id='facility-select'
-					value={selectedFacility}
-					onChange={handleFacilityChange}
-					label='Select Facility'>
-					{loading ? (
-						<MenuItem disabled>Loading...</MenuItem>
-					) : facilities.length === 0 ? (
-						<MenuItem disabled>No facilities found</MenuItem>
-					) : (
-						facilities.map((facility) => (
-							<MenuItem
-								key={facility.facilityId} // or facility.id or similar, depending on your response
-								value={facility.facilityId} // or facility.facilityName if you prefer
-							>
-								{facility.facilityName}
-							</MenuItem>
-						))
-					)}
-				</Select>
-			</FormControl>
-
-			{selectedFacility && (
+			{facilityType != "telemedicine" && (
+				<FormControl fullWidth variant='outlined'>
+					<InputLabel id='facility-label'>Select Facility</InputLabel>
+					<Select
+						labelId='facility-label'
+						id='facility-select'
+						value={selectedFacility}
+						onChange={handleFacilityChange}
+						label='Select Facility'>
+						{loading ? (
+							<MenuItem disabled>Loading...</MenuItem>
+						) : facilities.length === 0 ? (
+							<MenuItem disabled>No facilities found</MenuItem>
+						) : (
+							facilities.map((facility) => (
+								<MenuItem
+									key={facility.facilityId} // or facility.id or similar, depending on your response
+									value={facility.facilityId} // or facility.facilityName if you prefer
+								>
+									{facility.facilityName}
+								</MenuItem>
+							))
+						)}
+					</Select>
+				</FormControl>
+			)}
+			{(selectedFacility || facilityType === "telemedicine") && (
 				<Box sx={{ mt: 3, p: 3, bgcolor: "#f5fbff", borderRadius: 3 }}>
 					{/* Question 1 */}
 					<Typography variant='subtitle1' fontWeight='bold' sx={{ mb: 1 }}>

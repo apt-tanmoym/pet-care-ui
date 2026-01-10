@@ -397,7 +397,7 @@ const LocalProcedure: React.FC = () => {
 					variant='contained'
 					color='primary'
 					sx={{ ml: "auto" }}>
-					Add New Pharmecy
+					Add pharmacy item
 				</Button>
 			</Box>
 			<TableContainer component={Paper} className={styles.tableWrapper}>
@@ -470,7 +470,9 @@ const LocalProcedure: React.FC = () => {
 							<Select
 								value={source}
 								onChange={(e) => setSource(e.target.value)}>
-								<MenuItem value='ICD10'>From ICD10</MenuItem>
+								<MenuItem value='ICD10'>
+									International/National Databases
+								</MenuItem>
 								<MenuItem value='Other'>Other</MenuItem>
 							</Select>
 						</FormControl>

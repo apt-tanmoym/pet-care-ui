@@ -152,6 +152,7 @@ const FacilityPage = () => {
 					selectedFacility={selectedFacility}
 					setSelectedFacility={setSelectedFacility}
 					generateBills={generateBills}
+					facilityType={newFacilityType}
 					setGenerateBills={setGenerateBills}
 					onLoad={refreshKey}
 				/>
